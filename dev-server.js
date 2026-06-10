@@ -61,6 +61,8 @@ const resolveFilePath = (pathname) => {
   if (normalizedPath === '/') normalizedPath = '/index.html';
   if (normalizedPath === '/loader') normalizedPath = '/loader.html';
   if (normalizedPath === '/admin') normalizedPath = '/admin.html';
+  if (normalizedPath === '/dashboard') normalizedPath = '/loader.html';
+  if (normalizedPath === '/panel') normalizedPath = '/admin.html';
 
   let filePath = path.join(ROOT, normalizedPath.replace(/^\/+/, ''));
   if (!path.extname(filePath) && fs.existsSync(`${filePath}.html`)) {

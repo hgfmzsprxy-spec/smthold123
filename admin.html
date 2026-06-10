@@ -2157,12 +2157,6 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     return Number.isNaN(date.getTime()) ? null : date;
   };
 
-  const sanitizeDiscordUsername = (value) => {
-    const trimmed = String(value || '').trim();
-    if (!trimmed) return '-';
-    return trimmed.replace(/#0$/, '') || '-';
-  };
-
   const isAppPaused = (app) => !!(app && (app.sessions_paused === true || app.sessions_paused === 'true' || app.sessions_paused === 1));
 
   const normalizeRestoredStatus = (status) => {
@@ -2638,7 +2632,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
       }
       const discordName = document.createElement('div');
       discordName.className = 'license-discord-name';
-      discordName.textContent = sanitizeDiscordUsername(license.discord_username || license.discordUsername || '-');
+      discordName.textContent = license.discord_username || license.discordUsername || '-';
       discordCell.append(discordAvatar, discordName);
 
       const keyCell = document.createElement('div');
@@ -3923,7 +3917,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
         }
         if (navigator.onLine === false) {
           setBusy(false, '');
-          showMessage(authMessage, 'Brak połączenia z internetem (offline).', 'error');
+          showMessage(authMessage, 'No connection (offline).', 'error');
           return;
         }
 
@@ -3933,7 +3927,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
           setBusy(false, '');
           showMessage(
             authMessage,
-            `Nie mogę połączyć się z Supabase Auth (${url}). Sprawdź AdBlock/VPN/Firewall/DNS.`,
+            `Cannot connect to Supabase Auth (${url}). Check AdBlock/VPN/Firewall/DNS.`,
             'error'
           );
           return;
@@ -3958,15 +3952,15 @@ html[data-theme="white"] [data-loader-glass-card]::before {
           if (!res.ok) {
             setBusy(false, '');
             if (res.status === 400 && (errMsg || '').toLowerCase().includes('invalid login credentials')) {
-              showMessage(authMessage, 'Nieprawidłowy email lub hasło (HTTP 400).', 'error');
+              showMessage(authMessage, 'Invalid email or password (HTTP 400).', 'error');
               return;
             }
             if (res.status === 429) {
-              showMessage(authMessage, 'Za dużo prób logowania. Spróbuj ponownie za chwilę (HTTP 429).', 'error');
+              showMessage(authMessage, 'Too many login attempts. Please try again later (HTTP 429).', 'error');
               return;
             }
             if (res.status >= 500) {
-              showMessage(authMessage, `Błąd serwera Supabase (HTTP ${res.status}). Spróbuj ponownie.`, 'error');
+              showMessage(authMessage, `Supabase server error (HTTP ${res.status}). Please try again later.`, 'error');
               return;
             }
             showMessage(authMessage, `${errMsg || 'Sign-in failed'} (HTTP ${res.status})`, 'error');
@@ -3978,7 +3972,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
           const expiresIn = body.json?.expires_in;
           if (!accessToken || !refreshToken) {
             setBusy(false, '');
-            showMessage(authMessage, 'Logowanie nie zwróciło tokenów. Sprawdź konfigurację Supabase Auth.', 'error');
+            showMessage(authMessage, 'Sign-in failed. Check Supabase Auth configuration.', 'error');
             return;
           }
 
@@ -3999,8 +3993,8 @@ html[data-theme="white"] [data-loader-glass-card]::before {
           setBusy(false, '');
           const isAbort = error?.name === 'AbortError';
           const message = isAbort
-            ? 'Logowanie trwa za długo (timeout). Sprawdź AdBlock/VPN/Firewall/DNS.'
-            : `Błąd połączenia: ${error?.message || String(error)}`;
+            ? 'Signing in took too long (timeout). Check AdBlock/VPN/Firewall/DNS.'
+            : `Connection error: ${error?.message || String(error)}`;
           showMessage(authMessage, message, 'error');
         }
       });
@@ -4016,7 +4010,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
         }
         const ok = await ensureFreshToken(false);
         if (!ok) {
-          showMessage(createMessage, 'Sesja wygasła. Zaloguj się ponownie.', 'error');
+          showMessage(createMessage, 'Session expired. Please sign in again.', 'error');
           return;
         }
         const name = byId('application-name').value.trim();
