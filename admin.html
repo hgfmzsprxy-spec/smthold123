@@ -832,6 +832,50 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     gap: 12px;
 }
 
+.file-preview-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.file-preview-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    background: rgba(30, 184, 206, 0.12);
+    color: var(--primary);
+    flex-shrink: 0;
+}
+
+.file-preview-meta {
+    min-width: 0;
+}
+
+.file-preview-name {
+    font-weight: 650;
+    color: var(--foreground);
+    word-break: break-word;
+}
+
+.file-preview-subtitle {
+    color: var(--muted-foreground);
+    font-size: 0.88rem;
+    margin-top: 4px;
+    word-break: break-word;
+}
+
+.file-preview-card.is-empty {
+    justify-content: center;
+    text-align: center;
+    color: var(--muted-foreground);
+}
+
 .table-headers,
 .table-row {
     display: grid;
@@ -1593,6 +1637,46 @@ html[data-theme="white"] [data-loader-glass-card]::before {
                 </div>
             </div>
 
+            <div id="app-download-drawer" class="license-drawer" aria-hidden="true">
+                <div class="license-drawer-panel edit-drawer-panel">
+                    <div class="license-drawer-header">
+                        <h4 id="app-download-title" class="no-space-bottom">Application Download</h4>
+                        <button id="app-download-close" type="button" class="license-drawer-close" aria-label="Close">
+                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <form id="app-download-form" class="admin-form">
+                        <div class="form-group">
+                            <label for="app-download-file">Upload File (.rar or .exe)</label>
+                            <input id="app-download-file" type="file" accept=".rar,.exe,application/octet-stream,application/x-msdownload,application/x-rar-compressed,application/vnd.rar"/>
+                        </div>
+                        <div class="form-group">
+                            <label>Current File</label>
+                            <div id="app-download-preview" class="file-preview-card is-empty">No file uploaded yet.</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="app-download-version">Version</label>
+                            <input id="app-download-version" type="text"/>
+                        </div>
+                        <div class="form-group">
+                            <label for="app-download-status">Status</label>
+                            <select id="app-download-status">
+                                <option value="Active">Active</option>
+                                <option value="Disabled">Disabled</option>
+                            </select>
+                        </div>
+                        <div id="app-download-message" class="text-sm"></div>
+                        <div class="form-actions">
+                            <button id="app-download-cancel" type="button" class="secondary-button">Cancel</button>
+                            <button type="submit" class="primary-button">
+                                <i class="fa-solid fa-upload" aria-hidden="true"></i>
+                                Save
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <div id="create-app-drawer" class="license-drawer" aria-hidden="true">
                 <div class="license-drawer-panel create-drawer-panel">
                     <div class="license-drawer-header">
@@ -1892,9 +1976,20 @@ html[data-theme="white"] [data-loader-glass-card]::before {
   const editDrawerWebhook = byId('edit-drawer-webhook');
   const editDrawerMessage = byId('edit-drawer-message');
   const editDrawerCancel = byId('edit-drawer-cancel');
+  const appDownloadDrawer = byId('app-download-drawer');
+  const appDownloadTitle = byId('app-download-title');
+  const appDownloadClose = byId('app-download-close');
+  const appDownloadForm = byId('app-download-form');
+  const appDownloadFile = byId('app-download-file');
+  const appDownloadPreview = byId('app-download-preview');
+  const appDownloadVersion = byId('app-download-version');
+  const appDownloadStatus = byId('app-download-status');
+  const appDownloadMessage = byId('app-download-message');
+  const appDownloadCancel = byId('app-download-cancel');
   const createAppDrawer = byId('create-app-drawer');
   const createAppDrawerClose = byId('create-app-drawer-close');
   const createAppCancel = byId('create-app-cancel');
+  const APP_DOWNLOADS_BUCKET = 'application-downloads';
 
   const showMessage = (el, text, tone) => {
     if (!el) return;
@@ -2121,6 +2216,52 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} (${pad2(d.getHours())}:${pad2(d.getMinutes())})`;
   };
 
+  const formatBytes = (value) => {
+    const size = Number(value);
+    if (!Number.isFinite(size) || size <= 0) return '-';
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+    if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(size / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  };
+
+  const sanitizeStorageFileName = (name) =>
+    String(name || 'download.bin')
+      .replace(/[^\w.\-]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 120) || 'download.bin';
+
+  const getDownloadFileMeta = (app) => ({
+    name: String(app?.download_file_name || '').trim(),
+    url: String(app?.download_file_url || '').trim(),
+    path: String(app?.download_file_path || '').trim(),
+    size: Number(app?.download_file_size || 0),
+    type: String(app?.download_file_type || '').trim(),
+    uploadedAt: app?.download_uploaded_at || null
+  });
+
+  const renderAppDownloadPreview = (app, pendingFile = null) => {
+    if (!appDownloadPreview) return;
+    const meta = getDownloadFileMeta(app);
+    const fileName = pendingFile?.name || meta.name;
+    const fileSize = pendingFile?.size || meta.size;
+    const fileType = pendingFile?.type || meta.type;
+    const uploadedAt = pendingFile ? 'Selected for upload' : formatDateTime(meta.uploadedAt);
+    if (!fileName) {
+      appDownloadPreview.className = 'file-preview-card is-empty';
+      appDownloadPreview.textContent = 'No file uploaded yet.';
+      return;
+    }
+    appDownloadPreview.className = 'file-preview-card';
+    appDownloadPreview.innerHTML = `
+      <div class="file-preview-icon"><i class="fa-solid fa-file-arrow-down" aria-hidden="true"></i></div>
+      <div class="file-preview-meta">
+        <div class="file-preview-name">${fileName}</div>
+        <div class="file-preview-subtitle">${[formatBytes(fileSize), fileType || null, uploadedAt].filter(Boolean).join(' • ')}</div>
+      </div>
+    `;
+  };
+
   const formatDurationLabel = (value, unit) => {
     const u = String(unit || '').toLowerCase();
     if (u === 'unlimited' || u === 'lifetime') return 'Lifetime';
@@ -2339,6 +2480,17 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     else editAppDrawer.classList.remove('is-open');
     editAppDrawer.setAttribute('aria-hidden', open ? 'false' : 'true');
     if (!open && editDrawerMessage) showMessage(editDrawerMessage, '');
+  };
+
+  const setAppDownloadDrawerOpen = (open) => {
+    if (!appDownloadDrawer) return;
+    if (open) appDownloadDrawer.classList.add('is-open');
+    else appDownloadDrawer.classList.remove('is-open');
+    appDownloadDrawer.setAttribute('aria-hidden', open ? 'false' : 'true');
+    if (!open) {
+      if (appDownloadMessage) showMessage(appDownloadMessage, '');
+      if (appDownloadFile) appDownloadFile.value = '';
+    }
   };
 
   const setCreateAppDrawerOpen = (open) => {
@@ -2815,6 +2967,8 @@ html[data-theme="white"] [data-loader-glass-card]::before {
 
   let editDrawerApp = null;
   let editDrawerReload = null;
+  let appDownloadDrawerApp = null;
+  let appDownloadDrawerReload = null;
 
   const openEditDrawer = (app, reloadFn) => {
     editDrawerApp = app || null;
@@ -2826,6 +2980,17 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     if (editDrawerWebhook) editDrawerWebhook.value = app?.webhook || '';
     setEditDrawerOpen(true);
     if (editDrawerName) editDrawerName.focus();
+  };
+
+  const openAppDownloadDrawer = (app, reloadFn) => {
+    appDownloadDrawerApp = app || null;
+    appDownloadDrawerReload = typeof reloadFn === 'function' ? reloadFn : null;
+    if (appDownloadTitle) appDownloadTitle.textContent = `Application Download · ${app?.name || app?.app_id || app?.id || ''}`;
+    if (appDownloadVersion) appDownloadVersion.value = app?.version || '1.0.0';
+    if (appDownloadStatus) appDownloadStatus.value = (app?.status || 'Active') === 'Disabled' ? 'Disabled' : 'Active';
+    renderAppDownloadPreview(app);
+    setAppDownloadDrawerOpen(true);
+    if (appDownloadFile) appDownloadFile.focus();
   };
 
   const openLicensesPanel = async (getClient, ensureFreshToken, app) => {
@@ -3161,6 +3326,27 @@ html[data-theme="white"] [data-loader-glass-card]::before {
       edit.style.flexShrink = '0';
       edit.addEventListener('click', () => openEditDrawer(app, loadApplications));
 
+      const upload = document.createElement('button');
+      upload.type = 'button';
+      upload.innerHTML = '<i class="fa-solid fa-download" aria-hidden="true"></i>';
+      upload.title = 'Upload Download';
+      upload.setAttribute('aria-label', 'Upload download');
+      upload.style.width = '32px';
+      upload.style.height = '32px';
+      upload.style.padding = '0';
+      upload.style.display = 'grid';
+      upload.style.placeItems = 'center';
+      upload.style.fontSize = '16px';
+      upload.style.background = 'var(--primary)';
+      upload.style.color = 'var(--primary-foreground)';
+      upload.style.border = 'none';
+      upload.style.borderRadius = '4px';
+      upload.style.boxShadow = '0 0 0 2px rgba(30, 184, 206, 0.60), inset 0 -3px 6px 0 rgba(255, 255, 255, 0.90)';
+      upload.style.cursor = 'pointer';
+      upload.style.whiteSpace = 'nowrap';
+      upload.style.flexShrink = '0';
+      upload.addEventListener('click', () => openAppDownloadDrawer(app, loadApplications));
+
       const licensesBtn = document.createElement('button');
       licensesBtn.type = 'button';
       licensesBtn.innerHTML = '<i class="fa-solid fa-key" aria-hidden="true"></i>';
@@ -3220,7 +3406,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
         await loadApplications();
       });
 
-      actions.append(edit, licensesBtn, del);
+      actions.append(edit, upload, licensesBtn, del);
 
       row.append(name, appId, licenses, version, status, webhook, actions);
       tableBody.append(row);
@@ -3607,6 +3793,20 @@ html[data-theme="white"] [data-loader-glass-card]::before {
       });
     }
 
+    if (appDownloadFile) {
+      appDownloadFile.addEventListener('change', () => {
+        const file = appDownloadFile.files?.[0] || null;
+        renderAppDownloadPreview(appDownloadDrawerApp, file);
+      });
+    }
+    if (appDownloadClose) appDownloadClose.addEventListener('click', () => setAppDownloadDrawerOpen(false));
+    if (appDownloadCancel) appDownloadCancel.addEventListener('click', () => setAppDownloadDrawerOpen(false));
+    if (appDownloadDrawer) {
+      appDownloadDrawer.addEventListener('click', (event) => {
+        if (event.target === appDownloadDrawer) setAppDownloadDrawerOpen(false);
+      });
+    }
+
     if (openCreateAppButton) {
       openCreateAppButton.addEventListener('click', () => {
         setCreateAppDrawerOpen(true);
@@ -3634,6 +3834,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
         setLicenseInfoDrawerOpen(false);
         setExtendLicenseDrawerOpen(false);
         setEditDrawerOpen(false);
+        setAppDownloadDrawerOpen(false);
         setCreateAppDrawerOpen(false);
         if (licensesTableBody) licensesTableBody.innerHTML = '';
         if (licensesCaption) licensesCaption.textContent = 'Click License on an application to view keys.';
@@ -3711,6 +3912,124 @@ html[data-theme="white"] [data-loader-glass-card]::before {
         window.setTimeout(() => setEditDrawerOpen(false), 250);
         setBusy(false, '');
         if (editDrawerReload) await editDrawerReload();
+      });
+    }
+
+    if (appDownloadForm) {
+      appDownloadForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        showMessage(appDownloadMessage, '');
+        if (!dbClient || !appDownloadDrawerApp) {
+          showMessage(appDownloadMessage, 'Select an application first.', 'error');
+          return;
+        }
+
+        const file = appDownloadFile?.files?.[0] || null;
+        if (file && !/\.(rar|exe)$/i.test(file.name)) {
+          showMessage(appDownloadMessage, 'Only .rar and .exe files are allowed.', 'error');
+          return;
+        }
+
+        const controls = Array.from(appDownloadForm.querySelectorAll('input,select,button'));
+        const setBusy = (busy, label) => {
+          controls.forEach((c) => (c.disabled = busy));
+          showMessage(appDownloadMessage, label || '');
+        };
+
+        setBusy(true, file ? 'Uploading file…' : 'Saving…');
+
+        const payload = {
+          version: String(appDownloadVersion?.value || '').trim() || null,
+          status: String(appDownloadStatus?.value || 'Active')
+        };
+
+        let oldFilePath = '';
+        try {
+          if (file) {
+            const existingMeta = getDownloadFileMeta(appDownloadDrawerApp);
+            oldFilePath = existingMeta.path;
+            const safeName = sanitizeStorageFileName(file.name);
+            const uploadPath = `applications/${appDownloadDrawerApp.app_id || appDownloadDrawerApp.id}/${Date.now()}_${safeName}`;
+            await ensureFreshToken(false);
+            let uploadRes = await getDbClient().storage.from(APP_DOWNLOADS_BUCKET).upload(uploadPath, file, {
+              cacheControl: '3600',
+              upsert: false,
+              contentType: file.type || undefined
+            });
+            if (uploadRes.error && isJwtExpiredError(uploadRes.error)) {
+              const refreshed = await ensureFreshToken(true);
+              if (refreshed) {
+                uploadRes = await getDbClient().storage.from(APP_DOWNLOADS_BUCKET).upload(uploadPath, file, {
+                  cacheControl: '3600',
+                  upsert: false,
+                  contentType: file.type || undefined
+                });
+              }
+            }
+            if (uploadRes.error) {
+              setBusy(false, '');
+              showMessage(appDownloadMessage, uploadRes.error.message || 'File upload failed.', 'error');
+              return;
+            }
+
+            const { data: publicUrlData } = getDbClient().storage.from(APP_DOWNLOADS_BUCKET).getPublicUrl(uploadPath);
+            payload.download_file_name = file.name;
+            payload.download_file_url = publicUrlData?.publicUrl || null;
+            payload.download_file_path = uploadPath;
+            payload.download_file_size = file.size;
+            payload.download_file_type = file.type || null;
+            payload.download_uploaded_at = new Date().toISOString();
+          }
+
+          const updateRes = await updateApplicationRecord(getDbClient, ensureFreshToken, appDownloadDrawerApp.id, payload);
+          if (!updateRes.ok) {
+            const msgLc = String(updateRes.error || '').toLowerCase();
+            const missingColumn =
+              msgLc.includes('download_file_name') ||
+              msgLc.includes('download_file_url') ||
+              msgLc.includes('download_file_path') ||
+              msgLc.includes('download_file_size') ||
+              msgLc.includes('download_file_type') ||
+              msgLc.includes('download_uploaded_at');
+            setBusy(false, '');
+            showMessage(
+              appDownloadMessage,
+              missingColumn
+                ? 'Supabase schema error: missing download columns in "applications". Execute the new SQL file first.'
+                : updateRes.error,
+              'error'
+            );
+            return;
+          }
+
+          const mergedApp = { ...appDownloadDrawerApp, ...payload };
+          const licenseMetadataRes = await syncLicenseAppMetadata(getDbClient, ensureFreshToken, mergedApp, {
+            name: mergedApp.name,
+            version: mergedApp.version,
+            webhook: mergedApp.webhook
+          });
+          if (licenseMetadataRes?.error) {
+            setBusy(false, '');
+            showMessage(appDownloadMessage, licenseMetadataRes.error.message || 'License metadata sync failed.', 'error');
+            return;
+          }
+
+          if (oldFilePath && file && oldFilePath !== payload.download_file_path) {
+            try {
+              await getDbClient().storage.from(APP_DOWNLOADS_BUCKET).remove([oldFilePath]);
+            } catch (error) {}
+          }
+
+          appDownloadDrawerApp = mergedApp;
+          renderAppDownloadPreview(mergedApp);
+          showMessage(appDownloadMessage, 'Saved', 'success');
+          window.setTimeout(() => setAppDownloadDrawerOpen(false), 250);
+          setBusy(false, '');
+          if (appDownloadDrawerReload) await appDownloadDrawerReload();
+        } catch (error) {
+          setBusy(false, '');
+          showMessage(appDownloadMessage, error?.message || 'Application download save failed.', 'error');
+        }
       });
     }
 

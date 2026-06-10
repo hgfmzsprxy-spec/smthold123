@@ -16,7 +16,31 @@ alter table public.licenses
 
 alter table public.applications
   add column if not exists sessions_paused boolean not null default false,
-  add column if not exists sessions_paused_at timestamptz;
+  add column if not exists sessions_paused_at timestamptz,
+  add column if not exists download_file_name text,
+  add column if not exists download_file_url text,
+  add column if not exists download_file_path text,
+  add column if not exists download_file_size bigint,
+  add column if not exists download_file_type text,
+  add column if not exists download_uploaded_at timestamptz;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+select
+  'application-downloads',
+  'application-downloads',
+  true,
+  1073741824,
+  array[
+    'application/octet-stream',
+    'application/x-msdownload',
+    'application/x-rar-compressed',
+    'application/vnd.rar'
+  ]::text[]
+where not exists (
+  select 1
+  from storage.buckets
+  where id = 'application-downloads'
+);
 
 update public.licenses as l
 set
@@ -40,6 +64,10 @@ drop policy if exists "licenses_update_anon_bind_discord" on public.licenses;
 drop policy if exists "licenses_all_authenticated" on public.licenses;
 drop policy if exists "applications_select_anon_by_app_id" on public.applications;
 drop policy if exists "applications_all_authenticated" on public.applications;
+drop policy if exists "application_downloads_public_read" on storage.objects;
+drop policy if exists "application_downloads_authenticated_insert" on storage.objects;
+drop policy if exists "application_downloads_authenticated_update" on storage.objects;
+drop policy if exists "application_downloads_authenticated_delete" on storage.objects;
 
 create policy "licenses_select_anon_by_key"
 on public.licenses
@@ -155,3 +183,28 @@ for all
 to authenticated
 using (true)
 with check (true);
+
+create policy "application_downloads_public_read"
+on storage.objects
+for select
+to public
+using (bucket_id = 'application-downloads');
+
+create policy "application_downloads_authenticated_insert"
+on storage.objects
+for insert
+to authenticated
+with check (bucket_id = 'application-downloads');
+
+create policy "application_downloads_authenticated_update"
+on storage.objects
+for update
+to authenticated
+using (bucket_id = 'application-downloads')
+with check (bucket_id = 'application-downloads');
+
+create policy "application_downloads_authenticated_delete"
+on storage.objects
+for delete
+to authenticated
+using (bucket_id = 'application-downloads');
