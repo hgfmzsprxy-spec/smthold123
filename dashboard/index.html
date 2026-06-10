@@ -711,132 +711,6 @@ html.light .bg-gradient-to-r.from-zinc-100.to-zinc-300.bg-clip-text.text-transpa
     border-radius: 14px;
 }
 
-.loader-launch-row {
-    display: flex;
-    align-items: stretch;
-    gap: 0.75rem;
-}
-
-.loader-download-trigger {
-    width: 56px;
-    min-width: 56px;
-    min-height: 56px;
-    border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.06);
-    color: rgb(228, 228, 231);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 180ms ease;
-}
-
-.loader-download-trigger:hover {
-    border-color: rgba(30, 184, 206, 0.35);
-    background: rgba(30, 184, 206, 0.1);
-    color: #1EB8CE;
-}
-
-.loader-download-trigger:disabled {
-    opacity: 0.65;
-    cursor: not-allowed;
-}
-
-#redeem-download-loader {
-    min-width: 184px;
-    min-height: 56px;
-    border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.06);
-    color: rgb(228, 228, 231);
-    box-shadow: none;
-}
-
-#redeem-download-loader:hover {
-    border-color: rgba(30, 184, 206, 0.35);
-    background: rgba(30, 184, 206, 0.1);
-    color: #1EB8CE;
-    box-shadow: none;
-}
-
-#redeem-download-loader[aria-disabled="true"] {
-    opacity: 0.65;
-}
-
-.loader-download-server {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 1rem 1.1rem;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.04);
-}
-
-.loader-download-server-label {
-    font-size: 0.9rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    color: rgb(212, 212, 216);
-}
-
-.loader-download-server-action {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 132px;
-    min-height: 42px;
-    padding: 0 18px;
-    border-radius: 12px;
-    border: 1px solid rgba(30, 184, 206, 0.28);
-    background: rgba(30, 184, 206, 0.16);
-    color: #cfeff5;
-    font-size: 0.82rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-decoration: none;
-    transition: all 180ms ease;
-}
-
-.loader-download-server-action:hover {
-    background: rgba(30, 184, 206, 0.22);
-    color: #ffffff;
-}
-
-.loader-download-server-action.is-disabled {
-    opacity: 0.58;
-    pointer-events: none;
-}
-
-.loader-download-meta {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem;
-}
-
-.loader-download-meta-card {
-    padding: 0.95rem 1rem;
-    border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.04);
-}
-
-.loader-download-meta-label {
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    color: rgb(113, 113, 122);
-    margin-bottom: 0.28rem;
-}
-
-.loader-download-meta-value {
-    color: rgb(228, 228, 231);
-    font-size: 0.96rem;
-    font-weight: 600;
-    word-break: break-word;
-}
-
 .subscription-license-panel {
     margin-top: 0.95rem;
     margin-left: auto;
@@ -1575,7 +1449,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
         <div class="flex h-full w-full min-w-0 flex-col">
             <header class="sticky top-0 z-50 flex h-20 w-full items-end justify-center px-4 sm:px-6 lg:px-8">
                 <div data-navbar-glass data-navbar-collapsed="false" class="isolate relative flex h-14 w-full items-center justify-between gap-4 overflow-hidden rounded-full border px-3 transition-all duration-700">
-                    <a href="/">
+                    <a href="/#home">
                         <div class="flex items-center gap-3 max-sm:[&amp;_span]:text-xl">
                             <svg width="1em" height="1em" viewBox="0 0 328 329" fill="none" xmlns="http://www.w3.org/2000/svg" class="size-9 shrink-0">
                                 <rect y="0.5" width="328" height="328" rx="164" fill="var(--primary)"></rect>
@@ -1737,7 +1611,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
 <main class="flex-1 relative min-h-screen">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <!-- Back Button -->
-            <a href="/" class="mb-8 inline-flex items-center space-x-2 text-zinc-400 hover:text-zinc-200 transition-all duration-300 group">
+            <a href="index.html" class="mb-8 inline-flex items-center space-x-2 text-zinc-400 hover:text-zinc-200 transition-all duration-300 group">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 transition-transform group-hover:-translate-x-1">
                     <path d="m12 19-7-7 7-7"></path>
                     <path d="M19 12H5"></path>
@@ -1825,7 +1699,6 @@ html[data-theme="white"] [data-loader-glass-card]::before {
                             </div>
 
                             <div class="mt-6">
-                                <div class="loader-launch-row">
                                 <button id="primaryLaunchButton" data-start-button type="button" onclick="handleRedeemLaunchClick()" class="text-zinc-200 inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-4 text-base font-semibold tracking-wide transition-all duration-200">
                                     <svg id="primaryLaunchIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                         <path d="M5 3l14 9-14 9V3z"></path>
@@ -1839,14 +1712,6 @@ html[data-theme="white"] [data-loader-glass-card]::before {
                                         <span>LAUNCHING...</span>
                                     </span>
                                 </button>
-                                <button id="primaryDownloadButton" type="button" class="loader-download-trigger" aria-label="Open loader download" hidden>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                        <path d="M12 3v12"></path>
-                                        <path d="m7 10 5 5 5-5"></path>
-                                        <path d="M5 21h14"></path>
-                                    </svg>
-                                </button>
-                                </div>
                             </div>
                             
                             <!-- Redeem License / Launch Button -->
@@ -2383,37 +2248,6 @@ html[data-theme="white"] [data-loader-glass-card]::before {
             </div>
         </div>
     </div>
-    <div id="loader-download-modal" class="redeem-modal" hidden>
-        <div class="redeem-panel redeem-panel-compact">
-            <div class="redeem-panel-header">
-                <div>
-                    <div class="text-sm font-semibold text-zinc-400">Loader Download</div>
-                    <h3 class="text-xl font-bold text-zinc-100">Download Access</h3>
-                </div>
-                <button id="loader-download-close" class="redeem-close" type="button" aria-label="Close loader download panel">×</button>
-            </div>
-            <div class="redeem-panel-body">
-                <div class="space-y-4">
-                    <p class="redeem-muted">The latest uploaded build from the admin dashboard is available below.</p>
-                    <div class="loader-download-server">
-                        <div class="loader-download-server-label">SERVER 1</div>
-                        <a id="loaderDownloadAction" class="loader-download-server-action is-disabled" href="#" aria-disabled="true">DOWNLOAD</a>
-                    </div>
-                    <div class="loader-download-meta">
-                        <div class="loader-download-meta-card">
-                            <div class="loader-download-meta-label">VERSION</div>
-                            <div id="loaderDownloadVersion" class="loader-download-meta-value">-</div>
-                        </div>
-                        <div class="loader-download-meta-card">
-                            <div class="loader-download-meta-label">STATUS</div>
-                            <div id="loaderDownloadStatus" class="loader-download-meta-value">-</div>
-                        </div>
-                    </div>
-                    <div id="loaderDownloadMessage" class="redeem-message"></div>
-                </div>
-            </div>
-        </div>
-    </div>
 
 
 
@@ -2494,7 +2328,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
                     <div class="text-muted-foreground space-y-8">
                         <div class="flex justify-between gap-8 max-lg:flex-col">
                             <div class="space-y-3">
-                                <a class="text-foreground block max-w-30" href="/">
+                                <a class="text-foreground block max-w-30" href="/#home">
                                     <div class="flex items-center gap-3">
                                         <svg width="1em" height="1em" viewBox="0 0 328 329" fill="none" xmlns="http://www.w3.org/2000/svg" class="size-9 shrink-0">
                                             <rect y="0.5" width="328" height="328" rx="164" fill="var(--primary)"></rect>
@@ -2537,7 +2371,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
                                 <!-- -->
                                 2026
                                 <!-- -->
-                                <a class="hover:text-foreground transition-colors duration-300" href="/">unbanhwid.com</a>
+                                <a class="hover:text-foreground transition-colors duration-300" href="/#home">unbanhwid.com</a>
                                 , Made with for a better experience.
                             </span>
                             <div class="flex items-center gap-4">
@@ -3264,22 +3098,18 @@ html[data-theme="white"] [data-loader-glass-card]::before {
 
   const modal = byId('redeem-modal');
   const extendTimeModal = byId('extend-time-modal');
-  const loaderDownloadModal = byId('loader-download-modal');
   const primaryLaunchButton = byId('primaryLaunchButton');
   const primaryLaunchIcon = byId('primaryLaunchIcon');
   const primaryLaunchText = byId('primaryLaunchText');
   const primaryLaunchLoader = byId('primaryLaunchLoader');
-  const primaryDownloadButton = byId('primaryDownloadButton');
   const secondaryLaunchButton = byId('redeemLaunchBtn');
   const secondaryLaunchIcon = byId('redeemLaunchIcon');
   const secondaryLaunchText = byId('redeemLaunchText');
   const secondaryLaunchLoader = byId('redeemLaunchLoader');
   const redeemPanel = modal?.querySelector('.redeem-panel') || null;
   const extendTimeModalPanel = extendTimeModal?.querySelector('.redeem-panel') || null;
-  const loaderDownloadModalPanel = loaderDownloadModal?.querySelector('.redeem-panel') || null;
   const closeButton = byId('redeem-close');
   const extendTimeCloseButton = byId('extend-time-close');
-  const loaderDownloadCloseButton = byId('loader-download-close');
   const licenseInput = byId('redeem-license-input');
   const licenseInfoButton = byId('redeem-license-info-button');
   const licenseInfoPanel = byId('redeem-license-info-panel');
@@ -3309,12 +3139,6 @@ html[data-theme="white"] [data-loader-glass-card]::before {
   const discordLicenseToastNote = byId('discord-license-toast-note');
   const finishedLicense = byId('redeem-finished-license');
   const downloadLoader = byId('redeem-download-loader');
-  const lastUpdateText = byId('lastUpdateText');
-  const versionText = byId('versionText');
-  const loaderDownloadAction = byId('loaderDownloadAction');
-  const loaderDownloadVersion = byId('loaderDownloadVersion');
-  const loaderDownloadStatus = byId('loaderDownloadStatus');
-  const loaderDownloadMessage = byId('loaderDownloadMessage');
   const noSubscription = byId('noSubscription');
   const bannedSubscription = byId('bannedSubscription');
   const activeSubscription = byId('activeSubscription');
@@ -3351,7 +3175,6 @@ html[data-theme="white"] [data-loader-glass-card]::before {
   let currentLicense = null;
   let currentDiscordProfile = null;
   let currentDetectedLicense = null;
-  let currentApplicationInfo = null;
   let currentRedeemStep = 1;
   let activeNavbarDiscordTrigger = null;
   let discordLicenseToastTimer = null;
@@ -3367,7 +3190,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
   const VOUCH_BONUS_HOURS = 24;
 
   const syncMenuOpenState = () => {
-    const anyModalOpen = Boolean((modal && !modal.hidden) || (extendTimeModal && !extendTimeModal.hidden) || (loaderDownloadModal && !loaderDownloadModal.hidden));
+    const anyModalOpen = Boolean((modal && !modal.hidden) || (extendTimeModal && !extendTimeModal.hidden));
     document.body.classList.toggle('menu-open', anyModalOpen);
   };
 
@@ -3523,7 +3346,6 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     if (launchRequestInFlight) return;
     setLaunchButtonsBusy(false);
     setLaunchButtonsIcon('play');
-    syncLoaderDownloadButtonState();
     if (isCurrentDetectedLicenseBanned()) {
       setLaunchButtonsLabel('BANNED');
       setLaunchButtonsIcon('banned');
@@ -3828,18 +3650,6 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     });
   };
 
-  const createScopedApplicationClient = () => {
-    if (!supabaseConfig?.url || !supabaseConfig?.anonKey || !window.supabase?.createClient) return null;
-    return window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey, {
-      global: {
-        headers: {
-          'x-app-id': APP_ID
-        }
-      },
-      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
-    });
-  };
-
   const normalizeLicenseStatus = (status) => String(status || '').trim().toLowerCase();
 
   const parseDateSafe = (value) => {
@@ -3868,16 +3678,6 @@ html[data-theme="white"] [data-loader-glass-card]::before {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true
-    });
-  };
-
-  const formatApplicationUpdateLabel = (value) => {
-    const date = parseDateSafe(value);
-    if (!date) return '-';
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
     });
   };
 
@@ -3954,167 +3754,6 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     return Boolean(expiresAt && expiresAt.getTime() > Date.now());
   };
   const canClaimVouchBonus = (license) => isCurrentlyActiveFiniteLicense(license) && !hasVouchBonus(license);
-
-  const setLoaderDownloadModalOpen = (open) => {
-    if (!loaderDownloadModal) return;
-    if (!open) showMessage(loaderDownloadMessage, '');
-    if (open) updateApplicationInfoUi(currentApplicationInfo);
-    loaderDownloadModal.hidden = !open;
-    syncMenuOpenState();
-  };
-
-  const getLoaderDownloadUrl = (app = currentApplicationInfo) => String(app?.download_file_url || '').trim();
-  const isLoaderDownloadAvailable = (app = currentApplicationInfo) => {
-    const status = String(app?.status || '').trim().toLowerCase();
-    if (!app || status === 'disabled') return false;
-    return Boolean(getLoaderDownloadUrl(app) && String(app?.download_file_name || '').trim());
-  };
-
-  const setDownloadAnchorState = (element, available, url, fileName) => {
-    if (!element) return;
-    element.setAttribute('aria-disabled', available ? 'false' : 'true');
-    element.style.pointerEvents = available ? '' : 'none';
-    element.style.opacity = available ? '' : '0.68';
-    if (element.classList?.contains('loader-download-server-action')) {
-      element.classList.toggle('is-disabled', !available);
-    }
-    if (available) {
-      element.href = url;
-      element.setAttribute('target', '_blank');
-      element.setAttribute('rel', 'noopener noreferrer');
-      if (fileName) element.setAttribute('download', fileName);
-      else element.removeAttribute('download');
-      return;
-    }
-    element.href = '#';
-    element.removeAttribute('target');
-    element.removeAttribute('rel');
-    element.removeAttribute('download');
-  };
-
-  const syncLoaderDownloadButtonState = () => {
-    if (!primaryDownloadButton) return;
-    const loggedIn = Boolean(currentDiscordProfile?.authUserId || currentDiscordProfile?.discordUserId || currentDiscordProfile?.username);
-    primaryDownloadButton.hidden = !loggedIn;
-    primaryDownloadButton.disabled = !loggedIn;
-    primaryDownloadButton.setAttribute('aria-hidden', loggedIn ? 'false' : 'true');
-    primaryDownloadButton.setAttribute('aria-disabled', loggedIn ? 'false' : 'true');
-    primaryDownloadButton.title = isLoaderDownloadAvailable()
-      ? 'Open loader download'
-      : 'No download has been uploaded yet';
-  };
-
-  const updateApplicationInfoUi = (app = currentApplicationInfo) => {
-    currentApplicationInfo = app || null;
-
-    const versionValue = String(currentApplicationInfo?.version || '').trim() || '-';
-    const statusValue = String(currentApplicationInfo?.status || '').trim() || '-';
-    const uploadedAtValue =
-      currentApplicationInfo?.download_uploaded_at ||
-      currentApplicationInfo?.updated_at ||
-      currentApplicationInfo?.created_at ||
-      null;
-    const available = isLoaderDownloadAvailable(currentApplicationInfo);
-    const downloadUrl = getLoaderDownloadUrl(currentApplicationInfo);
-    const fileName = String(currentApplicationInfo?.download_file_name || '').trim();
-
-    if (lastUpdateText) lastUpdateText.textContent = formatApplicationUpdateLabel(uploadedAtValue);
-    if (versionText) versionText.textContent = versionValue;
-    if (loaderDownloadVersion) loaderDownloadVersion.textContent = versionValue;
-    if (loaderDownloadStatus) loaderDownloadStatus.textContent = statusValue;
-
-    setDownloadAnchorState(downloadLoader, available, downloadUrl, fileName);
-    setDownloadAnchorState(loaderDownloadAction, available, downloadUrl, fileName);
-
-    if (loaderDownloadMessage) {
-      if (!currentApplicationInfo) showMessage(loaderDownloadMessage, 'Application details are not available right now.', 'error');
-      else if (String(currentApplicationInfo?.status || '').trim().toLowerCase() === 'disabled') showMessage(loaderDownloadMessage, 'Downloads are disabled right now.', 'error');
-      else if (!available) showMessage(loaderDownloadMessage, 'No file has been uploaded from the admin dashboard yet.', 'error');
-      else showMessage(loaderDownloadMessage, '');
-    }
-
-    syncLoaderDownloadButtonState();
-  };
-
-  const loadApplicationInfo = async () => {
-    const appClient = createScopedApplicationClient();
-    if (!appClient) {
-      updateApplicationInfoUi(null);
-      return { ok: false, error: 'Supabase client is not configured for application info.' };
-    }
-
-    const baseSelect = 'id, app_id, version, status, updated_at, created_at';
-    const fullSelect = `${baseSelect}, download_file_name, download_file_url, download_file_path, download_file_size, download_file_type, download_uploaded_at`;
-
-    try {
-      const queryApplication = async (client, selectClause) => {
-        let exactResult = await client.from('applications').select(selectClause).eq('app_id', APP_ID).maybeSingle();
-        if (exactResult.error || exactResult.data) return exactResult;
-
-        const listResult = await client
-          .from('applications')
-          .select(selectClause)
-          .order('updated_at', { ascending: false, nullsFirst: false })
-          .order('created_at', { ascending: false, nullsFirst: false })
-          .limit(20);
-
-        if (listResult.error) return { data: null, error: listResult.error };
-        const rows = Array.isArray(listResult.data) ? listResult.data : [];
-        const matched =
-          rows.find((row) => String(row?.app_id || '').trim() === APP_ID) ||
-          rows.find((row) => String(row?.id || '').trim() === APP_ID) ||
-          rows[0] ||
-          null;
-
-        return { data: matched, error: null };
-      };
-
-      let result = await queryApplication(appClient, fullSelect);
-
-      if (result.error) {
-        const errorMessage = String(result.error.message || '');
-        const missingDownloadColumns =
-          errorMessage.includes('download_file_name') ||
-          errorMessage.includes('download_file_url') ||
-          errorMessage.includes('download_file_path') ||
-          errorMessage.includes('download_file_size') ||
-          errorMessage.includes('download_file_type') ||
-          errorMessage.includes('download_uploaded_at');
-
-        if (missingDownloadColumns) {
-          result = await queryApplication(appClient, baseSelect);
-        }
-      }
-
-      if (!result.error && !result.data && supabaseClient) {
-        result = await queryApplication(supabaseClient, fullSelect);
-        if (result.error) {
-          const errorMessage = String(result.error.message || '');
-          const missingDownloadColumns =
-            errorMessage.includes('download_file_name') ||
-            errorMessage.includes('download_file_url') ||
-            errorMessage.includes('download_file_path') ||
-            errorMessage.includes('download_file_size') ||
-            errorMessage.includes('download_file_type') ||
-            errorMessage.includes('download_uploaded_at');
-          if (missingDownloadColumns) {
-            result = await queryApplication(supabaseClient, baseSelect);
-          }
-        }
-      }
-
-      if (result.error) {
-        updateApplicationInfoUi(null);
-        return { ok: false, error: result.error.message || 'Could not load application info.' };
-      }
-
-      updateApplicationInfoUi(result.data || null);
-      return { ok: true, data: result.data || null };
-    } catch (error) {
-      updateApplicationInfoUi(null);
-      return { ok: false, error: error?.message || 'Could not load application info.' };
-    }
-  };
 
   const updateSubscriptionLicenseInfoPanel = (license = currentDetectedLicense) => {
     const linkedDiscordValue = sanitizeDiscordUsername(
@@ -4222,9 +3861,8 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     const target = new URL(MYVOUCH_PROFILE_URL);
     if (page > 1) target.searchParams.set('page', String(page));
     target.searchParams.set('_verify', String(Date.now()));
-    const localProxyUrl = `${location.origin}/api/myvouch?profile=varp&page=${page}&_verify=${Date.now()}`;
     const readerUrl = `https://r.jina.ai/http://${target.host}${target.pathname}${target.search}`;
-    return [localProxyUrl, readerUrl];
+    return [readerUrl];
   };
   const fetchMyVouchHtml = async (page = 1) => {
     const proxyUrls = buildMyVouchFetchUrls(page);
@@ -4267,7 +3905,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     const html = htmlResult.html;
 
     const authorMatches = Array.from(
-      html.matchAll(/<a[^>]+href="https?:\/\/id\.rappytv\.com\/[^"]+"[^>]*>([\s\S]*?)<\/a>|\[([^\]]+)\]\(https?:\/\/id\.rappytv\.com\/[^\)]+\)/gi)
+      html.matchAll(/\[([^\]]+)\]\(https?:\/\/id\.rappytv\.com\/[^\)]+\)|<a[^>]+href="https?:\/\/id\.rappytv\.com\/[^"]+"[^>]*>([\s\S]*?)<\/a>/gi)
     );
     const latestAuthors = authorMatches
       .map((match) => normalizeVouchUsername(decodeHtmlEntities((match[1] || match[2] || '')).replace(/<[^>]+>/g, ' ')))
@@ -4974,7 +4612,6 @@ html[data-theme="white"] [data-loader-glass-card]::before {
       }
     }, 50);
 
-    await loadApplicationInfo();
     await processDiscordReturn();
     restoreCompletedRedeem();
     const restoredProfile = await restoreAuthenticatedDiscordProfile();
@@ -5005,7 +4642,6 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     clearPendingRedeem();
     clearDiscordAuthIntent();
     stopSubscriptionRefresh();
-    setLoaderDownloadModalOpen(false);
     currentLicense = null;
     currentDiscordProfile = null;
     currentDetectedLicense = null;
@@ -5038,14 +4674,8 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     if (extendTimeVerifyInFlight) return;
     setExtendTimeModalOpen(false);
   });
-  loaderDownloadCloseButton?.addEventListener('click', () => {
-    setLoaderDownloadModalOpen(false);
-  });
   extendTimeModal?.addEventListener('click', (event) => {
     if (event.target === extendTimeModal && !extendTimeVerifyInFlight) setExtendTimeModalOpen(false);
-  });
-  loaderDownloadModal?.addEventListener('click', (event) => {
-    if (event.target === loaderDownloadModal) setLoaderDownloadModalOpen(false);
   });
   navbarDiscordLinks.forEach((link) => {
     link.addEventListener('click', (event) => {
@@ -5084,7 +4714,6 @@ html[data-theme="white"] [data-loader-glass-card]::before {
       if (discordLicenseToast && !discordLicenseToast.hidden) setDiscordLicenseToastOpen(false);
       if (modal && !modal.hidden) handleRedeemCloseRequest();
       if (extendTimeModal && !extendTimeModal.hidden && !extendTimeVerifyInFlight) setExtendTimeModalOpen(false);
-      if (loaderDownloadModal && !loaderDownloadModal.hidden) setLoaderDownloadModalOpen(false);
     }
   });
   window.addEventListener('resize', () => {
@@ -5167,19 +4796,10 @@ html[data-theme="white"] [data-loader-glass-card]::before {
   });
 
   skipNowButton?.addEventListener('click', () => handleRedeemCloseRequest({ withOutro: true }));
-  primaryDownloadButton?.addEventListener('click', () => {
-    if (!currentDiscordProfile) return;
-    setLoaderDownloadModalOpen(true);
-  });
-  loaderDownloadAction?.addEventListener('click', (event) => {
-    if (isLoaderDownloadAvailable()) return;
-    event.preventDefault();
-    updateApplicationInfoUi(currentApplicationInfo);
-  });
   downloadLoader?.addEventListener('click', (event) => {
-    if (!isLoaderDownloadAvailable()) {
+    if (!downloadLoader.getAttribute('href') || downloadLoader.getAttribute('href') === '#') {
       event.preventDefault();
-      showMessage(redeemFinishMessage, 'No download is available yet.', 'error');
+      showMessage(redeemFinishMessage, 'Download link is still a placeholder.', 'error');
       return;
     }
     handleRedeemCloseRequest({ withOutro: true });
