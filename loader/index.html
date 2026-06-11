@@ -1268,6 +1268,72 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     cursor: wait;
 }
 
+.loader-launch-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: stretch;
+}
+
+.loader-launch-actions > *:first-child {
+    flex: 1 1 auto;
+}
+
+.loader-download-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    min-width: 56px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: #d4d4d8;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.loader-download-trigger:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.18);
+    color: #fff;
+}
+
+.loader-download-trigger:active {
+    transform: translateY(1px);
+}
+
+.loader-download-trigger[hidden] {
+    display: none !important;
+}
+
+.download-access-list {
+    display: grid;
+    gap: 0.9rem;
+}
+
+.download-access-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.download-access-server {
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--foreground);
+}
+
+.download-access-file {
+    margin-top: 0.2rem;
+    font-size: 0.84rem;
+    color: var(--muted-foreground);
+}
+
 .redeem-muted {
     color: var(--muted-foreground);
 }
@@ -1698,7 +1764,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
                                 </div>
                             </div>
 
-                            <div class="mt-6">
+                            <div class="mt-6 loader-launch-actions">
                                 <button id="primaryLaunchButton" data-start-button type="button" onclick="handleRedeemLaunchClick()" class="text-zinc-200 inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-4 text-base font-semibold tracking-wide transition-all duration-200">
                                     <svg id="primaryLaunchIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                         <path d="M5 3l14 9-14 9V3z"></path>
@@ -1711,6 +1777,13 @@ html[data-theme="white"] [data-loader-glass-card]::before {
                                         </svg>
                                         <span>LAUNCHING...</span>
                                     </span>
+                                </button>
+                                <button id="openDownloadAccessButton" type="button" class="loader-download-trigger" aria-label="Open download servers" hidden>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M12 3v12"></path>
+                                        <path d="m7 10 5 5 5-5"></path>
+                                        <path d="M5 21h14"></path>
+                                    </svg>
                                 </button>
                             </div>
                             
@@ -2085,6 +2158,30 @@ html[data-theme="white"] [data-loader-glass-card]::before {
         </div>
     </main>
 
+    <div id="download-access-modal" class="redeem-modal" hidden>
+        <div class="redeem-panel">
+            <div class="redeem-panel-header">
+                <div>
+                    <div class="text-lg font-semibold text-zinc-100">Download Access</div>
+                    <div class="text-xs font-medium uppercase tracking-[0.22em] text-zinc-500">Latest Uploaded Package</div>
+                </div>
+                <button id="download-access-close" class="redeem-close" type="button" aria-label="Close download access">×</button>
+            </div>
+            <div class="redeem-panel-body">
+                <div class="download-access-list">
+                    <div class="download-access-item">
+                        <div>
+                            <div class="download-access-server">SERVER 1</div>
+                            <div id="downloadAccessFileMeta" class="download-access-file">No file uploaded yet.</div>
+                        </div>
+                        <a id="downloadAccessLink" class="redeem-button redeem-button-primary" href="#" aria-disabled="true">DOWNLOAD</a>
+                    </div>
+                </div>
+                <div id="downloadAccessMessage" class="redeem-message"></div>
+            </div>
+        </div>
+    </div>
+
     <div id="redeem-modal" class="redeem-modal" hidden>
         <div class="redeem-panel">
             <div class="redeem-panel-header">
@@ -2231,7 +2328,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
                 <div class="redeem-summary">
                     <div class="extend-time-copy redeem-muted">
                         <p>Leave a review on <a class="subscription-vouch-link" href="https://myvouch.es/varp" target="_blank" rel="noreferrer noopener">myvouch.es/varp</a> using this same Discord username.</p>
-                        <p>After that, come back here and click <strong>Verify</strong>. The system checks the latest <strong>10 reviews</strong> and adds <strong>+24 hours</strong> automatically when the same username is found.</p>
+                        <p>After that, come back and click <strong>Verify</strong>. The system checks the latest <strong>reviews</strong> and adds <strong>time</strong> automatically when the same user is found.</p>
                     </div>
                 </div>
                 <div class="redeem-actions">
@@ -3102,6 +3199,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
   const primaryLaunchIcon = byId('primaryLaunchIcon');
   const primaryLaunchText = byId('primaryLaunchText');
   const primaryLaunchLoader = byId('primaryLaunchLoader');
+  const openDownloadAccessButton = byId('openDownloadAccessButton');
   const secondaryLaunchButton = byId('redeemLaunchBtn');
   const secondaryLaunchIcon = byId('redeemLaunchIcon');
   const secondaryLaunchText = byId('redeemLaunchText');
@@ -3139,6 +3237,13 @@ html[data-theme="white"] [data-loader-glass-card]::before {
   const discordLicenseToastNote = byId('discord-license-toast-note');
   const finishedLicense = byId('redeem-finished-license');
   const downloadLoader = byId('redeem-download-loader');
+  const downloadAccessModal = byId('download-access-modal');
+  const downloadAccessClose = byId('download-access-close');
+  const downloadAccessLink = byId('downloadAccessLink');
+  const downloadAccessFileMeta = byId('downloadAccessFileMeta');
+  const downloadAccessMessage = byId('downloadAccessMessage');
+  const lastUpdateText = byId('lastUpdateText');
+  const versionText = byId('versionText');
   const noSubscription = byId('noSubscription');
   const bannedSubscription = byId('bannedSubscription');
   const activeSubscription = byId('activeSubscription');
@@ -3175,6 +3280,8 @@ html[data-theme="white"] [data-loader-glass-card]::before {
   let currentLicense = null;
   let currentDiscordProfile = null;
   let currentDetectedLicense = null;
+  let currentApplicationMeta = null;
+  let currentApplicationDownloadUrl = '';
   let currentRedeemStep = 1;
   let activeNavbarDiscordTrigger = null;
   let discordLicenseToastTimer = null;
@@ -3188,10 +3295,40 @@ html[data-theme="white"] [data-loader-glass-card]::before {
   const stepProgressScales = ['0.333333', '0.666667', '1'];
   const MYVOUCH_PROFILE_URL = 'https://myvouch.es/varp';
   const VOUCH_BONUS_HOURS = 24;
+  const APPLICATION_META_PUBLIC_SELECT = 'id, app_id, version, status, download_updated_at';
+  const APPLICATION_META_PRIVATE_SELECT = `${APPLICATION_META_PUBLIC_SELECT}, download_file_name, download_file_type, download_file_size, download_file_data_base64`;
 
   const syncMenuOpenState = () => {
-    const anyModalOpen = Boolean((modal && !modal.hidden) || (extendTimeModal && !extendTimeModal.hidden));
+    const anyModalOpen = Boolean((modal && !modal.hidden) || (extendTimeModal && !extendTimeModal.hidden) || (downloadAccessModal && !downloadAccessModal.hidden));
     document.body.classList.toggle('menu-open', anyModalOpen);
+  };
+
+  const revokeApplicationDownloadUrl = () => {
+    if (currentApplicationDownloadUrl) {
+      URL.revokeObjectURL(currentApplicationDownloadUrl);
+      currentApplicationDownloadUrl = '';
+    }
+  };
+
+  const formatFileSize = (bytes) => {
+    const value = Number(bytes || 0);
+    if (!Number.isFinite(value) || value <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let size = value;
+    let unitIndex = 0;
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex += 1;
+    }
+    return `${size >= 10 || unitIndex === 0 ? Math.round(size) : size.toFixed(1)} ${units[unitIndex]}`;
+  };
+
+  const getDiscordAuthRedirectUrl = () => {
+    const pathname = String(location.pathname || '/').toLowerCase();
+    if (pathname === '/loader' || pathname === '/loader/' || pathname.endsWith('/loader.html') || pathname.endsWith('/loader/index.html')) {
+      return `${location.origin}/loader`;
+    }
+    return `${location.origin}${location.pathname}`;
   };
 
   const setStep = (step) => {
@@ -3268,6 +3405,13 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     modal.hidden = !open;
     syncMenuOpenState();
     if (open && licenseInput && !currentLicense) window.setTimeout(() => licenseInput.focus(), 30);
+  };
+
+  const setDownloadAccessModalOpen = (open) => {
+    if (!downloadAccessModal) return;
+    if (!open) showMessage(downloadAccessMessage, '');
+    downloadAccessModal.hidden = !open;
+    syncMenuOpenState();
   };
 
   const setVerifyBusy = (busy) => {
@@ -3472,6 +3616,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
         navbarUserPopoverAvatar.hidden = true;
       }
     }
+    syncDownloadAccessState();
   };
 
   const positionNavbarUserPopover = (trigger) => {
@@ -3679,6 +3824,71 @@ html[data-theme="white"] [data-loader-glass-card]::before {
       minute: '2-digit',
       hour12: true
     });
+  };
+
+  const formatLoaderAppDate = (value) => {
+    const date = parseDateSafe(value);
+    if (!date) return '-';
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const buildApplicationDownloadUrl = (app) => {
+    const fileName = String(app?.download_file_name || '').trim();
+    const mimeType = String(app?.download_file_type || '').trim() || 'application/octet-stream';
+    const base64Payload = String(app?.download_file_data_base64 || '').trim();
+    if (!fileName || !base64Payload) return '';
+    try {
+      revokeApplicationDownloadUrl();
+      const bytes = Uint8Array.from(atob(base64Payload), (char) => char.charCodeAt(0));
+      const blob = new Blob([bytes], { type: mimeType });
+      currentApplicationDownloadUrl = URL.createObjectURL(blob);
+      return currentApplicationDownloadUrl;
+    } catch (error) {
+      return '';
+    }
+  };
+
+  const syncDownloadAccessState = (app = currentApplicationMeta) => {
+    const isLoggedIn = Boolean(currentDiscordProfile?.authUserId);
+    if (openDownloadAccessButton) openDownloadAccessButton.hidden = !isLoggedIn;
+
+    if (!isLoggedIn) revokeApplicationDownloadUrl();
+
+    const downloadUrl = isLoggedIn ? buildApplicationDownloadUrl(app) : '';
+    const fileName = isLoggedIn ? String(app?.download_file_name || '').trim() : '';
+    const fileParts = [];
+    if (fileName) fileParts.push(fileName);
+    if (app?.download_file_size) fileParts.push(formatFileSize(app.download_file_size));
+    if (app?.download_updated_at) fileParts.push(formatLoaderAppDate(app.download_updated_at));
+
+    if (downloadAccessFileMeta) {
+      downloadAccessFileMeta.textContent = fileParts.length ? fileParts.join(' • ') : 'No file uploaded yet.';
+    }
+
+    [downloadAccessLink, downloadLoader].forEach((link) => {
+      if (!link) return;
+      if (downloadUrl) {
+        link.href = downloadUrl;
+        if (fileName) link.setAttribute('download', fileName);
+        link.setAttribute('aria-disabled', 'false');
+      } else {
+        link.href = '#';
+        link.removeAttribute('download');
+        link.setAttribute('aria-disabled', 'true');
+      }
+    });
+  };
+
+  const updateApplicationMetaCards = (app = currentApplicationMeta) => {
+    if (versionText) versionText.textContent = String(app?.version || '-').trim() || '-';
+    if (lastUpdateText) {
+      lastUpdateText.textContent = app?.download_updated_at ? formatLoaderAppDate(app.download_updated_at) : '-';
+    }
+    syncDownloadAccessState(app);
   };
 
   const sanitizeDiscordUsername = (value) => {
@@ -4141,6 +4351,32 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     return { ok: true, data: rows };
   };
 
+  const fetchApplicationMeta = async () => {
+    if (!supabaseClient) return { ok: false, error: 'Supabase client is not configured.', data: null };
+    const selectClause = currentDiscordProfile?.authUserId ? APPLICATION_META_PRIVATE_SELECT : APPLICATION_META_PUBLIC_SELECT;
+    const { data, error } = await supabaseClient
+      .from('applications')
+      .select(selectClause)
+      .eq('app_id', APP_ID)
+      .maybeSingle();
+
+    if (error || !data) {
+      return { ok: false, error: error?.message || 'Application metadata could not be loaded.', data: null };
+    }
+    return { ok: true, data };
+  };
+
+  const refreshApplicationMeta = async () => {
+    const result = await fetchApplicationMeta();
+    if (!result.ok) {
+      updateApplicationMetaCards(currentApplicationMeta);
+      return result;
+    }
+    currentApplicationMeta = result.data;
+    updateApplicationMetaCards(result.data);
+    return result;
+  };
+
   const fetchLicenseById = async (licenseId) => {
     if (!supabaseClient || !licenseId) return { ok: false, error: 'License could not be refreshed.', data: null };
     const { data, error } = await supabaseClient
@@ -4375,7 +4611,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     }
 
     try {
-      const redirectTo = `${location.origin}${location.pathname}`;
+      const redirectTo = getDiscordAuthRedirectUrl();
       const { error } = await supabaseClient.auth.signInWithOAuth({
         provider: 'discord',
         options: { redirectTo, scopes: 'identify' }
@@ -4606,6 +4842,9 @@ html[data-theme="white"] [data-loader-glass-card]::before {
       }
     });
 
+    updateApplicationMetaCards();
+    await refreshApplicationMeta();
+
     window.setTimeout(() => {
       if (location.search.includes('code=') || location.search.includes('state=')) {
         history.replaceState({}, document.title, location.pathname + location.hash);
@@ -4615,6 +4854,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     await processDiscordReturn();
     restoreCompletedRedeem();
     const restoredProfile = await restoreAuthenticatedDiscordProfile();
+    await refreshApplicationMeta();
     await syncAccountLicenseCard(restoredProfile, { showMissingNotice: false });
     await processNavbarDiscordReturn();
     syncLaunchButtonsState();
@@ -4631,9 +4871,16 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     setStep(1);
   };
 
+  window.handleDownloadAccessClick = () => {
+    if (!currentDiscordProfile?.authUserId) return;
+    syncDownloadAccessState();
+    setDownloadAccessModalOpen(true);
+  };
+
   window.logoutSubscription = async () => {
     setNavbarUserPopoverOpen(false);
     setDiscordLicenseToastOpen(false);
+    setDownloadAccessModalOpen(false);
     resetRedeemOutroState();
     try {
       if (supabaseClient) await supabaseClient.auth.signOut();
@@ -4645,6 +4892,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     currentLicense = null;
     currentDiscordProfile = null;
     currentDetectedLicense = null;
+    await refreshApplicationMeta();
     resetExtendTimeUi();
     updateNavbarDiscordUserUi(null);
     setNavbarConnectBusy(false);
@@ -4669,6 +4917,15 @@ html[data-theme="white"] [data-loader-glass-card]::before {
   closeButton?.addEventListener('click', () => handleRedeemCloseRequest());
   modal?.addEventListener('click', (event) => {
     if (event.target === modal) handleRedeemCloseRequest();
+  });
+  openDownloadAccessButton?.addEventListener('click', () => {
+    window.handleDownloadAccessClick();
+  });
+  downloadAccessClose?.addEventListener('click', () => {
+    setDownloadAccessModalOpen(false);
+  });
+  downloadAccessModal?.addEventListener('click', (event) => {
+    if (event.target === downloadAccessModal) setDownloadAccessModalOpen(false);
   });
   extendTimeCloseButton?.addEventListener('click', () => {
     if (extendTimeVerifyInFlight) return;
@@ -4714,6 +4971,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
       if (discordLicenseToast && !discordLicenseToast.hidden) setDiscordLicenseToastOpen(false);
       if (modal && !modal.hidden) handleRedeemCloseRequest();
       if (extendTimeModal && !extendTimeModal.hidden && !extendTimeVerifyInFlight) setExtendTimeModalOpen(false);
+      if (downloadAccessModal && !downloadAccessModal.hidden) setDownloadAccessModalOpen(false);
     }
   });
   window.addEventListener('resize', () => {
@@ -4799,10 +5057,19 @@ html[data-theme="white"] [data-loader-glass-card]::before {
   downloadLoader?.addEventListener('click', (event) => {
     if (!downloadLoader.getAttribute('href') || downloadLoader.getAttribute('href') === '#') {
       event.preventDefault();
-      showMessage(redeemFinishMessage, 'Download link is still a placeholder.', 'error');
+      showMessage(redeemFinishMessage, 'No uploaded file is available right now.', 'error');
       return;
     }
     handleRedeemCloseRequest({ withOutro: true });
+  });
+  downloadAccessLink?.addEventListener('click', (event) => {
+    if (!downloadAccessLink.getAttribute('href') || downloadAccessLink.getAttribute('href') === '#') {
+      event.preventDefault();
+      showMessage(downloadAccessMessage, 'No uploaded file is available right now.', 'error');
+      return;
+    }
+    showMessage(downloadAccessMessage, '');
+    window.setTimeout(() => setDownloadAccessModalOpen(false), 120);
   });
 
   initSupabase();

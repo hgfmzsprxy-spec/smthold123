@@ -795,6 +795,10 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     width: min(520px, 92vw);
 }
 
+.download-drawer-panel {
+    width: min(560px, 92vw);
+}
+
 .license-drawer.is-open .license-drawer-panel {
     transform: translateX(0);
 }
@@ -938,6 +942,102 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     flex-wrap: nowrap;
     align-items: center;
     white-space: nowrap;
+}
+
+.upload-dropzone {
+    position: relative;
+    display: grid;
+    gap: 10px;
+    padding: 16px;
+    border: 1px dashed rgba(30, 184, 206, 0.45);
+    border-radius: 16px;
+    background: rgba(30, 184, 206, 0.06);
+}
+
+.upload-dropzone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.upload-dropzone-title {
+    font-weight: 650;
+}
+
+.upload-dropzone-copy {
+    color: var(--muted-foreground);
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+
+.download-file-preview {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.dark .download-file-preview {
+    background: rgba(0, 0, 0, 0.18);
+}
+
+.download-file-preview-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.download-file-preview-title {
+    font-weight: 650;
+    word-break: break-word;
+}
+
+.download-file-preview-meta {
+    color: var(--muted-foreground);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.download-file-preview-empty {
+    color: var(--muted-foreground);
+    font-size: 0.92rem;
+}
+
+.download-file-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 12px;
+    border-radius: 12px;
+    background: rgba(30, 184, 206, 0.14);
+    color: var(--primary);
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
+.download-file-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.download-file-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 650;
+}
+
+.download-file-link:hover {
+    text-decoration: underline;
 }
 
 .dashboard-metrics {
@@ -1593,6 +1693,69 @@ html[data-theme="white"] [data-loader-glass-card]::before {
                 </div>
             </div>
 
+            <div id="download-app-drawer" class="license-drawer" aria-hidden="true">
+                <div class="license-drawer-panel download-drawer-panel">
+                    <div class="license-drawer-header">
+                        <h4 id="download-drawer-title" class="no-space-bottom">Application Download</h4>
+                        <button id="download-drawer-close" type="button" class="license-drawer-close" aria-label="Close">
+                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <form id="download-drawer-form" class="admin-form">
+                        <div class="form-group">
+                            <label for="download-drawer-file">Upload File</label>
+                            <div class="upload-dropzone">
+                                <input id="download-drawer-file" type="file" accept=".rar,.exe,application/octet-stream,application/vnd.rar,application/x-msdownload"/>
+                                <div class="upload-dropzone-title">Drop `.rar` or `.exe` here, or click to upload</div>
+                                <div class="upload-dropzone-copy">The selected file is stored in the application record and appears below as the current package.</div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Current File</label>
+                            <div class="download-file-preview">
+                                <div id="download-file-preview-empty" class="download-file-preview-empty">No file uploaded yet.</div>
+                                <div id="download-file-preview-card" hidden>
+                                    <div class="download-file-preview-head">
+                                        <div class="flex items-start gap-3">
+                                            <div id="download-file-chip" class="download-file-chip">FILE</div>
+                                            <div>
+                                                <div id="download-file-name" class="download-file-preview-title">-</div>
+                                                <div id="download-file-meta" class="download-file-preview-meta">-</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="download-file-actions">
+                                        <a id="download-file-link" class="download-file-link" href="#" download hidden>
+                                            <i class="fa-solid fa-download" aria-hidden="true"></i>
+                                            Download current file
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="download-drawer-version">Version</label>
+                            <input id="download-drawer-version" type="text"/>
+                        </div>
+                        <div class="form-group">
+                            <label for="download-drawer-status">Status</label>
+                            <select id="download-drawer-status">
+                                <option value="Active">Active</option>
+                                <option value="Disabled">Disabled</option>
+                            </select>
+                        </div>
+                        <div id="download-drawer-message" class="text-sm"></div>
+                        <div class="form-actions">
+                            <button id="download-drawer-cancel" type="button" class="secondary-button">Cancel</button>
+                            <button type="submit" class="primary-button">
+                                <i class="fa-regular fa-floppy-disk" aria-hidden="true"></i>
+                                Save
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <div id="create-app-drawer" class="license-drawer" aria-hidden="true">
                 <div class="license-drawer-panel create-drawer-panel">
                     <div class="license-drawer-header">
@@ -1892,6 +2055,21 @@ html[data-theme="white"] [data-loader-glass-card]::before {
   const editDrawerWebhook = byId('edit-drawer-webhook');
   const editDrawerMessage = byId('edit-drawer-message');
   const editDrawerCancel = byId('edit-drawer-cancel');
+  const downloadAppDrawer = byId('download-app-drawer');
+  const downloadDrawerTitle = byId('download-drawer-title');
+  const downloadDrawerClose = byId('download-drawer-close');
+  const downloadDrawerForm = byId('download-drawer-form');
+  const downloadDrawerFile = byId('download-drawer-file');
+  const downloadFilePreviewEmpty = byId('download-file-preview-empty');
+  const downloadFilePreviewCard = byId('download-file-preview-card');
+  const downloadFileChip = byId('download-file-chip');
+  const downloadFileName = byId('download-file-name');
+  const downloadFileMeta = byId('download-file-meta');
+  const downloadFileLink = byId('download-file-link');
+  const downloadDrawerVersion = byId('download-drawer-version');
+  const downloadDrawerStatus = byId('download-drawer-status');
+  const downloadDrawerMessage = byId('download-drawer-message');
+  const downloadDrawerCancel = byId('download-drawer-cancel');
   const createAppDrawer = byId('create-app-drawer');
   const createAppDrawerClose = byId('create-app-drawer-close');
   const createAppCancel = byId('create-app-cancel');
@@ -2341,6 +2519,14 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     if (!open && editDrawerMessage) showMessage(editDrawerMessage, '');
   };
 
+  const setDownloadDrawerOpen = (open) => {
+    if (!downloadAppDrawer) return;
+    if (open) downloadAppDrawer.classList.add('is-open');
+    else downloadAppDrawer.classList.remove('is-open');
+    downloadAppDrawer.setAttribute('aria-hidden', open ? 'false' : 'true');
+    if (!open && downloadDrawerMessage) showMessage(downloadDrawerMessage, '');
+  };
+
   const setCreateAppDrawerOpen = (open) => {
     if (!createAppDrawer) return;
     if (open) createAppDrawer.classList.add('is-open');
@@ -2364,9 +2550,10 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     btn.style.background = 'var(--primary)';
     btn.style.color = 'var(--primary-foreground)';
     btn.style.border = 'none';
-    btn.style.borderRadius = '8px';
+    btn.style.borderRadius = '4px';
     btn.style.boxShadow = '0 0 0 2px rgba(30, 184, 206, 0.60), inset 0 -3px 6px 0 rgba(255, 255, 255, 0.90)';
     btn.style.cursor = 'pointer';
+    btn.style.whiteSpace = 'nowrap';
     btn.style.flexShrink = '0';
     return btn;
   };
@@ -2815,6 +3002,90 @@ html[data-theme="white"] [data-loader-glass-card]::before {
 
   let editDrawerApp = null;
   let editDrawerReload = null;
+  let downloadDrawerApp = null;
+  let downloadDrawerReload = null;
+  let downloadDrawerSelectedFile = null;
+  let downloadDrawerObjectUrl = '';
+
+  const formatFileSize = (bytes) => {
+    const value = Number(bytes || 0);
+    if (!Number.isFinite(value) || value <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let size = value;
+    let unitIndex = 0;
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex += 1;
+    }
+    return `${size >= 10 || unitIndex === 0 ? Math.round(size) : size.toFixed(1)} ${units[unitIndex]}`;
+  };
+
+  const fileToDataUrl = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('Unable to read file.'));
+    reader.readAsDataURL(file);
+  });
+
+  const revokeDownloadDrawerObjectUrl = () => {
+    if (downloadDrawerObjectUrl) {
+      URL.revokeObjectURL(downloadDrawerObjectUrl);
+      downloadDrawerObjectUrl = '';
+    }
+  };
+
+  const setDownloadPreview = (app, options = {}) => {
+    const {
+      hideLink = false,
+      updatedAt = app?.download_updated_at || new Date().toISOString()
+    } = options;
+
+    revokeDownloadDrawerObjectUrl();
+    const fileName = String(app?.download_file_name || '').trim();
+    const mimeType = String(app?.download_file_type || '').trim();
+    const fileSize = Number(app?.download_file_size || 0);
+    const base64Payload = String(app?.download_file_data_base64 || '').trim();
+    const hasFile = Boolean(fileName);
+
+    if (downloadFilePreviewEmpty) downloadFilePreviewEmpty.hidden = hasFile;
+    if (downloadFilePreviewCard) downloadFilePreviewCard.hidden = !hasFile;
+    if (!hasFile) {
+      if (downloadFileLink) {
+        downloadFileLink.hidden = true;
+        downloadFileLink.removeAttribute('href');
+        downloadFileLink.removeAttribute('download');
+      }
+      return;
+    }
+
+    const extMatch = fileName.match(/\.([a-z0-9]+)$/i);
+    if (downloadFileChip) downloadFileChip.textContent = extMatch ? extMatch[1].toUpperCase() : 'FILE';
+    if (downloadFileName) downloadFileName.textContent = fileName;
+    if (downloadFileMeta) {
+      const parts = [formatFileSize(fileSize), mimeType || 'application/octet-stream'];
+      if (updatedAt) parts.push(`Updated ${formatDateTime(updatedAt)}`);
+      downloadFileMeta.textContent = parts.join(' • ');
+    }
+
+    if (!downloadFileLink) return;
+    if (!base64Payload || hideLink) {
+      downloadFileLink.hidden = true;
+      downloadFileLink.removeAttribute('href');
+      downloadFileLink.removeAttribute('download');
+      return;
+    }
+
+    try {
+      const bytes = Uint8Array.from(atob(base64Payload), (char) => char.charCodeAt(0));
+      const blob = new Blob([bytes], { type: mimeType || 'application/octet-stream' });
+      downloadDrawerObjectUrl = URL.createObjectURL(blob);
+      downloadFileLink.href = downloadDrawerObjectUrl;
+      downloadFileLink.download = fileName;
+      downloadFileLink.hidden = false;
+    } catch (error) {
+      downloadFileLink.hidden = true;
+    }
+  };
 
   const openEditDrawer = (app, reloadFn) => {
     editDrawerApp = app || null;
@@ -2826,6 +3097,18 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     if (editDrawerWebhook) editDrawerWebhook.value = app?.webhook || '';
     setEditDrawerOpen(true);
     if (editDrawerName) editDrawerName.focus();
+  };
+
+  const openDownloadDrawer = (app, reloadFn) => {
+    downloadDrawerApp = app || null;
+    downloadDrawerReload = typeof reloadFn === 'function' ? reloadFn : null;
+    downloadDrawerSelectedFile = null;
+    if (downloadDrawerForm) downloadDrawerForm.reset();
+    if (downloadDrawerTitle) downloadDrawerTitle.textContent = `Application Download · ${app?.name || app?.app_id || app?.id || ''}`;
+    if (downloadDrawerVersion) downloadDrawerVersion.value = app?.version || '1.0.0';
+    if (downloadDrawerStatus) downloadDrawerStatus.value = (app?.status || 'Active') === 'Disabled' ? 'Disabled' : 'Active';
+    setDownloadPreview(app);
+    setDownloadDrawerOpen(true);
   };
 
   const openLicensesPanel = async (getClient, ensureFreshToken, app) => {
@@ -3161,6 +3444,9 @@ html[data-theme="white"] [data-loader-glass-card]::before {
       edit.style.flexShrink = '0';
       edit.addEventListener('click', () => openEditDrawer(app, loadApplications));
 
+      const packageBtn = createActionIconButton('<i class="fa-solid fa-download" aria-hidden="true"></i>', 'Upload Download Package', 'Paczka do pobrania');
+      packageBtn.addEventListener('click', () => openDownloadDrawer(app, loadApplications));
+
       const licensesBtn = document.createElement('button');
       licensesBtn.type = 'button';
       licensesBtn.innerHTML = '<i class="fa-solid fa-key" aria-hidden="true"></i>';
@@ -3220,7 +3506,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
         await loadApplications();
       });
 
-      actions.append(edit, licensesBtn, del);
+      actions.append(edit, packageBtn, licensesBtn, del);
 
       row.append(name, appId, licenses, version, status, webhook, actions);
       tableBody.append(row);
@@ -3541,11 +3827,15 @@ html[data-theme="white"] [data-loader-glass-card]::before {
         currentLicensesData = [];
         editDrawerApp = null;
         editDrawerReload = null;
+        downloadDrawerApp = null;
+        downloadDrawerReload = null;
+        downloadDrawerSelectedFile = null;
         setLicensesPanelOpen(false);
         setLicenseDrawerOpen(false);
         setLicenseInfoDrawerOpen(false);
         setExtendLicenseDrawerOpen(false);
         setEditDrawerOpen(false);
+        setDownloadDrawerOpen(false);
         setCreateAppDrawerOpen(false);
         if (generateLicenseButton) generateLicenseButton.disabled = true;
         if (licensesTableBody) licensesTableBody.innerHTML = '';
@@ -3607,6 +3897,45 @@ html[data-theme="white"] [data-loader-glass-card]::before {
       });
     }
 
+    if (downloadDrawerClose) downloadDrawerClose.addEventListener('click', () => setDownloadDrawerOpen(false));
+    if (downloadDrawerCancel) downloadDrawerCancel.addEventListener('click', () => setDownloadDrawerOpen(false));
+    if (downloadAppDrawer) {
+      downloadAppDrawer.addEventListener('click', (event) => {
+        if (event.target === downloadAppDrawer) setDownloadDrawerOpen(false);
+      });
+    }
+
+    if (downloadDrawerFile) {
+      downloadDrawerFile.addEventListener('change', (event) => {
+        const file = event.target?.files?.[0] || null;
+        downloadDrawerSelectedFile = file;
+        if (!file) {
+          setDownloadPreview(downloadDrawerApp);
+          return;
+        }
+        if (!/\.(rar|exe)$/i.test(file.name || '')) {
+          downloadDrawerSelectedFile = null;
+          downloadDrawerFile.value = '';
+          showMessage(downloadDrawerMessage, 'Only .rar or .exe files are allowed.', 'error');
+          setDownloadPreview(downloadDrawerApp);
+          return;
+        }
+        if (file.size > 15 * 1024 * 1024) {
+          downloadDrawerSelectedFile = null;
+          downloadDrawerFile.value = '';
+          showMessage(downloadDrawerMessage, 'File is too large. Maximum size is 15 MB.', 'error');
+          setDownloadPreview(downloadDrawerApp);
+          return;
+        }
+        showMessage(downloadDrawerMessage, `Selected file: ${file.name}`, '');
+        setDownloadPreview({
+          download_file_name: file.name,
+          download_file_type: file.type || 'application/octet-stream',
+          download_file_size: file.size
+        }, { hideLink: true });
+      });
+    }
+
     if (openCreateAppButton) {
       openCreateAppButton.addEventListener('click', () => {
         setCreateAppDrawerOpen(true);
@@ -3629,11 +3958,15 @@ html[data-theme="white"] [data-loader-glass-card]::before {
         currentLicensesData = [];
         editDrawerApp = null;
         editDrawerReload = null;
+        downloadDrawerApp = null;
+        downloadDrawerReload = null;
+        downloadDrawerSelectedFile = null;
         setLicensesPanelOpen(false);
         setLicenseDrawerOpen(false);
         setLicenseInfoDrawerOpen(false);
         setExtendLicenseDrawerOpen(false);
         setEditDrawerOpen(false);
+        setDownloadDrawerOpen(false);
         setCreateAppDrawerOpen(false);
         if (licensesTableBody) licensesTableBody.innerHTML = '';
         if (licensesCaption) licensesCaption.textContent = 'Click License on an application to view keys.';
@@ -3711,6 +4044,60 @@ html[data-theme="white"] [data-loader-glass-card]::before {
         window.setTimeout(() => setEditDrawerOpen(false), 250);
         setBusy(false, '');
         if (editDrawerReload) await editDrawerReload();
+      });
+    }
+
+    if (downloadDrawerForm) {
+      downloadDrawerForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        showMessage(downloadDrawerMessage, '');
+        if (!dbClient || !downloadDrawerApp) {
+          showMessage(downloadDrawerMessage, 'Select an application first.', 'error');
+          return;
+        }
+
+        const controls = Array.from(downloadDrawerForm.querySelectorAll('input,select,button,a'));
+        const setBusy = (busy, label) => {
+          controls.forEach((control) => {
+            if ('disabled' in control) control.disabled = busy;
+          });
+          showMessage(downloadDrawerMessage, label || '');
+        };
+
+        const payload = {
+          version: String(downloadDrawerVersion?.value || '').trim() || null,
+          status: String(downloadDrawerStatus?.value || 'Active')
+        };
+
+        if (downloadDrawerSelectedFile) {
+          try {
+            const dataUrl = await fileToDataUrl(downloadDrawerSelectedFile);
+            payload.download_file_name = String(downloadDrawerSelectedFile.name || '').trim() || null;
+            payload.download_file_type = String(downloadDrawerSelectedFile.type || 'application/octet-stream').trim() || 'application/octet-stream';
+            payload.download_file_size = Number(downloadDrawerSelectedFile.size || 0) || 0;
+            payload.download_file_data_base64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+            payload.download_updated_at = new Date().toISOString();
+          } catch (error) {
+            showMessage(downloadDrawerMessage, error?.message || 'Unable to read selected file.', 'error');
+            return;
+          }
+        }
+
+        setBusy(true, 'Saving…');
+        const updateResult = await updateApplicationRecord(getDbClient, ensureFreshToken, downloadDrawerApp.id, payload);
+        if (!updateResult.ok) {
+          setBusy(false, '');
+          showMessage(downloadDrawerMessage, updateResult.error || 'Save failed', 'error');
+          return;
+        }
+
+        downloadDrawerApp = { ...downloadDrawerApp, ...payload };
+        downloadDrawerSelectedFile = null;
+        if (downloadDrawerFile) downloadDrawerFile.value = '';
+        setDownloadPreview(downloadDrawerApp);
+        setBusy(false, '');
+        showMessage(downloadDrawerMessage, 'Saved', 'success');
+        if (downloadDrawerReload) await downloadDrawerReload();
       });
     }
 
