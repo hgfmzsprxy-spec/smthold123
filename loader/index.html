@@ -4645,6 +4645,16 @@ html[data-theme="white"] [data-loader-glass-card]::before {
 
     if (!linkedLicenses.data.length) {
       await clearAuthenticatedSessionState({ signOut: true });
+      if (showMissingNotice) {
+        setDiscordLicenseToastContent({
+          tone: 'error',
+          title: 'No active license found',
+          copy: 'No active license was found for this Discord account. Buy one or redeem your key below to continue.',
+          actionLabel: 'Redeem License',
+          note: 'You were not logged in because this account has no active license.',
+          showAction: true
+        });
+      }
       return { ok: true, found: false, active: false, allowed: false, license: null, reason: 'missing', signedOut: true };
     }
 
