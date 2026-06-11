@@ -3101,6 +3101,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
   const PENDING_REDEEM_KEY = 'loader_pending_redeem_v1';
   const COMPLETED_REDEEM_KEY = 'loader_completed_redeem_v1';
   const DISCORD_AUTH_INTENT_KEY = 'loader_discord_auth_intent_v1';
+  const APP_META_CACHE_KEY = 'loader_application_meta_cache_v1';
 
   const byId = (id) => document.getElementById(id);
   const showMessage = (el, text, tone) => {
@@ -3181,16 +3182,24 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     return { url, anonKey };
   };
 
+  let fetchEnvPromise = null;
   const fetchEnv = async () => {
-    const candidates = ['./env.txt', '/env.txt'];
-    for (const path of candidates) {
-      try {
-        const response = await fetch(path, { cache: 'no-store' });
-        if (!response.ok) continue;
+    if (fetchEnvPromise) return fetchEnvPromise;
+    fetchEnvPromise = (async () => {
+      const candidates = ['./env.txt', '/env.txt'];
+      const results = await Promise.allSettled(candidates.map(async (path) => {
+        const response = await fetch(path);
+        if (!response.ok) throw new Error(`Failed to load ${path}`);
         return parseEnv(await response.text());
-      } catch (error) {}
-    }
-    return null;
+      }));
+
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value) return result.value;
+      }
+
+      return null;
+    })();
+    return fetchEnvPromise;
   };
 
   const modal = byId('redeem-modal');
@@ -3771,6 +3780,42 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     } catch (error) {
       return null;
     }
+  };
+
+  const getCachedApplicationMeta = () => {
+    const cached = safeJsonParse(localStorage.getItem(APP_META_CACHE_KEY) || '');
+    if (!cached || typeof cached !== 'object') return null;
+    return {
+      id: cached.id || null,
+      app_id: cached.app_id || APP_ID,
+      version: cached.version || '-',
+      status: cached.status || '',
+      download_updated_at: cached.download_updated_at || null
+    };
+  };
+
+  const saveCachedApplicationMeta = (app) => {
+    if (!app || typeof app !== 'object') return;
+    try {
+      localStorage.setItem(APP_META_CACHE_KEY, JSON.stringify({
+        id: app.id || null,
+        app_id: app.app_id || APP_ID,
+        version: String(app.version || '-').trim() || '-',
+        status: app.status || '',
+        download_updated_at: app.download_updated_at || null
+      }));
+    } catch (error) {}
+  };
+
+  const restoreCachedApplicationMeta = () => {
+    const cached = getCachedApplicationMeta();
+    if (!cached) return false;
+    currentApplicationMeta = {
+      ...(currentApplicationMeta || {}),
+      ...cached
+    };
+    updateApplicationMetaCards(currentApplicationMeta);
+    return true;
   };
 
   const loadPendingRedeem = () => safeJsonParse(localStorage.getItem(PENDING_REDEEM_KEY) || '');
@@ -4373,6 +4418,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
       return result;
     }
     currentApplicationMeta = result.data;
+    saveCachedApplicationMeta(result.data);
     updateApplicationMetaCards(result.data);
     return result;
   };
@@ -4497,6 +4543,36 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     return profile;
   };
 
+  const clearAuthenticatedSessionState = async ({ signOut = true } = {}) => {
+    setNavbarUserPopoverOpen(false);
+    setDiscordLicenseToastOpen(false);
+    setDownloadAccessModalOpen(false);
+    resetRedeemOutroState();
+    if (signOut) {
+      try {
+        if (supabaseClient) await supabaseClient.auth.signOut();
+      } catch (error) {}
+    }
+    localStorage.removeItem(COMPLETED_REDEEM_KEY);
+    clearPendingRedeem();
+    clearDiscordAuthIntent();
+    stopSubscriptionRefresh();
+    currentLicense = null;
+    currentDiscordProfile = null;
+    currentDetectedLicense = null;
+    await refreshApplicationMeta();
+    resetExtendTimeUi();
+    updateNavbarDiscordUserUi(null);
+    setNavbarConnectBusy(false);
+    if (licenseInput) licenseInput.value = '';
+    if (noSubscription) noSubscription.classList.remove('hidden');
+    if (bannedSubscription) bannedSubscription.classList.add('hidden');
+    if (activeSubscription) activeSubscription.classList.add('hidden');
+    syncLaunchButtonsState();
+    setStep(1);
+    setModalOpen(false);
+  };
+
   const syncAccountLicenseCard = async (profile, options = {}) => {
     const showMissingNotice = Boolean(options.showMissingNotice);
     if (!profile?.authUserId) return { ok: true, found: false, active: false, license: null };
@@ -4560,6 +4636,11 @@ html[data-theme="white"] [data-loader-glass-card]::before {
         });
       }
       return { ok: true, found: true, active: false, allowed: false, license: expiredLicense, reason: 'expired' };
+    }
+
+    if (!linkedLicenses.data.length) {
+      await clearAuthenticatedSessionState({ signOut: true });
+      return { ok: true, found: false, active: false, allowed: false, license: null, reason: 'missing', signedOut: true };
     }
 
     if (!loadCompletedRedeem()?.licenseKey) {
@@ -4732,6 +4813,8 @@ html[data-theme="white"] [data-loader-glass-card]::before {
       showMessage(redeemDiscordMessage, 'Discord profile data is incomplete.', 'error');
       return;
     }
+    currentDiscordProfile = profile;
+    updateNavbarDiscordUserUi(profile);
 
     const validation = await validateLicense(pending.licenseKey);
     if (!validation.ok) {
@@ -4771,7 +4854,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     const intent = loadDiscordAuthIntent();
     if (!intent?.source || intent.source === 'redeem') return;
 
-    const profile = await restoreAuthenticatedDiscordProfile();
+    const profile = currentDiscordProfile || await restoreAuthenticatedDiscordProfile();
     clearDiscordAuthIntent();
     setNavbarConnectBusy(false);
 
@@ -4842,21 +4925,26 @@ html[data-theme="white"] [data-loader-glass-card]::before {
       }
     });
 
-    updateApplicationMetaCards();
-    await refreshApplicationMeta();
-
-    window.setTimeout(() => {
-      if (location.search.includes('code=') || location.search.includes('state=')) {
-        history.replaceState({}, document.title, location.pathname + location.hash);
-      }
-    }, 50);
+    restoreCompletedRedeem();
+    if (!restoreCachedApplicationMeta()) updateApplicationMetaCards();
+    if (location.search.includes('code=') || location.search.includes('state=')) {
+      history.replaceState({}, document.title, location.pathname + location.hash);
+    }
 
     await processDiscordReturn();
-    restoreCompletedRedeem();
-    const restoredProfile = await restoreAuthenticatedDiscordProfile();
-    await refreshApplicationMeta();
-    await syncAccountLicenseCard(restoredProfile, { showMissingNotice: false });
-    await processNavbarDiscordReturn();
+
+    const hasNavbarIntent = Boolean(loadDiscordAuthIntent()?.source && loadDiscordAuthIntent()?.source !== 'redeem');
+    if (hasNavbarIntent) {
+      await processNavbarDiscordReturn();
+      await refreshApplicationMeta();
+    } else {
+      const restoredProfile = currentDiscordProfile || await restoreAuthenticatedDiscordProfile();
+      await Promise.all([
+        refreshApplicationMeta(),
+        syncAccountLicenseCard(restoredProfile, { showMissingNotice: false })
+      ]);
+    }
+
     syncLaunchButtonsState();
   };
 
@@ -4878,31 +4966,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
   };
 
   window.logoutSubscription = async () => {
-    setNavbarUserPopoverOpen(false);
-    setDiscordLicenseToastOpen(false);
-    setDownloadAccessModalOpen(false);
-    resetRedeemOutroState();
-    try {
-      if (supabaseClient) await supabaseClient.auth.signOut();
-    } catch (error) {}
-    localStorage.removeItem(COMPLETED_REDEEM_KEY);
-    clearPendingRedeem();
-    clearDiscordAuthIntent();
-    stopSubscriptionRefresh();
-    currentLicense = null;
-    currentDiscordProfile = null;
-    currentDetectedLicense = null;
-    await refreshApplicationMeta();
-    resetExtendTimeUi();
-    updateNavbarDiscordUserUi(null);
-    setNavbarConnectBusy(false);
-    if (licenseInput) licenseInput.value = '';
-    if (noSubscription) noSubscription.classList.remove('hidden');
-    if (bannedSubscription) bannedSubscription.classList.add('hidden');
-    if (activeSubscription) activeSubscription.classList.add('hidden');
-    syncLaunchButtonsState();
-    setStep(1);
-    setModalOpen(false);
+    await clearAuthenticatedSessionState({ signOut: true });
   };
 
   const handleRedeemCloseRequest = ({ withOutro = false } = {}) => {
