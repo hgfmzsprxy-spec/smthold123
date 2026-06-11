@@ -16,7 +16,12 @@ alter table public.licenses
 
 alter table public.applications
   add column if not exists sessions_paused boolean not null default false,
-  add column if not exists sessions_paused_at timestamptz;
+  add column if not exists sessions_paused_at timestamptz,
+  add column if not exists download_file_name text,
+  add column if not exists download_file_type text,
+  add column if not exists download_file_size bigint,
+  add column if not exists download_file_data_base64 text,
+  add column if not exists download_updated_at timestamptz;
 
 update public.licenses as l
 set
