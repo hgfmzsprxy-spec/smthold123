@@ -3340,6 +3340,11 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     return `${location.origin}${location.pathname}`;
   };
 
+  const cleanupDiscordAuthReturnUrl = () => {
+    if (!location.search.includes('code=') && !location.search.includes('state=')) return;
+    history.replaceState({}, document.title, location.pathname + location.hash);
+  };
+
   const setStep = (step) => {
     currentRedeemStep = step;
     if (licenseInfoPanel) licenseInfoPanel.hidden = true;
@@ -4927,9 +4932,6 @@ html[data-theme="white"] [data-loader-glass-card]::before {
 
     restoreCompletedRedeem();
     if (!restoreCachedApplicationMeta()) updateApplicationMetaCards();
-    if (location.search.includes('code=') || location.search.includes('state=')) {
-      history.replaceState({}, document.title, location.pathname + location.hash);
-    }
 
     await processDiscordReturn();
 
@@ -4945,6 +4947,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
       ]);
     }
 
+    cleanupDiscordAuthReturnUrl();
     syncLaunchButtonsState();
   };
 
