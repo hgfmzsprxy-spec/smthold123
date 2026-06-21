@@ -22,7 +22,11 @@ const MIME_TYPES = {
   '.woff2': 'font/woff2',
   '.woff': 'font/woff',
   '.ttf': 'font/ttf',
-  '.txt': 'text/plain; charset=utf-8'
+  '.txt': 'text/plain; charset=utf-8',
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
+  '.ogg': 'video/ogg',
+  '.mov': 'video/quicktime'
 };
 
 const send = (res, statusCode, body, headers = {}) => {
@@ -105,13 +109,41 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    fs.readFile(filePath, (error, data) => {
-      if (error) {
+    const ext = path.extname(filePath).toLowerCase();
+    const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+    fs.stat(filePath, (statError, stats) => {
+      if (statError) {
         send(res, 404, 'Not Found', { 'Content-Type': 'text/plain; charset=utf-8' });
         return;
       }
-      const ext = path.extname(filePath).toLowerCase();
-      send(res, 200, data, { 'Content-Type': MIME_TYPES[ext] || 'application/octet-stream' });
+
+      const rangeHeader = req.headers['range'];
+      if (rangeHeader && /^bytes=\d*-\d*$/.test(rangeHeader)) {
+        const [startStr, endStr] = rangeHeader.replace(/bytes=/, '').split('-');
+        const fileSize = stats.size;
+        const start = startStr ? parseInt(startStr, 10) : 0;
+        const end = endStr ? parseInt(endStr, 10) : fileSize - 1;
+        const chunkSize = end - start + 1;
+
+        res.writeHead(206, {
+          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': chunkSize,
+          'Content-Type': contentType,
+          'Cache-Control': 'no-store'
+        });
+        fs.createReadStream(filePath, { start, end }).pipe(res);
+        return;
+      }
+
+      res.writeHead(200, {
+        'Content-Type': contentType,
+        'Content-Length': stats.size,
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'no-store'
+      });
+      fs.createReadStream(filePath).pipe(res);
     });
   } catch (error) {
     send(res, 500, error.message || 'Server error', { 'Content-Type': 'text/plain; charset=utf-8' });

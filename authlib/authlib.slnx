@@ -1,7 +1,0 @@
-<Solution>
-  <Configurations>
-    <Platform Name="x64" />
-    <Platform Name="x86" />
-  </Configurations>
-  <Project Path="authlib/authlib.vcxproj" Id="fb9c0d38-4e34-4ea5-ab06-350ecb23ad86" />
-</Solution>
