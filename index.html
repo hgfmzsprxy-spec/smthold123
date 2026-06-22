@@ -423,6 +423,54 @@ body.menu-open { overflow: hidden; }
         grid-template-columns: 1fr;
     }
 }
+
+/* Light theme overrides for Shop by Game */
+.light .shop-by-game {
+    --surface-0: #ffffff;
+    --surface-1: #f6f7f8;
+    --surface-2: #f0f1f3;
+    --surface-3: #e9eaee;
+    --accent: #1eb8ce;
+    --accent-hover: #188A9B;
+    --text-primary: #1a2733;
+    --text-muted: #6b7785;
+    --border: #d6dde2;
+    --border-strong: #b9c2c9;
+}
+.light .shop-by-game .game-tile:hover {
+    border-color: #1eb8ce;
+    box-shadow: 0 6px 18px rgba(30, 184, 206, 0.18);
+}
+.light .shop-by-game .game-tile-name:hover {
+    color: #1eb8ce;
+}
+.light .shop-by-game .panel {
+    background: #ffffff;
+    border: 1px solid #d6dde2;
+}
+.light .shop-by-game .panel-header {
+    background: #f0f4f7;
+    color: #1a2733;
+    border-bottom: 1px solid #d6dde2;
+}
+.light .shop-by-game .game-tile {
+    background: #f6f7f8;
+    border: 1px solid #d6dde2;
+}
+.light .shop-by-game .game-tile-img {
+    background: #ffffff;
+}
+.light .shop-by-game .game-tile-info {
+    background: #f0f4f7;
+    border-top: 1px solid #d6dde2;
+}
+.light .shop-by-game .game-tile-name {
+    color: #1a2733;
+    background: #f0f4f7;
+}
+.light .shop-by-game .game-tile-price {
+    color: #6b7785;
+}
 </style>
     </head>
     <body class="flex min-h-full w-full flex-auto flex-col">
