@@ -3355,6 +3355,8 @@ html[data-theme="white"] [data-loader-glass-card]::before {
 (() => {
   const APP_ID = '49a4f8ea0801ead8';
   const LOCAL_LOADER_LAUNCH_URL = 'http://127.0.0.1:38491/launch';
+  const DEBUG_LAUNCH_SERVER_URL = 'http://127.0.0.1:17777/event';
+  const DEBUG_LAUNCH_SESSION_ID = 'loader-launch-bridge';
   const PENDING_REDEEM_KEY = 'loader_pending_redeem_v1';
   const COMPLETED_REDEEM_KEY = 'loader_completed_redeem_v1';
   const DISCORD_AUTH_INTENT_KEY = 'loader_discord_auth_intent_v1';
@@ -3787,6 +3789,24 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     });
   };
 
+  const reportLaunchDebug = (hypothesisId, locationLabel, message, data = {}) => {
+    fetch(DEBUG_LAUNCH_SERVER_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        sessionId: DEBUG_LAUNCH_SESSION_ID,
+        runId: 'pre-fix',
+        hypothesisId,
+        location: locationLabel,
+        msg: `[DEBUG] ${message}`,
+        data,
+        ts: Date.now()
+      })
+    }).catch(() => {});
+  };
+
   const ensureLocalLoaderBridgeFrame = () => {
     const frameId = 'localLoaderLaunchBridgeFrame';
     let frame = document.getElementById(frameId);
@@ -3804,6 +3824,13 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     frame.style.pointerEvents = 'none';
     frame.style.border = '0';
     frame.style.left = '-9999px';
+    // #region debug-point A:frame-load
+    frame.addEventListener('load', () => reportLaunchDebug('A', 'loader/index.html:ensureLocalLoaderBridgeFrame', 'Hidden iframe load event fired', {
+      frameId,
+      src: frame.src || '',
+      currentPath: location.pathname
+    }));
+    // #endregion
     document.body.appendChild(frame);
     return frame;
   };
@@ -3828,9 +3855,21 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     document.body.appendChild(form);
 
     try {
+      // #region debug-point A:fallback-submit
+      reportLaunchDebug('A', 'loader/index.html:submitLocalLoaderLaunchFallback', 'Submitting fallback POST form to localhost bridge', {
+        action: form.action,
+        target: form.target,
+        licenseLength: licenseKey.length
+      });
+      // #endregion
       form.submit();
       return true;
     } catch (error) {
+      // #region debug-point A:fallback-error
+      reportLaunchDebug('A', 'loader/index.html:submitLocalLoaderLaunchFallback', 'Fallback form submission threw an error', {
+        error: String(error?.message || error || '')
+      });
+      // #endregion
       return false;
     } finally {
       window.setTimeout(() => form.remove(), 0);
@@ -3839,6 +3878,14 @@ html[data-theme="white"] [data-loader-glass-card]::before {
 
   const triggerLocalLoaderLaunch = async () => {
     const licenseKey = getLaunchLicenseKey();
+    // #region debug-point A:launch-click
+    reportLaunchDebug('A', 'loader/index.html:triggerLocalLoaderLaunch', 'Launch flow started from page', {
+      hasLicenseKey: Boolean(licenseKey),
+      licenseLength: licenseKey.length,
+      path: location.pathname,
+      origin: location.origin
+    });
+    // #endregion
     if (!licenseKey) {
       showLaunchToast({
         tone: 'error',
@@ -3851,6 +3898,12 @@ html[data-theme="white"] [data-loader-glass-card]::before {
 
     setLaunchButtonsBusy(true);
     try {
+      // #region debug-point B:fetch-start
+      reportLaunchDebug('B', 'loader/index.html:triggerLocalLoaderLaunch', 'Attempting direct fetch to localhost launch bridge', {
+        url: LOCAL_LOADER_LAUNCH_URL,
+        licenseLength: licenseKey.length
+      });
+      // #endregion
       const response = await fetch(LOCAL_LOADER_LAUNCH_URL, {
         method: 'POST',
         headers: {
@@ -3859,6 +3912,12 @@ html[data-theme="white"] [data-loader-glass-card]::before {
         body: licenseKey
       });
 
+      // #region debug-point B:fetch-response
+      reportLaunchDebug('B', 'loader/index.html:triggerLocalLoaderLaunch', 'Direct fetch completed', {
+        ok: Boolean(response.ok),
+        status: Number(response.status || 0)
+      });
+      // #endregion
       if (!response.ok) {
         const responseText = await response.text().catch(() => '');
         throw new Error(responseText || `Launch bridge returned ${response.status}.`);
@@ -3874,12 +3933,23 @@ html[data-theme="white"] [data-loader-glass-card]::before {
       return true;
     } catch (error) {
       const errorMessage = String(error?.message || '').trim();
+      // #region debug-point B:fetch-error
+      reportLaunchDebug('B', 'loader/index.html:triggerLocalLoaderLaunch', 'Direct fetch failed', {
+        error: errorMessage
+      });
+      // #endregion
       const canUseCompatibilityLaunch =
         /ERR_BLOCKED_BY_CLIENT/i.test(errorMessage) ||
         /failed to fetch/i.test(errorMessage) ||
         /networkerror/i.test(errorMessage);
 
       if (canUseCompatibilityLaunch && submitLocalLoaderLaunchFallback(licenseKey)) {
+        // #region debug-point A:fallback-success-path
+        reportLaunchDebug('A', 'loader/index.html:triggerLocalLoaderLaunch', 'Fallback path reported success to UI', {
+          licenseLength: licenseKey.length,
+          directError: errorMessage
+        });
+        // #endregion
         showLaunchToast({
           tone: 'success',
           title: 'Compatibility launch sent',
