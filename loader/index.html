@@ -3355,29 +3355,11 @@ html[data-theme="white"] [data-loader-glass-card]::before {
 (() => {
   const APP_ID = '49a4f8ea0801ead8';
   const LOCAL_LOADER_LAUNCH_URLS = [
-    'http://127.0.0.1:38491/loader-sync',
     'http://localhost:38491/loader-sync',
-    'http://127.0.0.1:38491/launch',
-    'http://localhost:38491/launch'
+    'http://localhost:38491/launch',
+    'http://127.0.0.1:38491/loader-sync',
+    'http://127.0.0.1:38491/launch'
   ];
-  // #region debug-point A:launch-collector-config
-  const DEBUG_EVENT_URL = 'http://127.0.0.1:17777/event';
-  const DEBUG_SESSION_ID = 'loader-launch-blocked';
-  const reportLaunchDebug = (hypothesisId, msg, data = {}) => fetch(DEBUG_EVENT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      sessionId: DEBUG_SESSION_ID,
-      runId: 'pre-fix',
-      hypothesisId,
-      location: 'loader/index.html:triggerLocalLoaderLaunch',
-      msg: `[DEBUG] ${msg}`,
-      data,
-      ts: Date.now()
-    }),
-    keepalive: true
-  }).catch(() => {});
-  // #endregion
   const PENDING_REDEEM_KEY = 'loader_pending_redeem_v1';
   const COMPLETED_REDEEM_KEY = 'loader_completed_redeem_v1';
   const DISCORD_AUTH_INTENT_KEY = 'loader_discord_auth_intent_v1';
@@ -3827,16 +3809,6 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     try {
       for (const bridgeUrl of LOCAL_LOADER_LAUNCH_URLS) {
         try {
-          // #region debug-point B:launch-fetch-start
-          reportLaunchDebug('B', 'Launching local bridge request', {
-            url: bridgeUrl,
-            pageOrigin: location.origin,
-            pageHref: location.href,
-            online: navigator.onLine,
-            userAgent: navigator.userAgent,
-            licenseLength: licenseKey.length
-          });
-          // #endregion
           const response = await fetch(bridgeUrl, {
             method: 'POST',
             headers: {
@@ -3844,16 +3816,6 @@ html[data-theme="white"] [data-loader-glass-card]::before {
             },
             body: licenseKey
           });
-
-          // #region debug-point C:launch-fetch-response
-          reportLaunchDebug('C', 'Local bridge fetch resolved', {
-            url: bridgeUrl,
-            ok: response.ok,
-            status: response.status,
-            statusText: response.statusText,
-            type: response.type
-          });
-          // #endregion
 
           if (!response.ok) {
             const responseText = await response.text().catch(() => '');
@@ -3870,14 +3832,6 @@ html[data-theme="white"] [data-loader-glass-card]::before {
           return true;
         } catch (error) {
           lastError = error;
-          // #region debug-point D:launch-fetch-error
-          reportLaunchDebug('D', 'Local bridge fetch threw', {
-            url: bridgeUrl,
-            name: error?.name || '',
-            message: error?.message || '',
-            stack: error?.stack || ''
-          });
-          // #endregion
         }
       }
 
