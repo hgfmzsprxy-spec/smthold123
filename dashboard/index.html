@@ -3372,56 +3372,6 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     });
   };
 
-  const ensureLocalLoaderBridgeFrame = () => {
-    const frameId = 'localLoaderLaunchBridgeFrame';
-    let frame = document.getElementById(frameId);
-    if (frame instanceof HTMLIFrameElement) return frame;
-
-    frame = document.createElement('iframe');
-    frame.id = frameId;
-    frame.name = frameId;
-    frame.tabIndex = -1;
-    frame.setAttribute('aria-hidden', 'true');
-    frame.style.position = 'fixed';
-    frame.style.width = '1px';
-    frame.style.height = '1px';
-    frame.style.opacity = '0';
-    frame.style.pointerEvents = 'none';
-    frame.style.border = '0';
-    frame.style.left = '-9999px';
-    document.body.appendChild(frame);
-    return frame;
-  };
-
-  const submitLocalLoaderLaunchFallback = (licenseKey) => {
-    if (!document.body) return false;
-
-    const frame = ensureLocalLoaderBridgeFrame();
-    const form = document.createElement('form');
-    const input = document.createElement('input');
-
-    form.method = 'POST';
-    form.action = LOCAL_LOADER_LAUNCH_URL;
-    form.target = frame.name;
-    form.style.display = 'none';
-
-    input.type = 'hidden';
-    input.name = 'license';
-    input.value = licenseKey;
-
-    form.appendChild(input);
-    document.body.appendChild(form);
-
-    try {
-      form.submit();
-      return true;
-    } catch (error) {
-      return false;
-    } finally {
-      window.setTimeout(() => form.remove(), 0);
-    }
-  };
-
   const triggerLocalLoaderLaunch = async () => {
     const licenseKey = getLaunchLicenseKey();
     if (!licenseKey) {
@@ -3458,28 +3408,11 @@ html[data-theme="white"] [data-loader-glass-card]::before {
       });
       return true;
     } catch (error) {
-      const errorMessage = String(error?.message || '').trim();
-      const canUseCompatibilityLaunch =
-        /ERR_BLOCKED_BY_CLIENT/i.test(errorMessage) ||
-        /failed to fetch/i.test(errorMessage) ||
-        /networkerror/i.test(errorMessage);
-
-      if (canUseCompatibilityLaunch && submitLocalLoaderLaunchFallback(licenseKey)) {
-        showLaunchToast({
-          tone: 'success',
-          title: 'Compatibility launch sent',
-          copy: 'The browser blocked the direct localhost request, so the page used a fallback launch bridge for the local loader.',
-          note: `License: ${licenseKey}`,
-          autoCloseMs: 4200
-        });
-        return true;
-      }
-
       showLaunchToast({
         tone: 'error',
         title: 'Loader not detected',
         copy: 'Open the local loader executable first, then click LAUNCH! again.',
-        note: errorMessage || 'The local launch bridge is not available.'
+        note: error?.message || 'The local launch bridge is not available.'
       });
       return false;
     } finally {
