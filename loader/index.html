@@ -3354,7 +3354,30 @@ html[data-theme="white"] [data-loader-glass-card]::before {
 <script>
 (() => {
   const APP_ID = '49a4f8ea0801ead8';
-  const LOCAL_LOADER_LAUNCH_URL = 'http://127.0.0.1:38491/launch';
+  const LOCAL_LOADER_LAUNCH_URLS = [
+    'http://127.0.0.1:38491/loader-sync',
+    'http://localhost:38491/loader-sync',
+    'http://127.0.0.1:38491/launch',
+    'http://localhost:38491/launch'
+  ];
+  // #region debug-point A:launch-collector-config
+  const DEBUG_EVENT_URL = 'http://127.0.0.1:17777/event';
+  const DEBUG_SESSION_ID = 'loader-launch-blocked';
+  const reportLaunchDebug = (hypothesisId, msg, data = {}) => fetch(DEBUG_EVENT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sessionId: DEBUG_SESSION_ID,
+      runId: 'pre-fix',
+      hypothesisId,
+      location: 'loader/index.html:triggerLocalLoaderLaunch',
+      msg: `[DEBUG] ${msg}`,
+      data,
+      ts: Date.now()
+    }),
+    keepalive: true
+  }).catch(() => {});
+  // #endregion
   const PENDING_REDEEM_KEY = 'loader_pending_redeem_v1';
   const COMPLETED_REDEEM_KEY = 'loader_completed_redeem_v1';
   const DISCORD_AUTH_INTENT_KEY = 'loader_discord_auth_intent_v1';
@@ -3800,34 +3823,77 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     }
 
     setLaunchButtonsBusy(true);
+    let lastError = null;
     try {
-      const response = await fetch(LOCAL_LOADER_LAUNCH_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain;charset=UTF-8'
-        },
-        body: licenseKey
-      });
+      for (const bridgeUrl of LOCAL_LOADER_LAUNCH_URLS) {
+        try {
+          // #region debug-point B:launch-fetch-start
+          reportLaunchDebug('B', 'Launching local bridge request', {
+            url: bridgeUrl,
+            pageOrigin: location.origin,
+            pageHref: location.href,
+            online: navigator.onLine,
+            userAgent: navigator.userAgent,
+            licenseLength: licenseKey.length
+          });
+          // #endregion
+          const response = await fetch(bridgeUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'text/plain;charset=UTF-8'
+            },
+            body: licenseKey
+          });
 
-      if (!response.ok) {
-        const responseText = await response.text().catch(() => '');
-        throw new Error(responseText || `Launch bridge returned ${response.status}.`);
+          // #region debug-point C:launch-fetch-response
+          reportLaunchDebug('C', 'Local bridge fetch resolved', {
+            url: bridgeUrl,
+            ok: response.ok,
+            status: response.status,
+            statusText: response.statusText,
+            type: response.type
+          });
+          // #endregion
+
+          if (!response.ok) {
+            const responseText = await response.text().catch(() => '');
+            throw new Error(responseText || `Launch bridge returned ${response.status}.`);
+          }
+
+          showLaunchToast({
+            tone: 'success',
+            title: 'Loader launch sent',
+            copy: 'The local loader detected the launch request and will continue with authentication.',
+            note: `License: ${licenseKey}`,
+            autoCloseMs: 3200
+          });
+          return true;
+        } catch (error) {
+          lastError = error;
+          // #region debug-point D:launch-fetch-error
+          reportLaunchDebug('D', 'Local bridge fetch threw', {
+            url: bridgeUrl,
+            name: error?.name || '',
+            message: error?.message || '',
+            stack: error?.stack || ''
+          });
+          // #endregion
+        }
       }
 
-      showLaunchToast({
-        tone: 'success',
-        title: 'Loader launch sent',
-        copy: 'The local loader detected the launch request and will continue with authentication.',
-        note: `License: ${licenseKey}`,
-        autoCloseMs: 3200
-      });
-      return true;
+      throw lastError || new Error('No launch bridge endpoint responded.');
     } catch (error) {
+      const errorMessage = String(error?.message || '');
+      const isBrowserBlock = /blocked by client|err_blocked_by_client/i.test(errorMessage);
       showLaunchToast({
         tone: 'error',
-        title: 'Loader not detected',
-        copy: 'Open the local loader executable first, then click LAUNCH! again.',
-        note: error?.message || 'The local launch bridge is not available.'
+        title: isBrowserBlock ? 'Browser blocked local launch' : 'Loader not detected',
+        copy: isBrowserBlock
+          ? 'Your browser or an extension blocked the local launch request before it reached loader.exe.'
+          : 'Open the local loader executable first, then click LAUNCH! again.',
+        note: isBrowserBlock
+          ? 'Disable adblock/privacy shields for this site or test the fallback bridge endpoint after redeploying this update.'
+          : (error?.message || 'The local launch bridge is not available.')
       });
       return false;
     } finally {
