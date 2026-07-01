@@ -4422,11 +4422,15 @@ html[data-theme="white"] [data-loader-glass-card]::before {
 
     const { data, error } = await scopedClient
       .from('licenses')
-      .select('id, license_key, status, activated_at, hwid, discord_auth_user_id, discord_user_id, discord_username, discord_avatar_url')
+      .select('id, license_key, app_id, status, activated_at, hwid, discord_auth_user_id, discord_user_id, discord_username, discord_avatar_url')
       .eq('license_key', licenseKey)
+      .eq('app_id', APP_ID)
       .maybeSingle();
 
     if (error || !data) return { ok: false, error: 'License not found!' };
+    if (String(data.app_id || '').trim() !== APP_ID) {
+      return { ok: false, error: 'This license belongs to a different product.' };
+    }
 
     const status = normalizeLicenseStatus(data.status);
     if (status === 'banned' || status === 'revoked' || status === 'disabled') {
@@ -4453,10 +4457,14 @@ html[data-theme="white"] [data-loader-glass-card]::before {
         discord_connected_at: new Date().toISOString()
       })
       .eq('license_key', licenseKey)
-      .select('license_key, discord_username, discord_avatar_url, discord_auth_user_id')
+      .eq('app_id', APP_ID)
+      .select('license_key, app_id, discord_username, discord_avatar_url, discord_auth_user_id')
       .maybeSingle();
 
     if (error || !data) return { ok: false, error: error?.message || 'Could not assign Discord to this license.' };
+    if (String(data.app_id || '').trim() !== APP_ID) {
+      return { ok: false, error: 'This license belongs to a different product.' };
+    }
     return { ok: true, data };
   };
 

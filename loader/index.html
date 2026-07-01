@@ -75,6 +75,50 @@
 
 html.static-html { scroll-behavior: smooth; }
 body.menu-open { overflow: hidden; }
+.loader-route-transition {
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(12, 14, 18, 0.38);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+.loader-route-transition.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.loader-route-transition-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.loader-route-transition-logo {
+  width: 118px;
+  height: 118px;
+  object-fit: contain;
+  animation: loader-route-pulse 1.2s ease-in-out infinite;
+  filter: drop-shadow(0 0 22px rgba(13, 97, 243, 0.24));
+}
+@keyframes loader-route-pulse {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.92);
+    opacity: 0.6;
+  }
+}
 [data-mobile-menu] {
   position: fixed;
   inset: 0;
@@ -152,6 +196,10 @@ body.menu-open { overflow: hidden; }
   box-shadow: 0 10px 40px rgba(15, 23, 42, 0.08);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
+  z-index: 161;
+}
+[data-loader-sticky-header] {
+  z-index: 160 !important;
 }
 [data-navbar-glass][data-navbar-collapsed="true"] {
   max-width: 56rem;
@@ -209,7 +257,9 @@ body.menu-open { overflow: hidden; }
   [data-mobile-menu-panel],
   [data-slot="accordion-content"],
   [data-static-animated],
-  [data-hero-float] {
+  [data-hero-float],
+  .loader-route-transition,
+  .loader-route-transition-logo {
     transition: none !important;
     animation: none !important;
   }
@@ -461,6 +511,7 @@ html.light .bg-gradient-to-r.from-zinc-100.to-zinc-300.bg-clip-text.text-transpa
     word-break: break-word;
 }
 
+.navbar-user-popover-action,
 .navbar-user-popover-logout {
     display: inline-flex;
     align-items: center;
@@ -478,10 +529,18 @@ html.light .bg-gradient-to-r.from-zinc-100.to-zinc-300.bg-clip-text.text-transpa
     transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
+.navbar-user-popover-action svg,
 .navbar-user-popover-logout svg {
     width: 1rem;
     height: 1rem;
     flex: 0 0 auto;
+}
+
+.navbar-user-popover-action:hover {
+    background: rgba(30, 184, 206, 0.10);
+    border-color: rgba(30, 184, 206, 0.30);
+    color: #1eb8ce;
+    box-shadow: 0 8px 24px rgba(30, 184, 206, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .navbar-user-popover-logout:hover {
@@ -491,6 +550,7 @@ html.light .bg-gradient-to-r.from-zinc-100.to-zinc-300.bg-clip-text.text-transpa
     box-shadow: 0 8px 24px rgba(239, 68, 68, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
+.navbar-user-popover-action:active,
 .navbar-user-popover-logout:active {
     transform: translateY(1px);
 }
@@ -499,8 +559,16 @@ html.light .bg-gradient-to-r.from-zinc-100.to-zinc-300.bg-clip-text.text-transpa
     box-shadow: 0 18px 50px rgba(0, 0, 0, 0.38);
 }
 
+.dark .navbar-user-popover-action,
 .dark .navbar-user-popover-logout {
     background: rgba(255, 255, 255, 0.05);
+}
+
+.dark .navbar-user-popover-action:hover {
+    background: rgba(30, 184, 206, 0.12);
+    border-color: rgba(30, 184, 206, 0.34);
+    color: #67e8f9;
+    box-shadow: 0 8px 24px rgba(30, 184, 206, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .dark .navbar-user-popover-logout:hover {
@@ -1485,6 +1553,11 @@ html[data-theme="white"] [data-loader-glass-card]::before {
 </style>
     </head>
 <body data-loader-theme class="flex min-h-full w-full flex-auto flex-col">
+        <div id="loader-route-transition" class="loader-route-transition" hidden>
+            <div class="loader-route-transition-inner">
+                <img src="/images/logo_bcg.png" alt="unbanhwid.com" class="loader-route-transition-logo"/>
+            </div>
+        </div>
         <!-- ============================================ -->
         <!-- Premium Products Cards - shown before loader  -->
         <!-- CSS & structure copied 1:1 from rhrrhrth.vercel.app -->
@@ -1563,7 +1636,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
             )("class", "theme", "light", null, ["light", "dark"], null, false, true)
         </script>
         <div class="flex h-full w-full min-w-0 flex-col">
-            <header class="sticky top-0 z-50 flex h-20 w-full items-end justify-center px-4 sm:px-6 lg:px-8">
+            <header data-loader-sticky-header class="sticky top-0 flex h-20 w-full items-end justify-center px-4 sm:px-6 lg:px-8">
                 <div data-navbar-glass data-navbar-collapsed="false" class="isolate relative flex h-14 w-full items-center justify-between gap-4 overflow-hidden rounded-full border px-3 transition-all duration-700">
                     <a href="/#home">
                         <div class="flex items-center gap-3 max-sm:[&amp;_span]:text-xl">
@@ -1669,6 +1742,15 @@ html[data-theme="white"] [data-loader-glass-card]::before {
                             <div id="navbar-user-popover-name" class="navbar-user-popover-name">-</div>
                         </div>
                     </div>
+                    <button id="navbar-user-popover-sessions" type="button" class="navbar-user-popover-action">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="3" y="4" width="18" height="16" rx="2" />
+                            <path d="M7 8h10" />
+                            <path d="M7 12h10" />
+                            <path d="M7 16h6" />
+                        </svg>
+                        <span>Sessions</span>
+                    </button>
                     <button id="navbar-user-popover-logout" type="button" class="navbar-user-popover-logout">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M14 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
@@ -1717,7 +1799,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
 
 <main class="flex-1 relative min-h-screen">
 
-   <section id="premium-products-intro" style="position: relative; z-index: 60; min-height: 100vh; padding: 64px 16px 96px 16px;">
+   <section id="premium-products-intro" style="position: relative; z-index: 1; min-height: 100vh; padding: 64px 16px 96px 16px;">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div class="space-y-8">
                     <!-- Premium Products Section Card -->
@@ -1758,7 +1840,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
                     <!-- Product Card 1: HWID Spoofer -->
-                    <a id="card-hwid" href="/categories?slug=hwid-spoofers" data-loader-glass-mini class="relative block group overflow-hidden rounded-2xl transition-all duration-300 cursor-pointer flex flex-col min-h-[560px]">
+                    <a id="card-hwid" href="#hwid-spoofer" data-loader-glass-mini class="relative block group overflow-hidden rounded-2xl transition-all duration-300 cursor-pointer flex flex-col min-h-[560px]">
                         <div class="absolute top-0 right-0 -mt-8 -mr-8 h-40 w-40 rounded-full blur-3xl glow-effect" style="background: radial-gradient(circle, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1), transparent); pointer-events: none; z-index: 10;"></div>
                         <div class="absolute top-4 left-4 z-10">
                             <div id="status-hwid" class="flex items-center space-x-2 px-2 py-1 bg-zinc-800/10 backdrop-blur-sm border border-zinc-600/20 rounded-lg">
@@ -1803,7 +1885,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
                                     </div>
                                 </div>
                                 <div class="flex space-x-3">
-                                    <div class="cursor-pointer px-4 py-3 border border-zinc-500/20 hover:border-zinc-500/40 rounded-lg transition-[background-color,border-color] duration-150 group/btn w-full flex items-center justify-center space-x-2" style="background-color: rgba(255, 255, 255, 0.10);" onmouseover="this.style.backgroundColor='rgba(255, 255, 255, 0.15)'; var spanEl = this.querySelector('span'); if(spanEl) spanEl.style.color='rgb(212, 212, 216)'; var svgEl = this.querySelector('svg'); if(svgEl) svgEl.style.stroke='rgb(212, 212, 216)';" onmouseout="this.style.backgroundColor='rgba(255, 255, 255, 0.10)'; var spanEl = this.querySelector('span'); if(spanEl) spanEl.style.color='rgb(161, 161, 170)'; var svgEl = this.querySelector('svg'); if(svgEl) svgEl.style.stroke='rgb(161, 161, 170)';">
+                                    <div id="permanent-spoofer-view-details" class="cursor-pointer px-4 py-3 border border-zinc-500/20 hover:border-zinc-500/40 rounded-lg transition-[background-color,border-color] duration-150 group/btn w-full flex items-center justify-center space-x-2" style="background-color: rgba(255, 255, 255, 0.10);" onmouseover="this.style.backgroundColor='rgba(255, 255, 255, 0.15)'; var spanEl = this.querySelector('span'); if(spanEl) spanEl.style.color='rgb(212, 212, 216)'; var svgEl = this.querySelector('svg'); if(svgEl) svgEl.style.stroke='rgb(212, 212, 216)';" onmouseout="this.style.backgroundColor='rgba(255, 255, 255, 0.10)'; var spanEl = this.querySelector('span'); if(spanEl) spanEl.style.color='rgb(161, 161, 170)'; var svgEl = this.querySelector('svg'); if(svgEl) svgEl.style.stroke='rgb(161, 161, 170)';">
                                         <span style="color: rgb(161, 161, 170); transition: none;">View Details</span>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 group-hover/btn:translate-x-0.5 transition-transform duration-200" style="stroke: rgb(161, 161, 170); transition: transform 200ms ease-out, stroke 0ms;">
                                             <path d="M5 12h14"></path>
@@ -1816,7 +1898,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
                     </a>
 
                     <!-- Product Card 2: Fortnite External -->
-                    <a id="card-fortnite" href="/categories/fortnite" data-loader-glass-mini class="relative block group overflow-hidden rounded-2xl transition-all duration-300 cursor-pointer flex flex-col min-h-[560px]">
+                    <a id="card-fortnite" href="#fortnite" data-loader-glass-mini class="relative block group overflow-hidden rounded-2xl transition-all duration-300 cursor-pointer flex flex-col min-h-[560px]">
                         <div class="absolute top-0 right-0 -mt-8 -mr-8 h-40 w-40 rounded-full blur-3xl glow-effect" style="background: radial-gradient(circle, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1), transparent); pointer-events: none; z-index: 10;"></div>
                         <div class="absolute top-4 left-4 z-10">
                             <div id="status-fortnite" class="flex items-center space-x-2 px-2 py-1 bg-zinc-800/10 backdrop-blur-sm border border-zinc-600/20 rounded-lg">
@@ -1862,7 +1944,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
                                     </div>
                                 </div>
                                 <div class="flex space-x-3">
-                                    <div class="cursor-pointer px-4 py-3 border border-zinc-500/20 hover:border-zinc-500/40 rounded-lg transition-[background-color,border-color] duration-150 group/btn w-full flex items-center justify-center space-x-2" style="background-color: rgba(255, 255, 255, 0.10);" onmouseover="this.style.backgroundColor='rgba(255, 255, 255, 0.15)'; var spanEl = this.querySelector('span'); if(spanEl) spanEl.style.color='rgb(212, 212, 216)'; var svgEl = this.querySelector('svg'); if(svgEl) svgEl.style.stroke='rgb(212, 212, 216)';" onmouseout="this.style.backgroundColor='rgba(255, 255, 255, 0.10)'; var spanEl = this.querySelector('span'); if(spanEl) spanEl.style.color='rgb(161, 161, 170)'; var svgEl = this.querySelector('svg'); if(svgEl) svgEl.style.stroke='rgb(161, 161, 170)';">
+                                    <div id="fortnite-view-details" class="cursor-pointer px-4 py-3 border border-zinc-500/20 hover:border-zinc-500/40 rounded-lg transition-[background-color,border-color] duration-150 group/btn w-full flex items-center justify-center space-x-2" style="background-color: rgba(255, 255, 255, 0.10);" onmouseover="this.style.backgroundColor='rgba(255, 255, 255, 0.15)'; var spanEl = this.querySelector('span'); if(spanEl) spanEl.style.color='rgb(212, 212, 216)'; var svgEl = this.querySelector('svg'); if(svgEl) svgEl.style.stroke='rgb(212, 212, 216)';" onmouseout="this.style.backgroundColor='rgba(255, 255, 255, 0.10)'; var spanEl = this.querySelector('span'); if(spanEl) spanEl.style.color='rgb(161, 161, 170)'; var svgEl = this.querySelector('svg'); if(svgEl) svgEl.style.stroke='rgb(161, 161, 170)';">
                                         <span style="color: rgb(161, 161, 170); transition: none;">View Details</span>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 group-hover/btn:translate-x-0.5 transition-transform duration-200" style="stroke: rgb(161, 161, 170); transition: transform 200ms ease-out, stroke 0ms;">
                                             <path d="M5 12h14"></path>
@@ -1940,16 +2022,49 @@ html[data-theme="white"] [data-loader-glass-card]::before {
                 </div>
         </section>
 
+        <section id="loader-sessions-view" style="position: relative; z-index: 1; min-height: 100vh; padding: 64px 16px 96px 16px;" hidden>
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div class="space-y-8">
+                    <div data-loader-glass-card class="rounded-2xl overflow-hidden">
+                        <div class="px-6 py-4 border-b border-zinc-800/50 bg-gradient-to-r from-transparent via-zinc-500/5 to-transparent">
+                            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <h2 class="text-lg font-bold text-zinc-100">My Sessions</h2>
+                                    <p class="text-sm text-zinc-400 mt-1">Portfolio Discorda logged as <span id="sessions-portfolio-name" class="font-semibold text-zinc-200">-</span></p>
+                                </div>
+                                <button id="sessions-back-button" type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-700/60 bg-zinc-800/40 px-4 py-2 text-sm font-semibold text-zinc-200 transition-colors hover:border-zinc-500/40 hover:bg-zinc-800/70">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="m15 18-6-6 6-6"></path>
+                                    </svg>
+                                    <span>Back To Products</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <div id="sessions-login-note" class="hidden rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 text-sm text-amber-100">
+                                Login with Discord to access your session portfolio.
+                            </div>
+                            <div id="sessions-products-list" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <!-- Back Button -->
-            <a href="index.html" class="mb-8 inline-flex items-center space-x-2 text-zinc-400 hover:text-zinc-200 transition-all duration-300 group">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 transition-transform group-hover:-translate-x-1">
-                    <path d="m12 19-7-7 7-7"></path>
-                    <path d="M19 12H5"></path>
-                </svg>
-                <span class="text-sm font-medium">Back to Main Page</span>
-            </a>
+
+        <section id="permanent-spoofer-details" style="position: relative; z-index: 1; min-height: 100vh; padding: 64px 16px 96px 16px;" hidden>
+            <div class="pointer-events-none absolute inset-x-0 top-8 z-20">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <a id="productDetailsBackLink" href="index.html" class="pointer-events-auto inline-flex scroll-mt-28 items-center space-x-2 text-zinc-400 hover:text-zinc-200 transition-all duration-300 group">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 transition-transform group-hover:-translate-x-1">
+                            <path d="m12 19-7-7 7-7"></path>
+                            <path d="M19 12H5"></path>
+                        </svg>
+                        <span class="text-sm font-medium">Back to Main Page</span>
+                    </a>
+                </div>
+            </div>
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
 
             <!-- Main Grid Layout -->
             <div data-loader-main-grid class="grid grid-cols-1 xl:grid-cols-3 gap-8">
@@ -1962,8 +2077,8 @@ html[data-theme="white"] [data-loader-glass-card]::before {
                         
                         <!-- Product Image -->
                         <div class="relative aspect-video w-full overflow-hidden">
-                            <img data-theme-image="dark" src="images/permanentspoofer.png" alt="Permanent Spoofer" class="w-full h-full object-cover transition-all duration-500 scale-100" loading="eager">
-                            <img data-theme-image="light" src="images/permanentspoofer_light.png" alt="Permanent Spoofer" class="w-full h-full object-cover transition-all duration-500 scale-100" loading="eager">
+                            <img id="detailHeroImageDark" data-theme-image="dark" src="images/permanentspoofer.png" alt="Permanent Spoofer" class="w-full h-full object-cover transition-all duration-500 scale-100" loading="eager">
+                            <img id="detailHeroImageLight" data-theme-image="light" src="images/permanentspoofer_light.png" alt="Permanent Spoofer" class="w-full h-full object-cover transition-all duration-500 scale-100" loading="eager">
                             <div class="absolute inset-0 bg-gradient-to-t from-zinc-900/95 via-zinc-900/20 to-transparent"></div>
                             
                             <!-- Status Badge -->
@@ -1983,9 +2098,9 @@ html[data-theme="white"] [data-loader-glass-card]::before {
                             <!-- Title and Description -->
                             <div class="mb-10">
                                 <div class="flex items-center space-x-3 mb-4">
-                                    <h1 class="text-4xl font-bold bg-gradient-to-r from-zinc-100 to-zinc-300 bg-clip-text text-transparent">Permanent Spoofer</h1>
+                                    <h1 id="detailProductTitle" class="text-4xl font-bold bg-gradient-to-r from-zinc-100 to-zinc-300 bg-clip-text text-transparent">Permanent Spoofer</h1>
                                 </div>
-                                <p class="text-xl text-zinc-400 leading-relaxed font-light">
+                                <p id="detailProductDescription" class="text-xl text-zinc-400 leading-relaxed font-light">
                                     Advanced hardware ID spoofer with hypervisor and driver-level spoofing capabilities.
                                 </p>
                             </div>
@@ -2090,119 +2205,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
                         
                         <!-- Features List -->
                         <div class="p-8">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <!-- Feature 1 -->
-                                <div class="group relative overflow-hidden">
-                                    <div class="absolute inset-0 bg-gradient-to-r from-zinc-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
-                                    <div data-loader-glass-mini class="relative flex items-center space-x-4 p-5 bg-zinc-800/30 hover:bg-zinc-800/50 rounded-2xl transition-all duration-300 border border-zinc-700/50 hover:border-zinc-500/30 group-hover:transform">
-                                        <div class="p-2 bg-zinc-500/10 rounded-lg group-hover:bg-zinc-500/20 transition-colors">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 text-zinc-400 group-hover:scale-110 transition-transform duration-200">
-                                                <path d="M21.801 10A10 10 0 1 1 17 3.335"></path>
-                                                <path d="m9 11 3 3L22 4"></path>
-                                            </svg>
-                                        </div>
-                                        <span class="text-sm font-medium text-zinc-300 group-hover:text-zinc-100 transition-colors">Hypervisor</span>
-                                    </div>
-                                </div>
-                                
-                                <!-- Feature 2 -->
-                                <div class="group relative overflow-hidden">
-                                    <div class="absolute inset-0 bg-gradient-to-r from-zinc-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
-                                    <div data-loader-glass-mini class="relative flex items-center space-x-4 p-5 bg-zinc-800/30 hover:bg-zinc-800/50 rounded-2xl transition-all duration-300 border border-zinc-700/50 hover:border-zinc-500/30 group-hover:transform">
-                                        <div class="p-2 bg-zinc-500/10 rounded-lg group-hover:bg-zinc-500/20 transition-colors">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 text-zinc-400 group-hover:scale-110 transition-transform duration-200">
-                                                <path d="M21.801 10A10 10 0 1 1 17 3.335"></path>
-                                                <path d="m9 11 3 3L22 4"></path>
-                                            </svg>
-                                        </div>
-                                        <span class="text-sm font-medium text-zinc-300 group-hover:text-zinc-100 transition-colors">Drivers Spoofing</span>
-                                    </div>
-                                </div>
-                                
-                                <!-- Feature 3 -->
-                                <div class="group relative overflow-hidden">
-                                    <div class="absolute inset-0 bg-gradient-to-r from-zinc-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
-                                    <div data-loader-glass-mini class="relative flex items-center space-x-4 p-5 bg-zinc-800/30 hover:bg-zinc-800/50 rounded-2xl transition-all duration-300 border border-zinc-700/50 hover:border-zinc-500/30 group-hover:transform">
-                                        <div class="p-2 bg-zinc-500/10 rounded-lg group-hover:bg-zinc-500/20 transition-colors">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 text-zinc-400 group-hover:scale-110 transition-transform duration-200">
-                                                <path d="M21.801 10A10 10 0 1 1 17 3.335"></path>
-                                                <path d="m9 11 3 3L22 4"></path>
-                                            </svg>
-                                        </div>
-                                        <span class="text-sm font-medium text-zinc-300 group-hover:text-zinc-100 transition-colors">Serial Spoofing</span>
-                                    </div>
-                                </div>
-                                
-                                <!-- Feature 4 -->
-                                <div class="group relative overflow-hidden">
-                                    <div class="absolute inset-0 bg-gradient-to-r from-zinc-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
-                                    <div data-loader-glass-mini class="relative flex items-center space-x-4 p-5 bg-zinc-800/30 hover:bg-zinc-800/50 rounded-2xl transition-all duration-300 border border-zinc-700/50 hover:border-zinc-500/30 group-hover:transform">
-                                        <div class="p-2 bg-zinc-500/10 rounded-lg group-hover:bg-zinc-500/20 transition-colors">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 text-zinc-400 group-hover:scale-110 transition-transform duration-200">
-                                                <path d="M21.801 10A10 10 0 1 1 17 3.335"></path>
-                                                <path d="m9 11 3 3L22 4"></path>
-                                            </svg>
-                                        </div>
-                                        <span class="text-sm font-medium text-zinc-300 group-hover:text-zinc-100 transition-colors">MAC Address Spoofing</span>
-                                    </div>
-                                </div>
-                                
-                                <!-- Feature 5 -->
-                                <div class="group relative overflow-hidden">
-                                    <div class="absolute inset-0 bg-gradient-to-r from-zinc-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
-                                    <div data-loader-glass-mini class="relative flex items-center space-x-4 p-5 bg-zinc-800/30 hover:bg-zinc-800/50 rounded-2xl transition-all duration-300 border border-zinc-700/50 hover:border-zinc-500/30 group-hover:transform">
-                                        <div class="p-2 bg-zinc-500/10 rounded-lg group-hover:bg-zinc-500/20 transition-colors">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 text-zinc-400 group-hover:scale-110 transition-transform duration-200">
-                                                <path d="M21.801 10A10 10 0 1 1 17 3.335"></path>
-                                                <path d="m9 11 3 3L22 4"></path>
-                                            </svg>
-                                        </div>
-                                        <span class="text-sm font-medium text-zinc-300 group-hover:text-zinc-100 transition-colors">Disk Spoofing</span>
-                                    </div>
-                                </div>
-                                
-                                <!-- Feature 6 -->
-                                <div class="group relative overflow-hidden">
-                                    <div class="absolute inset-0 bg-gradient-to-r from-zinc-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
-                                    <div data-loader-glass-mini class="relative flex items-center space-x-4 p-5 bg-zinc-800/30 hover:bg-zinc-800/50 rounded-2xl transition-all duration-300 border border-zinc-700/50 hover:border-zinc-500/30 group-hover:transform">
-                                        <div class="p-2 bg-zinc-500/10 rounded-lg group-hover:bg-zinc-500/20 transition-colors">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 text-zinc-400 group-hover:scale-110 transition-transform duration-200">
-                                                <path d="M21.801 10A10 10 0 1 1 17 3.335"></path>
-                                                <path d="m9 11 3 3L22 4"></path>
-                                            </svg>
-                                        </div>
-                                        <span class="text-sm font-medium text-zinc-300 group-hover:text-zinc-100 transition-colors">TPM Spoofing</span>
-                                    </div>
-                                </div>
-                                
-                                <!-- Feature 7 -->
-                                <div class="group relative overflow-hidden">
-                                    <div class="absolute inset-0 bg-gradient-to-r from-zinc-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
-                                    <div data-loader-glass-mini class="relative flex items-center space-x-4 p-5 bg-zinc-800/30 hover:bg-zinc-800/50 rounded-2xl transition-all duration-300 border border-zinc-700/50 hover:border-zinc-500/30 group-hover:transform">
-                                        <div class="p-2 bg-zinc-500/10 rounded-lg group-hover:bg-zinc-500/20 transition-colors">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 text-zinc-400 group-hover:scale-110 transition-transform duration-200">
-                                                <path d="M21.801 10A10 10 0 1 1 17 3.335"></path>
-                                                <path d="m9 11 3 3L22 4"></path>
-                                            </svg>
-                                        </div>
-                                        <span class="text-sm font-medium text-zinc-300 group-hover:text-zinc-100 transition-colors">SMBIOS Spoofing</span>
-                                    </div>
-                                </div>
-                                
-                                <!-- Feature 8 -->
-                                <div class="group relative overflow-hidden">
-                                    <div class="absolute inset-0 bg-gradient-to-r from-zinc-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
-                                    <div data-loader-glass-mini class="relative flex items-center space-x-4 p-5 bg-zinc-800/30 hover:bg-zinc-800/50 rounded-2xl transition-all duration-300 border border-zinc-700/50 hover:border-zinc-500/30 group-hover:transform">
-                                        <div class="p-2 bg-zinc-500/10 rounded-lg group-hover:bg-zinc-500/20 transition-colors">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 text-zinc-400 group-hover:scale-110 transition-transform duration-200">
-                                                <path d="M21.801 10A10 10 0 1 1 17 3.335"></path>
-                                                <path d="m9 11 3 3L22 4"></path>
-                                            </svg>
-                                        </div>
-                                        <span class="text-sm font-medium text-zinc-300 group-hover:text-zinc-100 transition-colors">Network Adapter Spoofing</span>
-                                    </div>
-                                </div>
-                            </div>
+                            <div id="detailFeaturesGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
                         </div>
                     </div>
                 </div>
@@ -2392,7 +2395,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
                         </div>
                         <div class="p-6">
                             <div class="aspect-video rounded-2xl overflow-hidden bg-zinc-800/50">
-                                <iframe src="https://www.youtube-nocookie.com/embed/VSlHiqAtDYs?rel=0&amp;modestbranding=1&amp;enablejsapi=1" class="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" frameborder="0" allowfullscreen=""></iframe>
+                                <iframe id="detailTutorialFrame" src="https://www.youtube-nocookie.com/embed/VSlHiqAtDYs?rel=0&amp;modestbranding=1&amp;enablejsapi=1" class="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" frameborder="0" allowfullscreen=""></iframe>
                             </div>
                         </div>
                     </div>
@@ -2412,16 +2415,12 @@ html[data-theme="white"] [data-loader-glass-card]::before {
                             </div>
                         </div>
                         <div class="p-6">
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <img src="images/preview/permspoofer1.png" alt="Permanent Spoofer Preview 1" class="w-full h-auto rounded-xl cursor-pointer hover:opacity-80 transition-opacity duration-200" onclick="openImagePreview('images/preview/permspoofer1.png', 'Permanent Spoofer Preview 1')" loading="lazy">
-                                <img src="images/preview/permspoofer2.png" alt="Permanent Spoofer Preview 2" class="w-full h-auto rounded-xl cursor-pointer hover:opacity-80 transition-opacity duration-200" onclick="openImagePreview('images/preview/permspoofer2.png', 'Permanent Spoofer Preview 2')" loading="lazy">
-                                <img src="images/preview/permspoofer3.png" alt="Permanent Spoofer Preview 3" class="w-full h-auto rounded-xl cursor-pointer hover:opacity-80 transition-opacity duration-200" onclick="openImagePreview('images/preview/permspoofer3.png', 'Permanent Spoofer Preview 3')" loading="lazy">
-                            </div>
+                            <div id="detailPreviewGrid" class="grid grid-cols-1 sm:grid-cols-3 gap-4"></div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
     </main>
 
     <div id="download-access-modal" class="redeem-modal" hidden>
@@ -2887,6 +2886,26 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     });
   };
 
+  const setupPermanentSpooferDetails = () => {
+    const introSection = document.getElementById('premium-products-intro');
+    const detailsSection = document.getElementById('permanent-spoofer-details');
+    const trigger = document.getElementById('permanent-spoofer-view-details');
+    if (!introSection || !detailsSection || !trigger) return;
+
+    introSection.hidden = false;
+    detailsSection.hidden = true;
+
+    const revealDetails = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      introSection.hidden = true;
+      detailsSection.hidden = false;
+      detailsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    trigger.addEventListener('click', revealDetails);
+  };
+
   const setupMobileMenu = () => {
     const overlay = document.querySelector('[data-mobile-menu]');
     const openButton = document.querySelector('button[data-slot="sheet-trigger"]');
@@ -3339,6 +3358,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     setupThemeToggle();
     setupNavbarCollapse();
     setupFeatureTrigger();
+    setupPermanentSpooferDetails();
     setupMobileMenu();
     setupPricing();
     setupAccountingHardwareMarquee();
@@ -3353,7 +3373,59 @@ html[data-theme="white"] [data-loader-glass-card]::before {
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
 <script>
 (() => {
-  const APP_ID = '49a4f8ea0801ead8';
+  const DEFAULT_APP_ID = '49a4f8ea0801ead8';
+  const FORTNITE_APP_ID = '1c4ff4689590600f';
+  const DEFAULT_PRODUCT_KEY = 'permanent-spoofer';
+  const PRODUCT_CONFIGS = {
+    'permanent-spoofer': {
+      appId: DEFAULT_APP_ID,
+      routeHash: 'hwid-spoofer',
+      routeAliases: ['hwid-spoofer', 'permanent-spoofer'],
+      title: 'Permanent Spoofer',
+      description: 'Advanced hardware ID spoofer with hypervisor and driver-level spoofing capabilities.',
+      heroDark: 'images/permanentspoofer.png',
+      heroLight: 'images/permanentspoofer_light.png',
+      tutorialUrl: 'https://www.youtube-nocookie.com/embed/VSlHiqAtDYs?rel=0&modestbranding=1&enablejsapi=1',
+      features: [
+        'Hypervisor',
+        'Drivers Spoofing',
+        'Serial Spoofing',
+        'MAC Address Spoofing',
+        'Disk Spoofing',
+        'TPM Spoofing',
+        'SMBIOS Spoofing',
+        'Network Adapter Spoofing'
+      ],
+      previews: [
+        { src: 'images/preview/permspoofer1.png', alt: 'Permanent Spoofer Preview 1' },
+        { src: 'images/preview/permspoofer2.png', alt: 'Permanent Spoofer Preview 2' },
+        { src: 'images/preview/permspoofer3.png', alt: 'Permanent Spoofer Preview 3' }
+      ]
+    },
+    'fortnite-external': {
+      appId: FORTNITE_APP_ID,
+      routeHash: 'fortnite',
+      routeAliases: ['fortnite', 'fortnite-external'],
+      title: 'Fortnite External',
+      description: 'Premium Fortnite cheat with advanced aimbot, visuals, and radar features for competitive gameplay.',
+      heroDark: 'images/products/fortnite.png',
+      heroLight: 'images/products/fortnite1.png',
+      tutorialUrl: 'https://www.youtube-nocookie.com/embed/VSlHiqAtDYs?rel=0&modestbranding=1&enablejsapi=1',
+      features: [
+        'Aimbot',
+        'Visuals',
+        'Radar',
+        'Triggerbot',
+        'Prediction',
+        'Weapon Configs'
+      ],
+      previews: [
+        { src: 'images/preview/fortnite1.png', alt: 'Fortnite External Preview 1' },
+        { src: 'images/preview/fortnite2.png', alt: 'Fortnite External Preview 2' },
+        { src: 'images/preview/fortnite3.png', alt: 'Fortnite External Preview 3' }
+      ]
+    }
+  };
   const LOCAL_LOADER_LAUNCH_URLS = [
     'http://localhost:38491/loader-sync',
     'http://localhost:38491/launch',
@@ -3371,6 +3443,14 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     el.textContent = text || '';
     el.style.color = tone === 'error' ? 'rgb(239, 68, 68)' : tone === 'success' ? 'rgb(34, 197, 94)' : '';
   };
+  const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[char] || char));
+  const getProductConfig = (productKey) => PRODUCT_CONFIGS[productKey] || PRODUCT_CONFIGS[DEFAULT_PRODUCT_KEY];
 
   const parseEnv = (text) => {
     const env = {};
@@ -3493,10 +3573,12 @@ html[data-theme="white"] [data-loader-glass-card]::before {
   const licenseSummary = byId('redeem-license-summary');
   const discordName = byId('redeem-discord-name');
   const discordAvatar = byId('redeem-discord-avatar');
+  const loaderRouteTransition = byId('loader-route-transition');
   const navbarDiscordLinks = Array.from(document.querySelectorAll('#navbar-discord-desktop, #navbar-discord-mobile'));
   const navbarUserPopover = byId('navbar-user-popover');
   const navbarUserPopoverAvatar = byId('navbar-user-popover-avatar');
   const navbarUserPopoverName = byId('navbar-user-popover-name');
+  const navbarUserPopoverSessions = byId('navbar-user-popover-sessions');
   const navbarUserPopoverLogout = byId('navbar-user-popover-logout');
   const discordLicenseToast = byId('discord-license-toast');
   const discordLicenseToastIconSvg = byId('discord-license-toast-icon-svg');
@@ -3513,6 +3595,25 @@ html[data-theme="white"] [data-loader-glass-card]::before {
   const downloadAccessLink = byId('downloadAccessLink');
   const downloadAccessFileMeta = byId('downloadAccessFileMeta');
   const downloadAccessMessage = byId('downloadAccessMessage');
+  const premiumProductsIntro = byId('premium-products-intro');
+  const loaderSessionsView = byId('loader-sessions-view');
+  const sessionsPortfolioName = byId('sessions-portfolio-name');
+  const sessionsLoginNote = byId('sessions-login-note');
+  const sessionsProductsList = byId('sessions-products-list');
+  const sessionsBackButton = byId('sessions-back-button');
+  const permanentSpooferDetails = byId('permanent-spoofer-details');
+  const cardHwid = byId('card-hwid');
+  const cardFortnite = byId('card-fortnite');
+  const permanentSpooferViewDetails = byId('permanent-spoofer-view-details');
+  const fortniteViewDetails = byId('fortnite-view-details');
+  const productDetailsBackLink = byId('productDetailsBackLink');
+  const detailHeroImageDark = byId('detailHeroImageDark');
+  const detailHeroImageLight = byId('detailHeroImageLight');
+  const detailProductTitle = byId('detailProductTitle');
+  const detailProductDescription = byId('detailProductDescription');
+  const detailFeaturesGrid = byId('detailFeaturesGrid');
+  const detailTutorialFrame = byId('detailTutorialFrame');
+  const detailPreviewGrid = byId('detailPreviewGrid');
   const lastUpdateText = byId('lastUpdateText');
   const versionText = byId('versionText');
   const noSubscription = byId('noSubscription');
@@ -3553,6 +3654,8 @@ html[data-theme="white"] [data-loader-glass-card]::before {
   let currentDetectedLicense = null;
   let currentApplicationMeta = null;
   let currentApplicationDownloadUrl = '';
+  let activeProductKey = DEFAULT_PRODUCT_KEY;
+  let currentLoaderView = 'products';
   let currentRedeemStep = 1;
   let activeNavbarDiscordTrigger = null;
   let discordLicenseToastTimer = null;
@@ -3562,6 +3665,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
   let subscriptionRefreshTimer = null;
   let extendTimeVerifyInFlight = false;
   let extendTimeInfoPanelTimer = null;
+  let routeTransitionSequence = 0;
   const stepLabels = ['License Verification', 'Discord Connection', 'Download Access'];
   const stepProgressScales = ['0.333333', '0.666667', '1'];
   const MYVOUCH_PROFILE_URL = 'https://myvouch.es/varp';
@@ -3570,7 +3674,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
   const APPLICATION_META_PRIVATE_SELECT = `${APPLICATION_META_PUBLIC_SELECT}, download_file_name, download_file_type, download_file_size, download_file_data_base64`;
 
   const syncMenuOpenState = () => {
-    const anyModalOpen = Boolean((modal && !modal.hidden) || (extendTimeModal && !extendTimeModal.hidden) || (downloadAccessModal && !downloadAccessModal.hidden));
+    const anyModalOpen = Boolean((modal && !modal.hidden) || (extendTimeModal && !extendTimeModal.hidden) || (downloadAccessModal && !downloadAccessModal.hidden) || (loaderRouteTransition && !loaderRouteTransition.hidden));
     document.body.classList.toggle('menu-open', anyModalOpen);
   };
 
@@ -3898,6 +4002,8 @@ html[data-theme="white"] [data-loader-glass-card]::before {
       }
     });
     if (navbarUserPopoverName) navbarUserPopoverName.textContent = profile?.username || '-';
+    if (sessionsPortfolioName) sessionsPortfolioName.textContent = profile?.username || '-';
+    if (sessionsLoginNote) sessionsLoginNote.hidden = Boolean(profile?.authUserId);
     if (navbarUserPopoverAvatar) {
       if (profile?.avatarUrl) {
         navbarUserPopoverAvatar.src = profile.avatarUrl;
@@ -4064,28 +4170,121 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     }
   };
 
+  const getActiveProduct = () => getProductConfig(activeProductKey);
+  const getActiveAppId = () => getActiveProduct().appId || DEFAULT_APP_ID;
+  const normalizeStoredProductKey = (productKey) => PRODUCT_CONFIGS[productKey] ? productKey : DEFAULT_PRODUCT_KEY;
+  const getStoredPayload = (key) => {
+    const payload = safeJsonParse(localStorage.getItem(key) || '');
+    return payload && typeof payload === 'object' ? payload : null;
+  };
+  const matchesActiveProduct = (payload) => {
+    if (!payload || typeof payload !== 'object') return false;
+    if (payload.productKey) return normalizeStoredProductKey(payload.productKey) === activeProductKey;
+    if (payload.appId) return payload.appId === getActiveAppId();
+    return activeProductKey === DEFAULT_PRODUCT_KEY;
+  };
+  const resolveInitialProductKey = () => {
+    const pending = getStoredPayload(PENDING_REDEEM_KEY);
+    if (pending?.productKey) return normalizeStoredProductKey(pending.productKey);
+    const completed = getStoredPayload(COMPLETED_REDEEM_KEY);
+    if (completed?.productKey) return normalizeStoredProductKey(completed.productKey);
+    return DEFAULT_PRODUCT_KEY;
+  };
+  const saveActiveProduct = (productKey) => {
+    activeProductKey = normalizeStoredProductKey(productKey);
+  };
+  const renderFeatureCards = (features) => {
+    if (!detailFeaturesGrid) return;
+    detailFeaturesGrid.innerHTML = (Array.isArray(features) ? features : []).map((feature) => `
+      <div class="group relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-r from-zinc-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
+        <div data-loader-glass-mini class="relative flex items-center space-x-4 p-5 bg-zinc-800/30 hover:bg-zinc-800/50 rounded-2xl transition-all duration-300 border border-zinc-700/50 hover:border-zinc-500/30 group-hover:transform">
+          <div class="p-2 bg-zinc-500/10 rounded-lg group-hover:bg-zinc-500/20 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 text-zinc-400 group-hover:scale-110 transition-transform duration-200">
+              <path d="M21.801 10A10 10 0 1 1 17 3.335"></path>
+              <path d="m9 11 3 3L22 4"></path>
+            </svg>
+          </div>
+          <span class="text-sm font-medium text-zinc-300 group-hover:text-zinc-100 transition-colors">${feature}</span>
+        </div>
+      </div>
+    `).join('');
+  };
+  const renderPreviewCards = (previews) => {
+    if (!detailPreviewGrid) return;
+    detailPreviewGrid.innerHTML = (Array.isArray(previews) ? previews : []).map((preview) => `
+      <img src="${preview.src}" alt="${preview.alt}" class="w-full h-auto rounded-xl cursor-pointer hover:opacity-80 transition-opacity duration-200" onclick="openImagePreview('${preview.src}', '${preview.alt}')" loading="lazy">
+    `).join('');
+  };
+  const renderActiveProductDetails = () => {
+    const product = getActiveProduct();
+    if (detailProductTitle) detailProductTitle.textContent = product.title;
+    if (detailProductDescription) detailProductDescription.textContent = product.description;
+    if (detailHeroImageDark) {
+      detailHeroImageDark.src = product.heroDark;
+      detailHeroImageDark.alt = product.title;
+    }
+    if (detailHeroImageLight) {
+      detailHeroImageLight.src = product.heroLight;
+      detailHeroImageLight.alt = product.title;
+    }
+    if (detailTutorialFrame && product.tutorialUrl) detailTutorialFrame.src = product.tutorialUrl;
+    renderFeatureCards(product.features);
+    renderPreviewCards(product.previews);
+  };
+  const resetActiveProductState = () => {
+    stopSubscriptionRefresh();
+    currentLicense = null;
+    currentDetectedLicense = null;
+    currentApplicationMeta = null;
+    revokeApplicationDownloadUrl();
+    if (noSubscription) noSubscription.classList.remove('hidden');
+    if (bannedSubscription) bannedSubscription.classList.add('hidden');
+    if (activeSubscription) activeSubscription.classList.add('hidden');
+    if (timeLeft) timeLeft.textContent = '--';
+    if (expiryDate) expiryDate.textContent = '--';
+    if (timeProgress) timeProgress.style.width = '0%';
+    resetExtendTimeUi();
+    updateApplicationMetaCards();
+    syncLaunchButtonsState();
+  };
   const getCachedApplicationMeta = () => {
-    const cached = safeJsonParse(localStorage.getItem(APP_META_CACHE_KEY) || '');
+    const cachedStore = safeJsonParse(localStorage.getItem(APP_META_CACHE_KEY) || '');
+    if (!cachedStore || typeof cachedStore !== 'object') return null;
+    const appId = getActiveAppId();
+    const cached = cachedStore[appId] || (cachedStore.app_id ? cachedStore : null);
     if (!cached || typeof cached !== 'object') return null;
     return {
       id: cached.id || null,
-      app_id: cached.app_id || APP_ID,
+      app_id: cached.app_id || appId,
       version: cached.version || '-',
       status: cached.status || '',
-      download_updated_at: cached.download_updated_at || null
+      download_updated_at: cached.download_updated_at || null,
+      download_file_name: cached.download_file_name || '',
+      download_file_type: cached.download_file_type || '',
+      download_file_size: cached.download_file_size || null,
+      download_file_data_base64: cached.download_file_data_base64 || ''
     };
   };
 
   const saveCachedApplicationMeta = (app) => {
     if (!app || typeof app !== 'object') return;
     try {
-      localStorage.setItem(APP_META_CACHE_KEY, JSON.stringify({
+      const appId = app.app_id || getActiveAppId();
+      const cachedStore = safeJsonParse(localStorage.getItem(APP_META_CACHE_KEY) || '');
+      const nextStore = cachedStore && typeof cachedStore === 'object' && !cachedStore.app_id ? cachedStore : {};
+      nextStore[appId] = {
         id: app.id || null,
-        app_id: app.app_id || APP_ID,
+        app_id: appId,
         version: String(app.version || '-').trim() || '-',
         status: app.status || '',
-        download_updated_at: app.download_updated_at || null
-      }));
+        download_updated_at: app.download_updated_at || null,
+        download_file_name: app.download_file_name || '',
+        download_file_type: app.download_file_type || '',
+        download_file_size: app.download_file_size || null,
+        download_file_data_base64: app.download_file_data_base64 || ''
+      };
+      localStorage.setItem(APP_META_CACHE_KEY, JSON.stringify(nextStore));
     } catch (error) {}
   };
 
@@ -4100,11 +4299,25 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     return true;
   };
 
-  const loadPendingRedeem = () => safeJsonParse(localStorage.getItem(PENDING_REDEEM_KEY) || '');
-  const savePendingRedeem = (payload) => localStorage.setItem(PENDING_REDEEM_KEY, JSON.stringify(payload));
+  const loadPendingRedeem = () => {
+    const payload = getStoredPayload(PENDING_REDEEM_KEY);
+    return matchesActiveProduct(payload) ? payload : null;
+  };
+  const savePendingRedeem = (payload) => localStorage.setItem(PENDING_REDEEM_KEY, JSON.stringify({
+    ...(payload || {}),
+    appId: payload?.appId || getActiveAppId(),
+    productKey: payload?.productKey || activeProductKey
+  }));
   const clearPendingRedeem = () => localStorage.removeItem(PENDING_REDEEM_KEY);
-  const saveCompletedRedeem = (payload) => localStorage.setItem(COMPLETED_REDEEM_KEY, JSON.stringify(payload));
-  const loadCompletedRedeem = () => safeJsonParse(localStorage.getItem(COMPLETED_REDEEM_KEY) || '');
+  const saveCompletedRedeem = (payload) => localStorage.setItem(COMPLETED_REDEEM_KEY, JSON.stringify({
+    ...(payload || {}),
+    appId: payload?.appId || getActiveAppId(),
+    productKey: payload?.productKey || activeProductKey
+  }));
+  const loadCompletedRedeem = () => {
+    const payload = getStoredPayload(COMPLETED_REDEEM_KEY);
+    return matchesActiveProduct(payload) ? payload : null;
+  };
   const saveDiscordAuthIntent = (payload) => localStorage.setItem(DISCORD_AUTH_INTENT_KEY, JSON.stringify(payload));
   const loadDiscordAuthIntent = () => safeJsonParse(localStorage.getItem(DISCORD_AUTH_INTENT_KEY) || '');
   const clearDiscordAuthIntent = () => localStorage.removeItem(DISCORD_AUTH_INTENT_KEY);
@@ -4115,7 +4328,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
       global: {
         headers: {
           'x-license-key': licenseKey,
-          'x-app-id': APP_ID
+          'x-app-id': getActiveAppId()
         }
       },
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
@@ -4216,6 +4429,320 @@ html[data-theme="white"] [data-loader-glass-card]::before {
       lastUpdateText.textContent = app?.download_updated_at ? formatLoaderAppDate(app.download_updated_at) : '-';
     }
     syncDownloadAccessState(app);
+  };
+
+  const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+  const setRouteTransitionVisible = (visible) => {
+    if (!loaderRouteTransition) return;
+    if (visible) {
+      loaderRouteTransition.hidden = false;
+      syncMenuOpenState();
+      requestAnimationFrame(() => {
+        loaderRouteTransition.classList.add('is-visible');
+      });
+      return;
+    }
+    loaderRouteTransition.classList.remove('is-visible');
+    window.setTimeout(() => {
+      if (!loaderRouteTransition.classList.contains('is-visible')) {
+        loaderRouteTransition.hidden = true;
+        syncMenuOpenState();
+      }
+    }, 200);
+  };
+  const withRouteTransition = async (task, options = {}) => {
+    const enabled = Boolean(options.enabled);
+    const minDuration = Number.isFinite(options.minDuration) ? options.minDuration : 650;
+    if (!enabled) return task();
+    const sequence = ++routeTransitionSequence;
+    const startedAt = performance.now();
+    setRouteTransitionVisible(true);
+    try {
+      return await task();
+    } finally {
+      const elapsed = performance.now() - startedAt;
+      if (elapsed < minDuration) await sleep(minDuration - elapsed);
+      if (sequence === routeTransitionSequence) setRouteTransitionVisible(false);
+    }
+  };
+  const scrollWindowToTop = (behavior = 'auto') => {
+    window.scrollTo({ top: 0, left: 0, behavior });
+  };
+
+  const isSessionsRoute = () => String(location.hash || '').trim().toLowerCase() === '#sessions';
+  const getCurrentHashToken = () => String(location.hash || '').trim().replace(/^#/, '').toLowerCase();
+  const getProductKeyByHashToken = (hashToken) => {
+    const normalized = String(hashToken || '').trim().toLowerCase();
+    if (!normalized || normalized === 'sessions') return null;
+    return Object.entries(PRODUCT_CONFIGS).find(([, config]) => (config.routeAliases || []).includes(normalized))?.[0] || null;
+  };
+  const getActiveProductHash = () => getActiveProduct().routeHash || '';
+  const clearSessionsRouteHash = () => {
+    if (!isSessionsRoute()) return;
+    history.replaceState({}, document.title, `${location.pathname}${location.search}`);
+  };
+  const clearProductRouteHash = () => {
+    const hashProductKey = getProductKeyByHashToken(getCurrentHashToken());
+    if (!hashProductKey) return;
+    history.replaceState({}, document.title, `${location.pathname}${location.search}`);
+  };
+  const setProductRouteHash = (productKey) => {
+    const config = getProductConfig(productKey);
+    if (!config?.routeHash) return;
+    const nextHash = `#${config.routeHash}`;
+    if (location.hash !== nextHash) {
+      location.hash = config.routeHash;
+      return;
+    }
+    void syncLoaderRoute({ scroll: true, animate: true });
+  };
+  const setLoaderView = (view) => {
+    currentLoaderView = view;
+    if (premiumProductsIntro) premiumProductsIntro.hidden = view !== 'products';
+    if (loaderSessionsView) loaderSessionsView.hidden = view !== 'sessions';
+    if (permanentSpooferDetails) permanentSpooferDetails.hidden = view !== 'details';
+  };
+  const getProductIdentity = (item) => String(item?.app_id || item?.application_id || item?.id || '').trim();
+  const getProductConfigByIdentity = (identity) => Object.values(PRODUCT_CONFIGS).find((config) => config.appId === identity) || null;
+  const getProductDisplayName = (item) => {
+    const config = getProductConfigByIdentity(getProductIdentity(item));
+    return String(item?.name || item?.app_name || config?.title || 'Unknown Product').trim() || 'Unknown Product';
+  };
+  const getSessionProgressPercent = (license) => {
+    if (!license || isUnlimitedLicense(license)) return 100;
+    const expiresAt = parseDateSafe(license.expires_at);
+    const activatedAt = parseDateSafe(license.activated_at);
+    if (!expiresAt) return 0;
+    const remainingMs = Math.max(0, expiresAt.getTime() - Date.now());
+    if (activatedAt) {
+      const totalMs = Math.max(0, expiresAt.getTime() - activatedAt.getTime());
+      if (totalMs > 0) return Math.max(0, Math.min(100, (remainingMs / totalMs) * 100));
+    }
+    const totalMs = getLicenseDurationMs(license);
+    if (totalMs && totalMs > 0) return Math.max(0, Math.min(100, (remainingMs / totalMs) * 100));
+    return remainingMs > 0 ? 100 : 0;
+  };
+  const getFallbackApplications = () => Object.entries(PRODUCT_CONFIGS).map(([key, config]) => ({
+    id: config.appId,
+    app_id: config.appId,
+    name: config.title,
+    product_key: key
+  }));
+  const mergeApplications = (apps) => {
+    const merged = new Map();
+    [...getFallbackApplications(), ...(Array.isArray(apps) ? apps : [])].forEach((app) => {
+      const identity = getProductIdentity(app);
+      if (!identity) return;
+      const existing = merged.get(identity) || {};
+      merged.set(identity, {
+        ...existing,
+        ...app,
+        id: app?.id || existing.id || identity,
+        app_id: app?.app_id || existing.app_id || identity,
+        name: getProductDisplayName({ ...(existing || {}), ...(app || {}) })
+      });
+    });
+    return Array.from(merged.values()).sort((left, right) => getProductDisplayName(left).localeCompare(getProductDisplayName(right)));
+  };
+  const dedupeRowsById = (rows) => {
+    const map = new Map();
+    (Array.isArray(rows) ? rows : []).forEach((row) => {
+      const key = String(row?.id || `${row?.license_key || ''}:${row?.app_id || row?.application_id || ''}`).trim();
+      if (!key) return;
+      if (!map.has(key)) map.set(key, row);
+    });
+    return Array.from(map.values());
+  };
+  const getLicenseMatchesApplication = (license, app) => {
+    const licenseKeys = [String(license?.app_id || '').trim(), String(license?.application_id || '').trim()].filter(Boolean);
+    const appKeys = [String(app?.app_id || '').trim(), String(app?.id || '').trim()].filter(Boolean);
+    return appKeys.some((key) => licenseKeys.includes(key));
+  };
+  const fetchAllApplications = async () => {
+    if (!supabaseClient) return { ok: false, error: 'Supabase client is not configured.', data: [] };
+    const { data, error } = await supabaseClient
+      .from('applications')
+      .select('id, app_id, name, status, version')
+      .order('name', { ascending: true });
+    if (error) return { ok: false, error: error.message || 'Applications could not be loaded.', data: [] };
+    return { ok: true, data: Array.isArray(data) ? data : [] };
+  };
+  const findAllLicensesForDiscord = async (profile) => {
+    if (!supabaseClient || !profile?.authUserId) return { ok: true, data: [] };
+    const selectClause = 'id, license_key, app_id, application_id, app_name, status, activated_at, expires_at, duration_value, duration_unit, discord_auth_user_id, discord_user_id, discord_username';
+    const authMatches = await supabaseClient
+      .from('licenses')
+      .select(selectClause)
+      .eq('discord_auth_user_id', profile.authUserId)
+      .order('expires_at', { ascending: false, nullsFirst: false });
+    if (authMatches.error) return { ok: false, error: authMatches.error.message || 'Could not load sessions.', data: [] };
+    const rows = Array.isArray(authMatches.data) ? [...authMatches.data] : [];
+    if (profile.discordUserId) {
+      const discordMatches = await supabaseClient
+        .from('licenses')
+        .select(selectClause)
+        .eq('discord_user_id', profile.discordUserId)
+        .order('expires_at', { ascending: false, nullsFirst: false });
+      if (discordMatches.error) return { ok: false, error: discordMatches.error.message || 'Could not load sessions.', data: [] };
+      rows.push(...(Array.isArray(discordMatches.data) ? discordMatches.data : []));
+    }
+    return { ok: true, data: dedupeRowsById(rows) };
+  };
+  const renderSessionsPortfolio = async () => {
+    if (sessionsPortfolioName) sessionsPortfolioName.textContent = currentDiscordProfile?.username || '-';
+    if (sessionsLoginNote) sessionsLoginNote.hidden = Boolean(currentDiscordProfile?.authUserId);
+    if (!sessionsProductsList) return;
+    if (!currentDiscordProfile?.authUserId) {
+      sessionsProductsList.innerHTML = '';
+      return;
+    }
+
+    sessionsProductsList.innerHTML = '<div class="rounded-2xl border border-zinc-800/60 bg-zinc-900/40 px-5 py-4 text-sm text-zinc-400">Loading sessions...</div>';
+    const [appsResult, licensesResult] = await Promise.all([
+      fetchAllApplications(),
+      findAllLicensesForDiscord(currentDiscordProfile)
+    ]);
+
+    const applications = mergeApplications(appsResult.ok ? appsResult.data : []);
+    const licenses = licensesResult.ok ? licensesResult.data : [];
+    sessionsProductsList.innerHTML = applications.map((app) => {
+      const productName = escapeHtml(getProductDisplayName(app));
+      const appLicenses = licenses.filter((license) => getLicenseMatchesApplication(license, app));
+      const activeLicense = pickBestActiveLicense(appLicenses);
+      if (!activeLicense) {
+        return `
+          <div data-loader-glass-mini class="rounded-2xl border border-zinc-800/60 bg-zinc-900/40 p-6">
+            <div class="flex items-center justify-between gap-4">
+              <div>
+                <div class="text-lg font-bold text-zinc-100">${productName}</div>
+                <div class="mt-1 text-sm text-zinc-400">No active session for this product.</div>
+              </div>
+              <div class="rounded-xl border border-zinc-700/60 bg-zinc-800/40 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">Inactive</div>
+            </div>
+          </div>
+        `;
+      }
+
+      const progressPercent = getSessionProgressPercent(activeLicense);
+      const expiresLabel = escapeHtml(parseDateSafe(activeLicense.expires_at) ? formatDateTime(activeLicense.expires_at) : 'Unlimited');
+      const licenseLabel = escapeHtml(activeLicense.license_key || '-');
+      const expirationLabel = escapeHtml(formatTimeLeft(parseDateSafe(activeLicense.expires_at) ? Math.max(0, parseDateSafe(activeLicense.expires_at).getTime() - Date.now()) : Number.POSITIVE_INFINITY));
+      return `
+        <div data-loader-glass-mini class="rounded-2xl border border-zinc-800/60 bg-zinc-900/40 p-6">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <div class="text-lg font-bold text-zinc-100">${productName}</div>
+              <div class="mt-1 text-sm text-zinc-400">Active session detected for this product.</div>
+            </div>
+            <div class="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">Active</div>
+          </div>
+          <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="rounded-2xl border border-zinc-800/60 bg-zinc-950/40 p-4">
+              <div class="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">License</div>
+              <div class="mt-2 text-sm font-semibold text-zinc-100">${licenseLabel}</div>
+            </div>
+            <div class="rounded-2xl border border-zinc-800/60 bg-zinc-950/40 p-4">
+              <div class="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Expires</div>
+              <div class="mt-2 text-sm font-semibold text-zinc-100">${expiresLabel}</div>
+            </div>
+          </div>
+          <div class="mt-5 space-y-2">
+            <div class="flex items-center justify-between text-sm">
+              <span class="font-medium text-zinc-400">Expiration</span>
+              <span class="font-semibold text-zinc-100">${expirationLabel}</span>
+            </div>
+            <div class="relative w-full overflow-hidden rounded-full bg-zinc-800/60 h-2">
+              <div class="absolute inset-y-0 left-0 rounded-full" style="width: ${progressPercent.toFixed(2)}%; background: #1EB8CE; box-shadow: 0 0 10px rgba(30, 184, 206, 0.35), 0 0 18px rgba(30, 184, 206, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.18);"></div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('') || '<div class="rounded-2xl border border-zinc-800/60 bg-zinc-900/40 px-5 py-4 text-sm text-zinc-400">No products were found for the session portfolio.</div>';
+  };
+  const syncLoaderRoute = async ({ scroll = false, animate = false } = {}) => withRouteTransition(async () => {
+    if (isSessionsRoute()) {
+      if (!currentDiscordProfile?.authUserId) {
+        clearSessionsRouteHash();
+        setLoaderView(currentLoaderView === 'details' ? 'details' : 'products');
+        setDiscordLicenseToastContent({
+          tone: 'error',
+          title: 'Discord login required',
+          copy: 'Login with Discord first to open your session portfolio.',
+          actionLabel: '',
+          note: 'Session portfolio is available only for logged-in users.',
+          showAction: false,
+          autoCloseMs: 3800
+        });
+        return;
+      }
+      setLoaderView('sessions');
+      await renderSessionsPortfolio();
+      if (scroll) loaderSessionsView?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    const hashProductKey = getProductKeyByHashToken(getCurrentHashToken());
+    if (hashProductKey) {
+      if (activeProductKey !== hashProductKey || currentLoaderView !== 'details') {
+        await switchActiveProduct(hashProductKey, { revealDetails: true, preserveRoute: true });
+      } else {
+        setLoaderView('details');
+      }
+      scrollWindowToTop(scroll ? 'smooth' : 'auto');
+      return;
+    }
+    setLoaderView(currentLoaderView === 'details' ? 'details' : 'products');
+    if (currentLoaderView !== 'sessions' && currentDiscordProfile?.authUserId) {
+      if (sessionsPortfolioName) sessionsPortfolioName.textContent = currentDiscordProfile.username || '-';
+    }
+  }, { enabled: animate });
+
+  const switchActiveProduct = async (productKey, options = {}) => {
+    const revealDetails = Boolean(options.revealDetails);
+    const preserveRoute = Boolean(options.preserveRoute);
+    saveActiveProduct(productKey);
+    renderActiveProductDetails();
+    if (revealDetails) {
+      if (!preserveRoute) clearSessionsRouteHash();
+      setLoaderView('details');
+    }
+    resetActiveProductState();
+    restoreCachedApplicationMeta();
+    if (!supabaseClient) return;
+    await refreshApplicationMeta();
+    if (currentDiscordProfile?.authUserId) {
+      await syncAccountLicenseCard(currentDiscordProfile, { showMissingNotice: false });
+    }
+  };
+
+  const setupProductDetailsTriggers = () => {
+    const openProductDetailsRoute = (event, productRoute) => {
+      event.preventDefault();
+      setProductRouteHash(productRoute);
+    };
+
+    cardHwid?.addEventListener('click', (event) => {
+      openProductDetailsRoute(event, 'hwid-spoofer');
+    });
+
+    cardFortnite?.addEventListener('click', (event) => {
+      openProductDetailsRoute(event, 'fortnite');
+    });
+
+    permanentSpooferViewDetails?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      openProductDetailsRoute(event, 'permanent-spoofer');
+    });
+
+    fortniteViewDetails?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      openProductDetailsRoute(event, 'fortnite-external');
+    });
+
+    productDetailsBackLink?.addEventListener('click', (event) => {
+      event.preventDefault();
+      clearProductRouteHash();
+      setLoaderView('products');
+    });
   };
 
   const sanitizeDiscordUsername = (value) => {
@@ -4649,7 +5176,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     const authMatches = await supabaseClient
       .from('licenses')
       .select(selectClause)
-      .eq('app_id', APP_ID)
+      .eq('app_id', getActiveAppId())
       .eq('discord_auth_user_id', profile.authUserId)
       .order('expires_at', { ascending: false, nullsFirst: false })
       .limit(3);
@@ -4663,7 +5190,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
       const discordMatches = await supabaseClient
         .from('licenses')
         .select(selectClause)
-        .eq('app_id', APP_ID)
+        .eq('app_id', getActiveAppId())
         .eq('discord_user_id', profile.discordUserId)
         .order('expires_at', { ascending: false, nullsFirst: false })
         .limit(3);
@@ -4684,7 +5211,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     const { data, error } = await supabaseClient
       .from('applications')
       .select(selectClause)
-      .eq('app_id', APP_ID)
+      .eq('app_id', getActiveAppId())
       .maybeSingle();
 
     if (error || !data) {
@@ -4838,6 +5365,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     localStorage.removeItem(COMPLETED_REDEEM_KEY);
     clearPendingRedeem();
     clearDiscordAuthIntent();
+    clearSessionsRouteHash();
     stopSubscriptionRefresh();
     currentLicense = null;
     currentDiscordProfile = null;
@@ -4850,6 +5378,8 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     if (noSubscription) noSubscription.classList.remove('hidden');
     if (bannedSubscription) bannedSubscription.classList.add('hidden');
     if (activeSubscription) activeSubscription.classList.add('hidden');
+    setLoaderView('products');
+    if (sessionsProductsList) sessionsProductsList.innerHTML = '';
     syncLaunchButtonsState();
     setStep(1);
     setModalOpen(false);
@@ -5028,14 +5558,19 @@ html[data-theme="white"] [data-loader-glass-card]::before {
   const validateLicense = async (licenseKey) => {
     const scopedClient = createScopedLicenseClient(licenseKey);
     if (!scopedClient) return { ok: false, error: 'Supabase client is not configured.' };
+    const activeAppId = getActiveAppId();
 
     const { data, error } = await scopedClient
       .from('licenses')
-      .select('id, license_key, status, activated_at, hwid, discord_auth_user_id, discord_user_id, discord_username, discord_avatar_url')
+      .select('id, license_key, app_id, status, activated_at, hwid, discord_auth_user_id, discord_user_id, discord_username, discord_avatar_url')
       .eq('license_key', licenseKey)
+      .eq('app_id', activeAppId)
       .maybeSingle();
 
     if (error || !data) return { ok: false, error: 'License not found!' };
+    if (String(data.app_id || '').trim() !== activeAppId) {
+      return { ok: false, error: 'This license belongs to a different product.' };
+    }
 
     const status = normalizeLicenseStatus(data.status);
     if (status === 'banned' || status === 'revoked' || status === 'disabled') {
@@ -5051,6 +5586,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
   const claimDiscordForLicense = async (licenseKey, profile) => {
     const scopedClient = createScopedLicenseClient(licenseKey);
     if (!scopedClient) return { ok: false, error: 'Supabase client is not configured.' };
+    const activeAppId = getActiveAppId();
 
     const { data, error } = await scopedClient
       .from('licenses')
@@ -5062,10 +5598,14 @@ html[data-theme="white"] [data-loader-glass-card]::before {
         discord_connected_at: new Date().toISOString()
       })
       .eq('license_key', licenseKey)
-      .select('license_key, discord_username, discord_avatar_url, discord_auth_user_id')
+      .eq('app_id', activeAppId)
+      .select('license_key, app_id, discord_username, discord_avatar_url, discord_auth_user_id')
       .maybeSingle();
 
     if (error || !data) return { ok: false, error: error?.message || 'Could not assign Discord to this license.' };
+    if (String(data.app_id || '').trim() !== activeAppId) {
+      return { ok: false, error: 'This license belongs to a different product.' };
+    }
     return { ok: true, data };
   };
 
@@ -5190,21 +5730,33 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     }
   };
 
+  activeProductKey = getProductKeyByHashToken(getCurrentHashToken()) || resolveInitialProductKey();
+  try {
+    localStorage.removeItem('loader_active_product_v1');
+  } catch (error) {}
+  renderActiveProductDetails();
+  setLoaderView(getProductKeyByHashToken(getCurrentHashToken()) ? 'details' : (activeProductKey !== DEFAULT_PRODUCT_KEY ? 'details' : 'products'));
+  setupProductDetailsTriggers();
+  if (getCurrentHashToken()) setRouteTransitionVisible(true);
+
   const initSupabase = async () => {
     const env = await fetchEnv();
     if (!env) {
       showMessage(redeemMessage, 'Missing env.txt with SUPABASE_URL and SUPABASE_ANON_KEY.', 'error');
+      setRouteTransitionVisible(false);
       return;
     }
 
     supabaseConfig = pickSupabaseConfig(env);
     if (!supabaseConfig.url || !supabaseConfig.anonKey) {
       showMessage(redeemMessage, 'Missing SUPABASE_URL or SUPABASE_ANON_KEY.', 'error');
+      setRouteTransitionVisible(false);
       return;
     }
 
     if (!window.supabase?.createClient) {
       showMessage(redeemMessage, 'Supabase client failed to load.', 'error');
+      setRouteTransitionVisible(false);
       return;
     }
 
@@ -5235,6 +5787,7 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     }
 
     cleanupDiscordAuthReturnUrl();
+    await syncLoaderRoute({ scroll: Boolean(getCurrentHashToken()), animate: Boolean(getCurrentHashToken()) });
     syncLaunchButtonsState();
   };
 
@@ -5303,8 +5856,25 @@ html[data-theme="white"] [data-loader-glass-card]::before {
       setNavbarUserPopoverOpen(shouldOpen, link);
     });
   });
+  navbarUserPopoverSessions?.addEventListener('click', async () => {
+    setNavbarUserPopoverOpen(false);
+    if (!currentDiscordProfile?.authUserId) {
+      await syncLoaderRoute({ scroll: false });
+      return;
+    }
+    if (!isSessionsRoute()) {
+      location.hash = 'sessions';
+      return;
+    }
+    await syncLoaderRoute({ scroll: true, animate: true });
+  });
   navbarUserPopoverLogout?.addEventListener('click', () => {
     logoutSubscription();
+  });
+  sessionsBackButton?.addEventListener('click', () => {
+    clearSessionsRouteHash();
+    setLoaderView('products');
+    premiumProductsIntro?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   discordLicenseToastClose?.addEventListener('click', () => setDiscordLicenseToastOpen(false));
   discordLicenseToastRedeem?.addEventListener('click', () => {
@@ -5332,6 +5902,10 @@ html[data-theme="white"] [data-loader-glass-card]::before {
     if (navbarUserPopover && !navbarUserPopover.hidden && activeNavbarDiscordTrigger) {
       positionNavbarUserPopover(activeNavbarDiscordTrigger);
     }
+  });
+  window.addEventListener('hashchange', () => {
+    const shouldAnimate = Boolean(getCurrentHashToken());
+    void syncLoaderRoute({ scroll: true, animate: shouldAnimate });
   });
 
   verifyButton?.addEventListener('click', async () => {
