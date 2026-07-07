@@ -2,6 +2,8 @@
 
 import { Check, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { lockBodyScroll } from "../../lib/body-scroll-lock";
 
 export function LoaderDownloadModal({ open, onOpenChange, downloadUrl, fileName, fileMeta }) {
   const [message, setMessage] = useState({ text: "", tone: "" });
@@ -11,26 +13,25 @@ export function LoaderDownloadModal({ open, onOpenChange, downloadUrl, fileName,
     if (!open) {
       setMessage({ text: "", tone: "" });
       setConsentAccepted(false);
-      document.body.classList.remove("menu-open");
       return undefined;
     }
 
-    document.body.classList.add("menu-open");
+    const unlockScroll = lockBodyScroll();
     const onKeyDown = (event) => {
       if (event.key === "Escape") onOpenChange(false);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
-      document.body.classList.remove("menu-open");
+      unlockScroll();
     };
   }, [open, onOpenChange]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
   const canDownload = Boolean(downloadUrl && consentAccepted);
 
-  return (
+  return createPortal(
     <div
       className="redeem-modal"
       role="dialog"
@@ -99,6 +100,7 @@ export function LoaderDownloadModal({ open, onOpenChange, downloadUrl, fileName,
           <div className={`redeem-message${message.tone ? ` is-${message.tone}` : ""}`}>{message.text}</div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

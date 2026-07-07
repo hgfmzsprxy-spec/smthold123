@@ -3,6 +3,8 @@
 import Link from "next/link";
 import {
   Ban,
+  ChevronLeft,
+  CircleCheck,
   Clock3,
   Download,
   Eye,
@@ -13,12 +15,21 @@ import {
   LogOut,
   Pencil,
   RefreshCw,
-  ShieldCheck,
   Snowflake,
   Trash2,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { SkeletonBlock } from "./Skeleton";
+import {
+  buildFreezeLicensePatch,
+  buildUnfreezeLicensePatch,
+  formatLicenseExpiresLabel,
+  isApplicationFrozen,
+  isFreezableLicense,
+  isFrozenLicense,
+} from "../../lib/license-freeze";
+import { APPLICATION_PRODUCT_STATUSES, formatApplicationProductStatus, formatDisplayDateTime } from "../../lib/loader-redeem";
 import styles from "./AdminPage.module.css";
 
 function parseEnv(text) {
@@ -108,7 +119,30 @@ function pickSupabaseConfig(env) {
   return { url, anonKey };
 }
 
+function getEnvFromProcess() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+
+  if (!url && !anonKey) return null;
+
+  return {
+    NEXT_PUBLIC_SUPABASE_URL: url,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: anonKey,
+  };
+}
+
+const MISSING_SUPABASE_MESSAGE =
+  "Missing Supabase configuration. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment.";
+
+const ADMIN_AUTH_STEP_LABELS = ["Login", "Password"];
+const ADMIN_AUTH_STEP_SCALES = ["0.5", "1"];
+
 async function fetchEnv() {
+  const fromProcess = getEnvFromProcess();
+  if (fromProcess?.NEXT_PUBLIC_SUPABASE_URL && fromProcess?.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return fromProcess;
+  }
+
   const candidates = ["/env.txt", "./env.txt"];
 
   for (const path of candidates) {
@@ -172,16 +206,104 @@ function sessionStorageKey() {
 }
 
 function formatDate(value) {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  return date.toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDisplayDateTime(value);
+}
+
+function AdminDashboardSkeleton() {
+  return (
+    <>
+      <div className={styles.metrics}>
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div className={styles.metricCard} key={`metric-skeleton-${index}`}>
+            <span className={styles.metricIcon}>
+              <SkeletonBlock className={styles.skeletonMetricIconFill} />
+            </span>
+            <div className={styles.metricContent}>
+              <span className={styles.metricLabel}>
+                <SkeletonBlock className={styles.skeletonMetricLabel} />
+              </span>
+              <strong className={styles.metricValue}>
+                <SkeletonBlock className={styles.skeletonMetricValue} />
+              </strong>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className={styles.mainGrid}>
+        <section className={styles.tableModule}>
+          <div className={styles.tableHeader}>
+            <h2 className={styles.noSpaceBottom}>Application List</h2>
+            <button className={styles.primaryButton} type="button" disabled tabIndex={-1} aria-hidden="true">
+              <Layers3 size={16} />
+              Create Application
+            </button>
+          </div>
+          <div className={styles.tableContent}>
+            <div className={styles.tableList}>
+              <div className={styles.tableHeaders}>
+                <div>Application</div>
+                <div>APP-ID</div>
+                <div>Licenses</div>
+                <div>Version</div>
+                <div>Status</div>
+                <div>Webhook</div>
+                <div>Action</div>
+              </div>
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div className={styles.tableRow} key={`app-row-skeleton-${index}`}>
+                  {Array.from({ length: 7 }).map((__, cellIndex) => (
+                    <div key={`app-cell-skeleton-${index}-${cellIndex}`}>
+                      <SkeletonBlock className={styles.skeletonTableCell} />
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className={styles.licensesPanel}>
+          <div className={styles.tableModule}>
+            <div className={styles.tableHeader}>
+              <h2 className={styles.noSpaceBottom}>Licenses</h2>
+              <div className={styles.headerActions}>
+                <button className={styles.secondaryButton} type="button" disabled tabIndex={-1} aria-hidden="true">
+                  <Snowflake size={16} />
+                  Freeze
+                </button>
+                <button className={styles.primaryButton} type="button" disabled tabIndex={-1} aria-hidden="true">
+                  <KeyRound size={16} />
+                  Generate
+                </button>
+              </div>
+            </div>
+            <div className={styles.tableContent}>
+              <div className={styles.tableList}>
+                <div className={styles.licenseTableHeaders}>
+                  <div>Discord User</div>
+                  <div>License Key</div>
+                  <div>Duration</div>
+                  <div>Status</div>
+                  <div>Expires</div>
+                  <div>Action</div>
+                </div>
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div className={styles.licenseTableRow} key={`license-row-skeleton-${index}`}>
+                    {Array.from({ length: 6 }).map((__, cellIndex) => (
+                      <div key={`license-cell-skeleton-${index}-${cellIndex}`}>
+                        <SkeletonBlock className={styles.skeletonTableCell} />
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </>
+  );
 }
 
 function metricValue(value) {
@@ -190,11 +312,24 @@ function metricValue(value) {
 
 function getStatusTone(status) {
   const normalized = String(status || "").toLowerCase();
-  if (normalized === "active") return "blue";
-  if (normalized === "paused" || normalized === "inactive" || normalized === "not activated") return "gray";
-  if (normalized === "maintenance" || normalized === "expired") return "yellow";
-  if (normalized === "banned" || normalized === "revoked") return "red";
+  if (normalized === "undetected" || normalized === "active" || normalized === "activated") return "red";
+  if (normalized === "maintenance" || normalized === "paused" || normalized === "freezed" || normalized === "frozen") {
+    return "yellow";
+  }
+  if (normalized === "detected" || normalized === "banned" || normalized === "revoked") return "white";
+  if (normalized === "not activated" || normalized === "inactive") return "gray";
   return "gray";
+}
+
+function formatApplicationStatus(status) {
+  return formatApplicationProductStatus(status);
+}
+
+function formatLicenseStatus(status) {
+  const normalized = String(status || "").trim();
+  if (!normalized) return "-";
+  if (normalized.toLowerCase() === "active") return "Activated";
+  return normalized;
 }
 
 function parseDateSafe(value) {
@@ -237,7 +372,7 @@ function fileToDataUrl(file) {
 }
 
 function getLicenseFallbackStatus(license) {
-  if (license?.activated_at) return "Active";
+  if (license?.activated_at) return "Activated";
   return "Not Activated";
 }
 
@@ -376,15 +511,17 @@ export default function AdminPage() {
   const allowedAdminEmail = useMemo(() => "admin@admin.com", []);
 
   const [config, setConfig] = useState({ url: "", anonKey: "" });
-  const [configHint, setConfigHint] = useState("Loading Supabase configuration...");
+  const [configHint, setConfigHint] = useState("Connecting to database...");
   const [session, setSession] = useState({ email: "", accessToken: "", refreshToken: "", expiresAt: 0 });
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [authStep, setAuthStep] = useState(1);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authBusy, setAuthBusy] = useState("");
   const [authMessage, setAuthMessage] = useState({ text: "", type: "" });
 
   const [dashboardBusy, setDashboardBusy] = useState(false);
+  const [dashboardInitialized, setDashboardInitialized] = useState(false);
   const [dashboardMessage, setDashboardMessage] = useState({ text: "", type: "" });
   const [metrics, setMetrics] = useState({ total: null, active: null, expired: null, banned: null });
   const [applications, setApplications] = useState([]);
@@ -431,6 +568,7 @@ export default function AdminPage() {
     durationValue: 30,
     durationUnit: "days",
   });
+  const [expiresTick, setExpiresTick] = useState(0);
 
   const [uploadFile, setUploadFile] = useState(null);
 
@@ -466,7 +604,7 @@ export default function AdminPage() {
 
       const nextConfig = pickSupabaseConfig(env || {});
       setConfig(nextConfig);
-      setConfigHint(nextConfig.url && nextConfig.anonKey ? `Connected to ${nextConfig.url}` : "Missing Supabase configuration in /env.txt");
+      setConfigHint(nextConfig.url && nextConfig.anonKey ? "Connected to Database" : MISSING_SUPABASE_MESSAGE);
 
       try {
         const raw = localStorage.getItem(sessionStorageKey());
@@ -499,6 +637,9 @@ export default function AdminPage() {
 
   function clearSession() {
     setSession({ email: "", accessToken: "", refreshToken: "", expiresAt: 0 });
+    setAuthStep(1);
+    setPassword("");
+    setPasswordVisible(false);
     localStorage.removeItem(sessionStorageKey());
     setApplications([]);
     setAllLicenses([]);
@@ -517,6 +658,7 @@ export default function AdminPage() {
     setUploadFile(null);
     setMetrics({ total: null, active: null, expired: null, banned: null });
     setDashboardMessage({ text: "", type: "" });
+    setDashboardInitialized(false);
   }
 
   async function refreshAccessToken(force = false) {
@@ -626,27 +768,113 @@ export default function AdminPage() {
   }
 
   async function updateApplicationRecord(app, payload) {
-    await restRequest(`applications?id=eq.${encodeURIComponent(app.id)}`, {
+    const updated = await restRequest(`applications?id=eq.${encodeURIComponent(app.id)}`, {
       method: "PATCH",
       headers: { Prefer: "return=representation" },
       body: JSON.stringify(payload),
     });
-    await syncLicenseAppMetadata(app, payload);
+    void syncLicenseAppMetadata(app, payload);
+    return updated;
   }
 
   async function updateLicenseRecord(licenseId, payload) {
-    await restRequest(`licenses?id=eq.${encodeURIComponent(licenseId)}`, {
+    return restRequest(`licenses?id=eq.${encodeURIComponent(licenseId)}`, {
       method: "PATCH",
       headers: { Prefer: "return=representation" },
       body: JSON.stringify(payload),
     });
   }
 
-  async function loadDashboard() {
+  function computeMetricsFromLicenses(licensesSafe) {
+    const now = Date.now();
+    const total = licensesSafe.length;
+    const banned = licensesSafe.filter((entry) => ["Banned", "Revoked"].includes(entry.status)).length;
+    const expired = licensesSafe.filter((entry) => {
+      if (entry.status === "Expired") return true;
+      if (!entry.expires_at) return false;
+      return new Date(entry.expires_at).getTime() <= now;
+    }).length;
+    const active = licensesSafe.filter((entry) => {
+      if (isFrozenLicense(entry)) return false;
+      const status = entry.status || "";
+      const expires = entry.expires_at ? new Date(entry.expires_at).getTime() : null;
+      return Boolean(entry.activated_at) && !["Banned", "Revoked", "Expired"].includes(status) && (!expires || expires > now);
+    }).length;
+
+    return { total, active, expired, banned };
+  }
+
+  function applyDashboardData(appsSafe, licensesSafe) {
+    setApplications(appsSafe);
+    setAllLicenses(licensesSafe);
+    setSelectedAppId((current) =>
+      current && appsSafe.some((entry) => entry.id === current) ? current : appsSafe[0]?.id || ""
+    );
+    setMetrics(computeMetricsFromLicenses(licensesSafe));
+  }
+
+  function patchApplicationLocal(appId, patch) {
+    setApplications((prev) => prev.map((entry) => (entry.id === appId ? { ...entry, ...patch } : entry)));
+  }
+
+  function patchLicenseLocal(licenseId, patch) {
+    setAllLicenses((prev) => {
+      const next = prev.map((entry) => (entry.id === licenseId ? { ...entry, ...patch } : entry));
+      setMetrics(computeMetricsFromLicenses(next));
+      return next;
+    });
+  }
+
+  function appendLicensesLocal(rows) {
+    const safeRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
+    if (!safeRows.length) return;
+
+    setAllLicenses((prev) => {
+      const next = [...safeRows, ...prev];
+      setMetrics(computeMetricsFromLicenses(next));
+      return next;
+    });
+  }
+
+  function appendApplicationsLocal(rows) {
+    const safeRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
+    if (!safeRows.length) return;
+
+    setApplications((prev) => [...safeRows, ...prev]);
+    if (safeRows[0]?.id) setSelectedAppId(safeRows[0].id);
+  }
+
+  function removeLicenseLocal(licenseId) {
+    setAllLicenses((prev) => {
+      const next = prev.filter((entry) => entry.id !== licenseId);
+      setMetrics(computeMetricsFromLicenses(next));
+      return next;
+    });
+  }
+
+  function removeApplicationLocal(app) {
+    setApplications((prev) => prev.filter((entry) => entry.id !== app.id));
+    setAllLicenses((prev) => {
+      const next = prev.filter(
+        (entry) => entry.application_id !== app.id && (!app.app_id || entry.app_id !== app.app_id)
+      );
+      setMetrics(computeMetricsFromLicenses(next));
+      return next;
+    });
+  }
+
+  function reportActionError(error) {
+    setDashboardMessage({ text: error?.message || String(error), type: "error" });
+  }
+
+  async function loadDashboard(options = {}) {
+    const silent = options.silent === true;
     if (!signedIn) return;
 
-    setDashboardBusy(true);
-    setDashboardMessage({ text: "", type: "" });
+    if (!silent) {
+      setDashboardBusy(true);
+      setDashboardMessage({ text: "", type: "" });
+    }
 
     try {
       const [apps, licenses] = await Promise.all([
@@ -654,36 +882,17 @@ export default function AdminPage() {
         restRequest("licenses?select=*&order=created_at.desc"),
       ]);
 
-      const appsSafe = Array.isArray(apps) ? apps : [];
-      const licensesSafe = Array.isArray(licenses) ? licenses : [];
-
-      setApplications(appsSafe);
-      setAllLicenses(licensesSafe);
-
-      const nextSelectedAppId =
-        selectedAppId && appsSafe.some((entry) => entry.id === selectedAppId) ? selectedAppId : appsSafe[0]?.id || "";
-      setSelectedAppId(nextSelectedAppId);
-
-      const now = Date.now();
-      const total = licensesSafe.length;
-      const banned = licensesSafe.filter((entry) => ["Banned", "Revoked"].includes(entry.status)).length;
-      const expired = licensesSafe.filter((entry) => {
-        if (entry.status === "Expired") return true;
-        if (!entry.expires_at) return false;
-        return new Date(entry.expires_at).getTime() <= now;
-      }).length;
-      const active = licensesSafe.filter((entry) => {
-        const status = entry.status || "";
-        const expires = entry.expires_at ? new Date(entry.expires_at).getTime() : null;
-        return Boolean(entry.activated_at) && !["Banned", "Revoked", "Expired"].includes(status) && (!expires || expires > now);
-      }).length;
-
-      setMetrics({ total, active, expired, banned });
+      applyDashboardData(Array.isArray(apps) ? apps : [], Array.isArray(licenses) ? licenses : []);
     } catch (error) {
-      setDashboardMessage({ text: error?.message || String(error), type: "error" });
+      reportActionError(error);
     } finally {
-      setDashboardBusy(false);
+      if (!silent) setDashboardBusy(false);
+      setDashboardInitialized(true);
     }
+  }
+
+  function refreshDashboardSilently() {
+    void loadDashboard({ silent: true });
   }
 
   useEffect(() => {
@@ -711,6 +920,16 @@ export default function AdminPage() {
     setSelectedLicenses(filtered);
   }, [selectedAppId, applications, allLicenses]);
 
+  useEffect(() => {
+    if (!signedIn || !selectedLicenses.length) return undefined;
+
+    const timerId = window.setInterval(() => {
+      setExpiresTick((value) => value + 1);
+    }, 1000);
+
+    return () => window.clearInterval(timerId);
+  }, [signedIn, selectedLicenses.length]);
+
   function selectApplication(appId) {
     setSelectedAppId(appId);
     setGenerateMessage({ text: "", type: "" });
@@ -722,7 +941,7 @@ export default function AdminPage() {
       name: app.name || "",
       description: app.description || "",
       version: app.version || "1.0.0",
-      status: app.status || "Active",
+      status: formatApplicationProductStatus(app.status),
       webhook: app.webhook || "",
     });
     setEditAppMessage({ text: "", type: "" });
@@ -761,6 +980,21 @@ export default function AdminPage() {
     link.click();
   }
 
+  async function handleEmailStep(event) {
+    event.preventDefault();
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) return;
+
+    if (normalizedEmail !== allowedAdminEmail.toLowerCase()) {
+      setAuthMessage({ text: "Access denied for this account.", type: "error" });
+      return;
+    }
+
+    setAuthMessage({ text: "", type: "" });
+    setAuthStep(2);
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
 
@@ -771,7 +1005,7 @@ export default function AdminPage() {
     }
 
     if (!config.url || !config.anonKey) {
-      setAuthMessage({ text: "Missing Supabase configuration in /env.txt", type: "error" });
+      setAuthMessage({ text: MISSING_SUPABASE_MESSAGE, type: "error" });
       return;
     }
 
@@ -850,24 +1084,25 @@ export default function AdminPage() {
         app_id: appId,
       };
 
+      let created;
       try {
-        await restRequest("applications", {
+        created = await restRequest("applications", {
           method: "POST",
           headers: { Prefer: "return=representation" },
           body: JSON.stringify(payloadFull),
         });
       } catch {
-        await restRequest("applications", {
+        created = await restRequest("applications", {
           method: "POST",
           headers: { Prefer: "return=representation" },
           body: JSON.stringify(payloadMinimal),
         });
       }
 
+      appendApplicationsLocal(Array.isArray(created) ? created : [created]);
       setAppForm({ name: "", description: "", version: "1.0.0", status: "Active", webhook: "" });
       setCreateAppMessage({ text: `Created application with APP-ID ${appId}`, type: "success" });
       setCreateModalOpen(false);
-      await loadDashboard();
     } catch (error) {
       setCreateAppMessage({ text: error?.message || String(error), type: "error" });
     }
@@ -883,22 +1118,27 @@ export default function AdminPage() {
       return;
     }
 
-    try {
-      const payload = {
-        name: editForm.name.trim(),
-        description: editForm.description.trim() || null,
-        version: editForm.version.trim() || "1.0.0",
-        status: editForm.status,
-        webhook: editForm.webhook.trim() || null,
-      };
+    const nextVersion = editForm.version.trim() || "1.0.0";
+    const payload = {
+      name: editForm.name.trim(),
+      description: editForm.description.trim() || null,
+      version: nextVersion,
+      status: editForm.status,
+      webhook: editForm.webhook.trim() || null,
+    };
 
-      await updateApplicationRecord(activeEditApp, payload);
-      setEditAppMessage({ text: "Saved", type: "success" });
-      setEditModalOpen(false);
-      await loadDashboard();
-    } catch (error) {
-      setEditAppMessage({ text: error?.message || String(error), type: "error" });
+    if (nextVersion !== String(activeEditApp.version || "1.0.0").trim()) {
+      payload.download_updated_at = new Date().toISOString();
     }
+
+    patchApplicationLocal(activeEditApp.id, payload);
+    setEditAppMessage({ text: "Saved", type: "success" });
+    setEditModalOpen(false);
+
+    void updateApplicationRecord(activeEditApp, payload).catch((error) => {
+      reportActionError(error);
+      refreshDashboardSilently();
+    });
   }
 
   async function handleUploadPackage(event) {
@@ -908,9 +1148,9 @@ export default function AdminPage() {
     if (!activePackageApp) return;
 
     try {
+      const nextVersion = packageForm.version.trim() || null;
       const payload = {
-        version: packageForm.version.trim() || null,
-        status: packageForm.status,
+        version: nextVersion,
       };
 
       if (uploadFile) {
@@ -929,13 +1169,19 @@ export default function AdminPage() {
         payload.download_file_size = Number(uploadFile.size || 0) || 0;
         payload.download_file_data_base64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
         payload.download_updated_at = new Date().toISOString();
+      } else if (nextVersion && nextVersion !== String(activePackageApp.version || "").trim()) {
+        payload.download_updated_at = new Date().toISOString();
       }
 
-      await updateApplicationRecord(activePackageApp, payload);
+      patchApplicationLocal(activePackageApp.id, payload);
       setPackageMessage({ text: "Package saved.", type: "success" });
       setPackageModalOpen(false);
       setUploadFile(null);
-      await loadDashboard();
+
+      void updateApplicationRecord(activePackageApp, payload).catch((error) => {
+        setPackageMessage({ text: error?.message || String(error), type: "error" });
+        refreshDashboardSilently();
+      });
     } catch (error) {
       setPackageMessage({ text: error?.message || String(error), type: "error" });
     }
@@ -983,89 +1229,123 @@ export default function AdminPage() {
         app_id: selectedApp.app_id || null,
       }));
 
+      let created;
       try {
-        await restRequest("licenses", {
+        created = await restRequest("licenses", {
           method: "POST",
           headers: { Prefer: "return=representation" },
           body: JSON.stringify(rowsFull),
         });
       } catch {
-        await restRequest("licenses", {
+        created = await restRequest("licenses", {
           method: "POST",
           headers: { Prefer: "return=representation" },
           body: JSON.stringify(rowsMinimal),
         });
       }
 
+      appendLicensesLocal(Array.isArray(created) ? created : [created]);
       setGenerateMessage({ text: `Generated ${qty} license(s).`, type: "success" });
       setLicenseDrawerOpen(false);
-      await loadDashboard();
     } catch (error) {
       setGenerateMessage({ text: error?.message || String(error), type: "error" });
     }
   }
 
-  async function handleToggleAppStatus(app) {
-    const nextStatus = app.status === "Active" ? "Paused" : "Active";
+  function handleToggleAppFreeze(app) {
+    if (!app) return;
 
-    try {
-      await updateApplicationRecord(app, { status: nextStatus });
-      await loadDashboard();
-    } catch (error) {
-      setDashboardMessage({ text: error?.message || String(error), type: "error" });
-    }
-  }
+    const isFrozen = isApplicationFrozen(app);
+    const appLicenses = allLicenses.filter(
+      (entry) => entry.application_id === app.id || (app.app_id && entry.app_id === app.app_id)
+    );
 
-  async function handleDeleteApplication(app) {
-    if (!window.confirm(`Delete application "${app.name}"?`)) return;
+    if (isFrozen) {
+      const licensesToUnfreeze = appLicenses.filter((entry) => isFrozenLicense(entry));
+      patchApplicationLocal(app.id, { is_frozen: false });
 
-    try {
-      await restRequest(`applications?id=eq.${encodeURIComponent(app.id)}`, {
-        method: "DELETE",
+      licensesToUnfreeze.forEach((license) => {
+        const patch = buildUnfreezeLicensePatch(license);
+        patchLicenseLocal(license.id, patch);
+        void updateLicenseRecord(license.id, patch).catch((error) => {
+          reportActionError(error);
+          refreshDashboardSilently();
+        });
       });
 
-      if (selectedAppId === app.id) {
-        setSelectedAppId("");
-        setSelectedLicenses([]);
-      }
-
-      await loadDashboard();
-    } catch (error) {
-      setDashboardMessage({ text: error?.message || String(error), type: "error" });
+      void updateApplicationRecord(app, { is_frozen: false }).catch((error) => {
+        patchApplicationLocal(app.id, { is_frozen: true });
+        reportActionError(error);
+        refreshDashboardSilently();
+      });
+      return;
     }
+
+    const licensesToFreeze = appLicenses.filter((entry) => isFreezableLicense(entry));
+    patchApplicationLocal(app.id, { is_frozen: true });
+
+    licensesToFreeze.forEach((license) => {
+      const patch = buildFreezeLicensePatch(license);
+      patchLicenseLocal(license.id, patch);
+      void updateLicenseRecord(license.id, patch).catch((error) => {
+        reportActionError(error);
+        refreshDashboardSilently();
+      });
+    });
+
+    void updateApplicationRecord(app, { is_frozen: true }).catch((error) => {
+      patchApplicationLocal(app.id, { is_frozen: false });
+      reportActionError(error);
+      refreshDashboardSilently();
+    });
   }
 
-  async function handleResetHwid(license) {
-    try {
-      await updateLicenseRecord(license.id, { hwid: null });
-      await loadDashboard();
-    } catch (error) {
-      setDashboardMessage({ text: error?.message || String(error), type: "error" });
+  function handleDeleteApplication(app) {
+    if (!window.confirm(`Delete application "${app.name}"?`)) return;
+
+    if (selectedAppId === app.id) {
+      setSelectedAppId("");
+      setSelectedLicenses([]);
     }
+
+    removeApplicationLocal(app);
+    void restRequest(`applications?id=eq.${encodeURIComponent(app.id)}`, {
+      method: "DELETE",
+    }).catch((error) => {
+      reportActionError(error);
+      refreshDashboardSilently();
+    });
   }
 
-  async function handleToggleBan(license) {
-    try {
-      const isCurrentlyBanned = String(license.status || "").toLowerCase() === "banned";
-      const payload = {
-        status: isCurrentlyBanned ? getLicenseFallbackStatus(license) : "Banned",
-      };
-      await updateLicenseRecord(license.id, payload);
-      await loadDashboard();
-    } catch (error) {
-      setDashboardMessage({ text: error?.message || String(error), type: "error" });
-    }
+  function handleResetHwid(license) {
+    const previousHwid = license.hwid ?? null;
+    patchLicenseLocal(license.id, { hwid: null });
+    void updateLicenseRecord(license.id, { hwid: null }).catch((error) => {
+      patchLicenseLocal(license.id, { hwid: previousHwid });
+      reportActionError(error);
+    });
   }
 
-  async function handleDeleteLicense(license) {
+  function handleToggleBan(license) {
+    const previousStatus = license.status || "";
+    const isCurrentlyBanned = String(previousStatus).toLowerCase() === "banned";
+    const nextStatus = isCurrentlyBanned ? getLicenseFallbackStatus(license) : "Banned";
+
+    patchLicenseLocal(license.id, { status: nextStatus });
+    void updateLicenseRecord(license.id, { status: nextStatus }).catch((error) => {
+      patchLicenseLocal(license.id, { status: previousStatus });
+      reportActionError(error);
+    });
+  }
+
+  function handleDeleteLicense(license) {
     if (!window.confirm(`Delete license "${license.license_key || license.id}"?`)) return;
 
-    try {
-      await restRequest(`licenses?id=eq.${encodeURIComponent(license.id)}`, { method: "DELETE" });
-      await loadDashboard();
-    } catch (error) {
-      setDashboardMessage({ text: error?.message || String(error), type: "error" });
-    }
+    removeLicenseLocal(license.id);
+    void restRequest(`licenses?id=eq.${encodeURIComponent(license.id)}`, { method: "DELETE" }).catch((error) => {
+      reportActionError(error);
+      refreshDashboardSilently();
+    });
   }
 
   async function handleExtendLicense(event) {
@@ -1082,153 +1362,247 @@ export default function AdminPage() {
       return;
     }
 
-    try {
-      const activatedAt = parseDateSafe(activeExtendLicense.activated_at);
-      const expiresAt = parseDateSafe(activeExtendLicense.expires_at);
-      const currentDurationMs = durationToMs(activeExtendLicense.duration_value, activeExtendLicense.duration_unit);
-      const addedMs = unit === "unlimited" ? Number.POSITIVE_INFINITY : durationToMs(durationValue, unit);
-      const payload = {};
+    const activatedAt = parseDateSafe(activeExtendLicense.activated_at);
+    const expiresAt = parseDateSafe(activeExtendLicense.expires_at);
+    const currentDurationMs = durationToMs(activeExtendLicense.duration_value, activeExtendLicense.duration_unit);
+    const addedMs = unit === "unlimited" ? Number.POSITIVE_INFINITY : durationToMs(durationValue, unit);
+    const payload = {};
 
-      if (unit === "unlimited") {
-        payload.duration_value = null;
-        payload.duration_unit = "unlimited";
-        if (activatedAt) payload.expires_at = null;
-      } else if (!activatedAt) {
-        const totalMs = (Number.isFinite(currentDurationMs) ? currentDurationMs : 0) + addedMs;
-        payload.duration_value = Math.max(1, Math.round(totalMs / 1000));
-        payload.duration_unit = "seconds";
-      } else {
-        const baseDate = expiresAt && expiresAt.getTime() > Date.now() ? expiresAt : new Date();
-        payload.expires_at = new Date(baseDate.getTime() + addedMs).toISOString();
-      }
-
-      await updateLicenseRecord(activeExtendLicense.id, payload);
-      setExtendMessage({ text: "Expire time updated.", type: "success" });
-      setExtendModalOpen(false);
-      await loadDashboard();
-    } catch (error) {
-      setExtendMessage({ text: error?.message || String(error), type: "error" });
+    if (unit === "unlimited") {
+      payload.duration_value = null;
+      payload.duration_unit = "unlimited";
+      if (activatedAt) payload.expires_at = null;
+    } else if (!activatedAt) {
+      const totalMs = (Number.isFinite(currentDurationMs) ? currentDurationMs : 0) + addedMs;
+      payload.duration_value = Math.max(1, Math.round(totalMs / 1000));
+      payload.duration_unit = "seconds";
+    } else {
+      const baseDate = expiresAt && expiresAt.getTime() > Date.now() ? expiresAt : new Date();
+      payload.expires_at = new Date(baseDate.getTime() + addedMs).toISOString();
     }
+
+    const licenseId = activeExtendLicense.id;
+    patchLicenseLocal(licenseId, payload);
+    setExtendMessage({ text: "Expire time updated.", type: "success" });
+    setExtendModalOpen(false);
+
+    void updateLicenseRecord(licenseId, payload).catch((error) => {
+      setExtendMessage({ text: error?.message || String(error), type: "error" });
+      refreshDashboardSilently();
+    });
   }
 
   return (
     <main className={styles.page}>
-      <div className={styles.shell}>
-        <div className={styles.card}>
-          <div className={styles.brand}>
-            <Link href="/" className={styles.brandLink}>
-              <img src="/images/unbanhwid-logo.png" alt="unbanhwid.com" />
-              <span>unbanhwid.com</span>
-            </Link>
-          </div>
-
-          {!signedIn ? (
-            <>
-              <div className={styles.head}>
-                <div className={styles.headIcon}>
-                  <ShieldCheck size={20} />
-                </div>
-                <div>
-                  <h1>Sign in</h1>
-                  <p>unbanhwid.com administrator authentication panel</p>
-                </div>
+      {!signedIn ? (
+        <div className={styles.adminAuthStage}>
+          <div className="redeem-panel">
+            <div className="redeem-panel-header">
+              <div>
+                <div className="redeem-panel-kicker">Admin Panel</div>
+                <h3>Sign in</h3>
               </div>
+              <Link href="/" className="redeem-close" aria-label="Back to site">
+                <X size={18} />
+              </Link>
+            </div>
 
-              <form className={styles.form} onSubmit={handleSubmit} autoComplete="on">
-                <div className={styles.group}>
-                  <label htmlFor="auth-email">Email</label>
-                  <input
-                    id="auth-email"
-                    type="email"
-                    placeholder="example@gmail.com"
-                    autoComplete="email"
-                    required
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    disabled={Boolean(authBusy)}
+            <div className="redeem-panel-body">
+              <div className="redeem-progress" aria-label="Sign-in progress">
+                <div className="redeem-progress-meta">
+                  <span>Step {authStep} of 2</span>
+                  <span>{ADMIN_AUTH_STEP_LABELS[authStep - 1]}</span>
+                </div>
+                <div className="redeem-progress-track" aria-hidden="true">
+                  <div
+                    className="redeem-progress-fill"
+                    style={{ "--redeem-progress-scale": ADMIN_AUTH_STEP_SCALES[authStep - 1] }}
                   />
                 </div>
-
-                <div className={styles.group}>
-                  <label htmlFor="auth-password">Password</label>
-                  <div className={styles.passwordWrap}>
-                    <input
-                      id="auth-password"
-                      type={passwordVisible ? "text" : "password"}
-                      placeholder="Password"
-                      autoComplete="current-password"
-                      required
-                      spellCheck="false"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      disabled={Boolean(authBusy)}
-                    />
-                    <button
-                      type="button"
-                      className={styles.passwordToggle}
-                      aria-label={passwordVisible ? "Hide password" : "Show password"}
-                      onClick={() => setPasswordVisible((value) => !value)}
-                    >
-                      {passwordVisible ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className={styles.hint}>{configHint}</div>
-                <div className={`${styles.message} ${authMessage.type ? styles[`message${authMessage.type}`] : ""}`}>
-                  {authMessage.text}
-                </div>
-
-                <button className={styles.primaryButton} type="submit" disabled={Boolean(authBusy)}>
-                  {authBusy || "Sign in"}
-                </button>
-              </form>
-            </>
-          ) : (
-            <div className={styles.dashboard}>
-              <div className={styles.dashboardTop}>
-                <div>
-                  <h1>Generate License</h1>
-                  <p>unbanhwid.com authentication panel</p>
-                </div>
-
-                <div className={styles.dashboardTopActions}>
-                  <span className={styles.hint}>Signed in as {session.email || allowedAdminEmail}</span>
-                  <button
-                    className={styles.secondaryButton}
-                    type="button"
-                    onClick={() => {
-                      clearSession();
-                      setAuthMessage({ text: "", type: "" });
-                    }}
-                  >
-                    <LogOut size={16} />
-                    Sign out
-                  </button>
-                </div>
               </div>
 
+              <form
+                className="redeem-section"
+                onSubmit={(event) => {
+                  if (authStep === 1) void handleEmailStep(event);
+                  else void handleSubmit(event);
+                }}
+                autoComplete="on"
+              >
+                {authStep === 1 ? (
+                  <>
+                    <div className="redeem-field">
+                      <label htmlFor="auth-email">Email</label>
+                      <input
+                        id="auth-email"
+                        className="redeem-input"
+                        type="email"
+                        placeholder="admin@admin.com"
+                        autoComplete="email"
+                        required
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
+                        disabled={Boolean(authBusy)}
+                      />
+                    </div>
+
+                    <div className="redeem-actions">
+                      <button className="redeem-button redeem-button-primary" type="submit" disabled={Boolean(authBusy)}>
+                        Continue
+                      </button>
+                    </div>
+
+                    {configHint ? (
+                      <div
+                        className={`${styles.authDbStatus}${
+                          configHint === "Connected to Database"
+                            ? ` ${styles.authDbStatusReady}`
+                            : configHint === MISSING_SUPABASE_MESSAGE
+                              ? ` ${styles.authDbStatusError}`
+                              : ` ${styles.authDbStatusLoading}`
+                        }`}
+                      >
+                        {configHint}
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    <button
+                      className="redeem-info-back"
+                      type="button"
+                      onClick={() => {
+                        setAuthStep(1);
+                        setAuthMessage({ text: "", type: "" });
+                        setPassword("");
+                      }}
+                    >
+                      <ChevronLeft size={16} />
+                      <span>Back</span>
+                    </button>
+
+                    <p className="redeem-muted">Enter your administrator password to continue.</p>
+
+                    <div className="redeem-summary">
+                      <div>
+                        <div className="redeem-summary-label">Email</div>
+                        <div className="redeem-summary-value">{email.trim()}</div>
+                      </div>
+                    </div>
+
+                    <div className="redeem-field">
+                      <label htmlFor="auth-password">Password</label>
+                      <div className="redeem-input-row">
+                        <input
+                          id="auth-password"
+                          className="redeem-input"
+                          type={passwordVisible ? "text" : "password"}
+                          placeholder="Password"
+                          autoComplete="current-password"
+                          required
+                          spellCheck="false"
+                          value={password}
+                          onChange={(event) => setPassword(event.target.value)}
+                          disabled={Boolean(authBusy)}
+                        />
+                        <button
+                          type="button"
+                          className="redeem-info-button"
+                          aria-label={passwordVisible ? "Hide password" : "Show password"}
+                          onClick={() => setPasswordVisible((value) => !value)}
+                        >
+                          {passwordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="redeem-actions">
+                      <button className="redeem-button redeem-button-primary" type="submit" disabled={Boolean(authBusy)}>
+                        {authBusy || "Sign in"}
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                <div className={`redeem-message${authMessage.type ? ` is-${authMessage.type}` : ""}`}>
+                  {authMessage.text}
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className={styles.shell}>
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <div className={styles.cardHeaderMain}>
+                <img className={styles.cardHeaderLogo} src="/images/unbanhwid-logo.png" alt="unbanhwid.com" />
+                <h1 className={styles.cardHeaderTitle}>unbanhwid.com management panel</h1>
+              </div>
+
+              <div className={styles.dashboardTopActions}>
+                <button
+                  className={styles.secondaryButton}
+                  type="button"
+                  onClick={() => {
+                    clearSession();
+                    setAuthMessage({ text: "", type: "" });
+                  }}
+                >
+                  <LogOut size={16} />
+                  Sign out
+                </button>
+              </div>
+            </div>
+
+            <div className={styles.cardBody}>
+            <div className={styles.dashboard}>
+
+              {!dashboardInitialized ? (
+                <AdminDashboardSkeleton />
+              ) : (
+                <>
               <div className={styles.metrics}>
-                <div className={`${styles.metricCard} ${styles.metricPurple}`}>
-                  <span>Total Licenses</span>
-                  <strong>{metricValue(metrics.total)}</strong>
+                <div className={styles.metricCard}>
+                  <span className={styles.metricIcon} aria-hidden="true">
+                    <KeyRound size={22} />
+                  </span>
+                  <div className={styles.metricContent}>
+                    <span className={styles.metricLabel}>Total Licenses</span>
+                    <strong className={styles.metricValue}>{metricValue(metrics.total)}</strong>
+                  </div>
                 </div>
-                <div className={`${styles.metricCard} ${styles.metricGreen}`}>
-                  <span>Active</span>
-                  <strong>{metricValue(metrics.active)}</strong>
+                <div className={styles.metricCard}>
+                  <span className={styles.metricIcon} aria-hidden="true">
+                    <CircleCheck size={22} />
+                  </span>
+                  <div className={styles.metricContent}>
+                    <span className={styles.metricLabel}>Active</span>
+                    <strong className={styles.metricValue}>{metricValue(metrics.active)}</strong>
+                  </div>
                 </div>
-                <div className={`${styles.metricCard} ${styles.metricYellow}`}>
-                  <span>Expired</span>
-                  <strong>{metricValue(metrics.expired)}</strong>
+                <div className={styles.metricCard}>
+                  <span className={styles.metricIcon} aria-hidden="true">
+                    <Clock3 size={22} />
+                  </span>
+                  <div className={styles.metricContent}>
+                    <span className={styles.metricLabel}>Expired</span>
+                    <strong className={styles.metricValue}>{metricValue(metrics.expired)}</strong>
+                  </div>
                 </div>
-                <div className={`${styles.metricCard} ${styles.metricRose}`}>
-                  <span>Banned</span>
-                  <strong>{metricValue(metrics.banned)}</strong>
+                <div className={styles.metricCard}>
+                  <span className={styles.metricIcon} aria-hidden="true">
+                    <Ban size={22} />
+                  </span>
+                  <div className={styles.metricContent}>
+                    <span className={styles.metricLabel}>Banned</span>
+                    <strong className={styles.metricValue}>{metricValue(metrics.banned)}</strong>
+                  </div>
                 </div>
               </div>
 
               <div className={`${styles.message} ${dashboardMessage.type ? styles[`message${dashboardMessage.type}`] : ""}`}>
-                {dashboardBusy ? "Loading dashboard..." : dashboardMessage.text}
+                {dashboardMessage.text}
               </div>
 
               <div className={styles.mainGrid}>
@@ -1286,7 +1660,8 @@ export default function AdminPage() {
                               <div>
                                 <span className={styles.status}>
                                   <span className={`${styles.indicationColor} ${styles[`tone${tone}`]}`} />
-                                  {app.status || "Active"}
+                                  {formatApplicationStatus(app.status)}
+                                  {isApplicationFrozen(app) ? " · Freezed" : ""}
                                 </span>
                               </div>
                               <div className={styles.tableEllipsis}>{app.webhook || "-"}</div>
@@ -1302,7 +1677,7 @@ export default function AdminPage() {
                                       openEditApplication(app);
                                     }}
                                   >
-                                    <Pencil size={14} />
+                                    <Pencil size={15} />
                                   </button>
                                   <button
                                     type="button"
@@ -1314,7 +1689,7 @@ export default function AdminPage() {
                                       openPackageManager(app);
                                     }}
                                   >
-                                    <Download size={14} />
+                                    <Download size={15} />
                                   </button>
                                   <button
                                     type="button"
@@ -1326,7 +1701,7 @@ export default function AdminPage() {
                                       selectApplication(app.id);
                                     }}
                                   >
-                                    <KeyRound size={14} />
+                                    <KeyRound size={15} />
                                   </button>
                                   <button
                                     type="button"
@@ -1338,7 +1713,7 @@ export default function AdminPage() {
                                       handleDeleteApplication(app);
                                     }}
                                   >
-                                    <Trash2 size={14} />
+                                    <Trash2 size={15} />
                                   </button>
                                 </div>
                               </div>
@@ -1352,7 +1727,7 @@ export default function AdminPage() {
                   </div>
 
                   <div className={styles.tableBottomCaption}>
-                    <div>{dashboardBusy ? "Loading applications..." : "Applications are loaded from Supabase."}</div>
+                    <div>Applications are loaded from Supabase.</div>
                   </div>
                 </section>
 
@@ -1365,10 +1740,10 @@ export default function AdminPage() {
                           className={styles.secondaryButton}
                           type="button"
                           disabled={!selectedApp}
-                          onClick={() => selectedApp && handleToggleAppStatus(selectedApp)}
+                          onClick={() => selectedApp && handleToggleAppFreeze(selectedApp)}
                         >
                           <Snowflake size={16} />
-                          Freeze
+                          {selectedApp && isApplicationFrozen(selectedApp) ? "Unfreeze" : "Freeze"}
                         </button>
                         <button
                           className={styles.primaryButton}
@@ -1398,6 +1773,7 @@ export default function AdminPage() {
 
                         {selectedLicenses.length ? (
                           selectedLicenses.map((license) => {
+                            void expiresTick;
                             const tone = getStatusTone(license.status);
                             const displayUser =
                               license.discord_username ||
@@ -1426,10 +1802,10 @@ export default function AdminPage() {
                                 <div>
                                   <span className={styles.status}>
                                     <span className={`${styles.indicationColor} ${styles[`tone${tone}`]}`} />
-                                    {license.status || "-"}
+                                    {formatLicenseStatus(license.status)}
                                   </span>
                                 </div>
-                                <div>{license.expires_at ? formatDate(license.expires_at) : "-"}</div>
+                                <div className={styles.licenseExpiresCell}>{formatLicenseExpiresLabel(license)}</div>
                                 <div className={styles.tableActionsCell}>
                                   <div className={styles.adminInlineActions}>
                                     <button
@@ -1439,7 +1815,7 @@ export default function AdminPage() {
                                       aria-label="HWID Reset"
                                       onClick={() => handleResetHwid(license)}
                                     >
-                                      <RefreshCw size={14} />
+                                      <RefreshCw size={15} />
                                     </button>
                                     <button
                                       type="button"
@@ -1448,7 +1824,7 @@ export default function AdminPage() {
                                       aria-label="Extend Time"
                                       onClick={() => openExtendLicense(license)}
                                     >
-                                      <Clock3 size={14} />
+                                      <Clock3 size={15} />
                                     </button>
                                     <button
                                       type="button"
@@ -1457,7 +1833,7 @@ export default function AdminPage() {
                                       aria-label="License Information"
                                       onClick={() => openLicenseInfo(license)}
                                     >
-                                      <Info size={14} />
+                                      <Info size={15} />
                                     </button>
                                     <button
                                       type="button"
@@ -1466,7 +1842,7 @@ export default function AdminPage() {
                                       aria-label="Ban"
                                       onClick={() => handleToggleBan(license)}
                                     >
-                                      <Ban size={14} />
+                                      <Ban size={15} />
                                     </button>
                                     <button
                                       type="button"
@@ -1475,7 +1851,7 @@ export default function AdminPage() {
                                       aria-label="Delete"
                                       onClick={() => handleDeleteLicense(license)}
                                     >
-                                      <Trash2 size={14} />
+                                      <Trash2 size={15} />
                                     </button>
                                   </div>
                                 </div>
@@ -1498,6 +1874,8 @@ export default function AdminPage() {
                   </div>
                 </section>
               </div>
+                </>
+              )}
 
               {createModalOpen ? (
                 <div className={`${styles.sideDrawer} ${styles.sideDrawerOpen}`} onClick={() => setCreateModalOpen(false)}>
@@ -1626,9 +2004,11 @@ export default function AdminPage() {
                               value={editForm.status}
                               onChange={(event) => setEditForm((value) => ({ ...value, status: event.target.value }))}
                             >
-                              <option value="Active">Active</option>
-                              <option value="Paused">Paused</option>
-                              <option value="Maintenance">Maintenance</option>
+                              {APPLICATION_PRODUCT_STATUSES.map((status) => (
+                                <option key={status} value={status}>
+                                  {status}
+                                </option>
+                              ))}
                             </select>
                           </div>
                         </div>
@@ -1839,6 +2219,7 @@ export default function AdminPage() {
                               value={extendForm.durationUnit}
                               onChange={(event) => setExtendForm((value) => ({ ...value, durationUnit: event.target.value }))}
                             >
+                              <option value="minutes">Minutes</option>
                               <option value="days">Days</option>
                               <option value="weeks">Weeks</option>
                               <option value="months">Months</option>
@@ -1910,6 +2291,7 @@ export default function AdminPage() {
                             setLicenseForm((value) => ({ ...value, durationUnit: event.target.value }))
                           }
                         >
+                          <option value="minutes">Minutes</option>
                           <option value="days">Days</option>
                           <option value="weeks">Weeks</option>
                           <option value="months">Months</option>
@@ -1947,9 +2329,10 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
-          )}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </main>
   );
 }

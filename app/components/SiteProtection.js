@@ -2,9 +2,32 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { runAccessChecks, setAccessCookie } from "../../lib/site-access";
 
-const DEVTOOLS_SIZE_THRESHOLD = 140;
-const DEVTOOLS_POLL_MS = 750;
+const DEVTOOLS_SIZE_THRESHOLD = 160;
+const DEVTOOLS_POLL_MS = 500;
+const DEVTOOLS_CONFIRM_COUNT = 3;
+
+function isProtectionEnabled() {
+  return process.env.NEXT_PUBLIC_DISABLE_SITE_PROTECTION !== "true";
+}
+
+function isMobileOrUnreliableDevToolsEnvironment() {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return true;
+
+  const ua = navigator.userAgent || "";
+  const isIOS =
+    /iPhone|iPad|iPod/i.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/i.test(ua);
+  const isSafari = /Safari/i.test(ua) && !/Chrom(e|ium)|CriOS|Edg|OPR|FxiOS/i.test(ua);
+
+  return isIOS || isAndroid || isSafari;
+}
+
+function canReliablyDetectDevTools() {
+  return !isMobileOrUnreliableDevToolsEnvironment();
+}
 
 const SCRAPER_HOST_PATTERN =
   /saveweb2zip|webtozip|website-ripper|httrack|sitesucker|teleport|webcopy|archive\.org/i;
@@ -22,8 +45,8 @@ function isBlockedShortcut(event) {
   const shift = event.shiftKey;
   const alt = event.altKey;
 
-  if (key === "F12" || key === "F7") return true;
-  if (ctrlOrMeta && shift && (key === "I" || key === "J" || key === "C" || key === "K" || key === "S" || key === "U")) {
+  if (key === "F12" || key === "F7" || key === "F8") return true;
+  if (ctrlOrMeta && shift && (key === "I" || key === "J" || key === "C" || key === "K" || key === "S" || key === "U" || key === "E")) {
     return true;
   }
   if (ctrlOrMeta && (key === "U" || key === "S" || key === "P" || key === "A")) return true;
@@ -88,12 +111,34 @@ export default function SiteProtection() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (process.env.NODE_ENV !== "production") return undefined;
+    if (!isProtectionEnabled()) return undefined;
     if (pathname?.startsWith("/admin") || pathname === "/site-access") return undefined;
+
+    let devToolsTriggered = false;
+    let devToolsPositiveCount = 0;
+
+    function pollDevTools() {
+      if (devToolsTriggered || !canReliablyDetectDevTools()) return;
+
+      if (!isDevToolsOpen()) {
+        devToolsPositiveCount = 0;
+        return;
+      }
+
+      devToolsPositiveCount += 1;
+      if (devToolsPositiveCount < DEVTOOLS_CONFIRM_COUNT) return;
+
+      devToolsTriggered = true;
+      redirectOnDevTools();
+    }
 
     document.body.classList.add("site-protected");
     blockScraperReferrer();
     breakOutOfIframe();
+
+    if (runAccessChecks()) {
+      setAccessCookie();
+    }
 
     function handleContextMenu(event) {
       if (isFormField(event.target)) return;
@@ -130,19 +175,13 @@ export default function SiteProtection() {
       pollDevTools();
     }
 
-    let devToolsTriggered = false;
-
-    function pollDevTools() {
-      if (devToolsTriggered) return;
-      if (!isDevToolsOpen()) return;
-
-      devToolsTriggered = true;
-      redirectOnDevTools();
+    let pollId;
+    const devToolsPollingEnabled = canReliablyDetectDevTools();
+    if (devToolsPollingEnabled) {
+      pollId = window.setInterval(pollDevTools, DEVTOOLS_POLL_MS);
+      window.addEventListener("resize", pollDevTools);
+      document.addEventListener("visibilitychange", handleVisibilityLeak);
     }
-
-    const pollId = window.setInterval(pollDevTools, DEVTOOLS_POLL_MS);
-    window.addEventListener("resize", pollDevTools);
-    document.addEventListener("visibilitychange", handleVisibilityLeak);
     document.addEventListener("contextmenu", handleContextMenu);
     document.addEventListener("selectstart", handleSelectStart);
     document.addEventListener("copy", handleCopy);
@@ -151,13 +190,13 @@ export default function SiteProtection() {
     document.addEventListener("drop", handleDrop);
     document.addEventListener("keydown", handleKeyDown, true);
 
-    pollDevTools();
-
     return () => {
       document.body.classList.remove("site-protected");
-      window.clearInterval(pollId);
-      window.removeEventListener("resize", pollDevTools);
-      document.removeEventListener("visibilitychange", handleVisibilityLeak);
+      if (pollId) window.clearInterval(pollId);
+      if (devToolsPollingEnabled) {
+        window.removeEventListener("resize", pollDevTools);
+        document.removeEventListener("visibilitychange", handleVisibilityLeak);
+      }
       document.removeEventListener("contextmenu", handleContextMenu);
       document.removeEventListener("selectstart", handleSelectStart);
       document.removeEventListener("copy", handleCopy);

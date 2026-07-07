@@ -1,9 +1,17 @@
 .page {
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top, rgba(163, 46, 59, 0.22), rgba(163, 46, 59, 0) 42%),
-    #0a0c10;
-  padding: 40px 20px 56px;
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  background: #0b0d11;
+  padding: 24px 20px 40px;
+}
+
+.page *,
+.page *::before,
+.page *::after {
+  box-sizing: border-box;
 }
 
 .shell {
@@ -11,35 +19,171 @@
   margin: 0 auto;
 }
 
+.adminAuthStage {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px 20px;
+}
+
+.adminAuthStage .redeem-panel {
+  width: min(100%, 460px);
+}
+
+.adminAuthStage :global(.redeem-panel-kicker) {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.adminAuthStage :global(.redeem-panel-header h3) {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.adminAuthStage :global(.redeem-panel-header) {
+  padding: 14px 18px;
+}
+
+.adminAuthStage :global(.redeem-panel-body) {
+  padding: 14px 18px 18px;
+}
+
+.adminAuthStage :global(.redeem-field label) {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.adminAuthStage :global(.redeem-input) {
+  padding: 10px 12px;
+  font-size: 13px;
+  border-radius: 8px;
+}
+
+.adminAuthStage :global(.redeem-button) {
+  min-height: 38px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+}
+
+.adminAuthStage :global(.redeem-progress-meta) {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.adminAuthStage :global(.redeem-progress-track) {
+  height: 6px;
+}
+
+.adminAuthStage :global(.redeem-progress-fill) {
+  box-shadow: none;
+}
+
+.authDbStatus {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.authDbStatusLoading {
+  color: #9ea5af;
+}
+
+.authDbStatusReady {
+  color: #9ea5af;
+  font-weight: 500;
+}
+
+.authDbStatusError {
+  color: #ef4444;
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .card {
-  border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015)),
-    rgba(10, 12, 16, 0.94);
-  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.32);
-  padding: 28px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: #101318;
+  box-shadow: none;
+  padding: 0;
+  overflow: hidden;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.cardHeaderMain {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cardHeaderLogo {
+  width: auto;
+  height: 23px;
+  max-width: none;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.cardHeaderTitle {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 600;
+  color: #eceff3;
+}
+
+.cardHeader .dashboardTopActions {
+  gap: 8px;
+}
+
+.cardHeader .secondaryButton {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+.cardHeader .secondaryButton svg {
+  width: 14px;
+  height: 14px;
+}
+
+.cardBody {
+  padding: 16px 18px 18px;
 }
 
 .brand {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 
 .brandLink {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  color: #fff;
+  gap: 10px;
+  color: #e8eaed;
   text-decoration: none;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .brandLink img {
-  width: 150px;
+  width: 108px;
   max-width: 100%;
   height: auto;
 }
@@ -71,23 +215,23 @@
 
 .head h1,
 .dashboardTop h1 {
-  font-size: 30px;
-  line-height: 1.1;
-  font-weight: 700;
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 600;
 }
 
 .head p,
 .dashboardTop p {
-  margin: 8px 0 0;
-  color: #9ea5af;
-  font-size: 14px;
-  line-height: 1.5;
+  margin: 6px 0 0;
+  color: #8b929c;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .dashboard {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .dashboardTop {
@@ -106,18 +250,18 @@
 }
 
 .hint {
-  min-height: 20px;
-  color: #9ea5af;
-  font-size: 13px;
+  min-height: 18px;
+  color: #8b929c;
+  font-size: 12px;
 }
 
 .message {
-  min-height: 20px;
-  border-radius: 12px;
+  min-height: 18px;
+  border-radius: 8px;
   padding: 0;
-  color: #9ea5af;
-  font-size: 13px;
-  line-height: 1.5;
+  color: #8b929c;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .message:empty {
@@ -160,20 +304,21 @@
 
 .group label {
   display: block;
-  color: #d5d7db;
-  font-size: 13px;
-  font-weight: 600;
+  color: #b4bac3;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .group input,
 .group select,
 .group textarea {
   width: 100%;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.18);
+  padding: 9px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
   color: #fff;
+  font-size: 13px;
   outline: none;
 }
 
@@ -194,9 +339,12 @@
 
 .passwordWrap {
   position: relative;
+  width: 100%;
+  min-width: 0;
 }
 
 .passwordWrap input {
+  width: 100%;
   padding-right: 50px;
 }
 
@@ -240,20 +388,21 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: 40px;
-  padding: 0 18px;
-  border-radius: 9999px;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
   border: 0;
-  font-weight: 650;
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
-  transition: box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+  transition: background 0.15s ease, opacity 0.15s ease;
 }
 
 .primaryButton:hover,
 .secondaryButton:hover,
 .rowActionButton:hover {
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .primaryButton:disabled,
@@ -261,148 +410,140 @@
 .rowActionButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
 }
 
 .primaryButton {
-  background: var(--primary, #a32e3b);
+  background: #8f2a35;
   color: #fff;
-  box-shadow: 0 0 0 2px rgba(163, 46, 59, 0.45), inset 0 -3px 6px 0 rgba(255, 255, 255, 0.28);
+  box-shadow: none;
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: #a32e3b;
 }
 
 .secondaryButton {
-  background: rgba(163, 46, 59, 0.1);
-  color: #f5d6da;
-  box-shadow: 0 0 0 2px rgba(163, 46, 59, 0.4), inset 0 -3px 6px 0 rgba(163, 46, 59, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: #d5d7db;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+.secondaryButton:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .rowActionButton {
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
+  width: 31px;
+  height: 31px;
+  min-width: 31px;
   padding: 0;
-  border-radius: 4px;
-  background: var(--primary, #a32e3b);
+  border-radius: 6px;
+  background: #a32e3b;
   color: #fff;
-  box-shadow: 0 0 0 2px rgba(163, 46, 59, 0.35), inset 0 -3px 6px 0 rgba(255, 255, 255, 0.22);
+  box-shadow: none;
+}
+
+.rowActionButton svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.15;
+  flex-shrink: 0;
+}
+
+.rowActionButton:hover:not(:disabled) {
+  background: #b83644;
+  color: #fff;
 }
 
 .metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 10px;
+  margin-bottom: 4px;
 }
 
 .metricCard {
-  --metric-accent: rgba(163, 46, 59, 0.18);
-  --metric-shadow: rgba(163, 46, 59, 0.2);
-  position: relative;
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.16);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  overflow: hidden;
-  transition: transform 220ms ease, box-shadow 220ms ease, background 220ms ease;
-}
-
-.metricCard::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0.18));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  opacity: 0.75;
-  pointer-events: none;
-}
-
-.metricCard::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(80% 70% at 18% 8%, var(--metric-accent), rgba(0, 0, 0, 0) 55%);
-  opacity: 0.65;
-  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .metricCard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.22), 0 18px 60px var(--metric-shadow);
+  background: rgba(255, 255, 255, 0.035);
 }
 
-.metricPurple {
-  --metric-accent: rgba(118, 63, 249, 0.22);
-  --metric-shadow: rgba(118, 63, 249, 0.22);
+.metricIcon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 9px;
+  background: rgba(163, 46, 59, 0.12);
+  color: #c94b58;
+  flex: 0 0 auto;
 }
 
-.metricGreen {
-  --metric-accent: rgba(1, 221, 165, 0.18);
-  --metric-shadow: rgba(1, 221, 165, 0.18);
+.metricIcon svg {
+  width: 20px;
+  height: 20px;
 }
 
-.metricYellow {
-  --metric-accent: rgba(255, 183, 49, 0.18);
-  --metric-shadow: rgba(255, 183, 49, 0.16);
+.metricContent {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 
-.metricRose {
-  --metric-accent: rgba(255, 1, 116, 0.16);
-  --metric-shadow: rgba(255, 1, 116, 0.14);
+.metricLabel {
+  color: #8b929c;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
 }
 
-.metricCard span,
-.metricCard strong {
-  position: relative;
-  z-index: 1;
-}
-
-.metricCard {
-  padding: 18px;
-}
-
-.metricCard span {
-  color: rgba(255, 255, 255, 0.68);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.metricCard strong {
-  display: block;
-  margin-top: 28px;
-  color: #fff;
-  font-size: 34px;
+.metricValue {
+  margin: 0;
+  color: #f3f4f6;
+  font-size: 20px;
   line-height: 1;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .mainGrid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 24px;
+  gap: 16px;
 }
 
 .tableModule {
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.16);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.28);
+  background: rgba(255, 255, 255, 0.02);
+  box-shadow: none;
 }
 
 .tableHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.04);
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.02);
   gap: 12px;
+}
+
+.tableHeader h2 {
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .tableContent {
@@ -418,37 +559,38 @@
 .tableRow {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  column-gap: 16px;
+  column-gap: 12px;
   row-gap: 0;
   align-items: center;
-  padding: 14px 20px;
+  padding: 11px 16px;
   min-width: 980px;
+  font-size: 12px;
 }
 
 .tableHeaders {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  color: #9ea5af;
-  font-weight: 650;
-  font-size: 0.85rem;
-  letter-spacing: 0.02em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  color: #8b929c;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 .tableRow {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  color: #d8dce1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: #c5cad1;
 }
 
 .tableRow:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.025);
 }
 
 .tableRowActive {
-  background: rgba(163, 46, 59, 0.09);
+  background: rgba(163, 46, 59, 0.06);
 }
 
 .tableTitle {
-  font-weight: 650;
-  color: #fff;
+  font-weight: 600;
+  color: #eceff3;
+  font-size: 12px;
 }
 
 .tableEllipsis {
@@ -484,26 +626,34 @@
   background: rgba(148, 163, 184, 0.7);
 }
 
-.toneblue {
-  background: rgba(30, 184, 206, 1);
+.tonegray {
+  background: #6b7280;
 }
 
-.tonegray {
-  background: rgba(107, 114, 128, 1);
+.tonegreen {
+  background: #4ade80;
 }
 
 .toneyellow {
-  background: rgba(250, 204, 21, 1);
+  background: #facc15;
+}
+
+.toneorange {
+  background: #f97316;
 }
 
 .tonered {
-  background: rgba(239, 68, 68, 1);
+  background: #c94b58;
+}
+
+.tonewhite {
+  background: #ffffff;
 }
 
 .tableBottomCaption {
-  padding: 12px 20px;
-  color: #9ea5af;
-  font-size: 0.9rem;
+  padding: 10px 16px;
+  color: #8b929c;
+  font-size: 12px;
 }
 
 .licensesPanel {
@@ -523,18 +673,18 @@
 .licenseTableRow {
   display: grid;
   grid-template-columns: minmax(180px, 1.15fr) minmax(220px, 1.45fr) minmax(120px, 0.9fr) minmax(140px, 0.95fr) minmax(170px, 1.1fr) 164px;
-  column-gap: 16px;
+  column-gap: 12px;
   align-items: center;
-  padding: 14px 20px;
+  padding: 11px 16px;
   min-width: 1160px;
+  font-size: 12px;
 }
 
 .licenseTableHeaders {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  color: #9ea5af;
-  font-weight: 650;
-  font-size: 0.85rem;
-  letter-spacing: 0.02em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  color: #8b929c;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 .licenseTableHeaders > div:last-child,
@@ -543,12 +693,12 @@
 }
 
 .licenseTableRow {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  color: #d8dce1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: #c5cad1;
 }
 
 .licenseTableRow:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.025);
 }
 
 .licenseDiscordUser {
@@ -591,6 +741,12 @@
   min-width: 0;
 }
 
+.licenseExpiresCell {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
 .adminModal {
   position: fixed;
   inset: 0;
@@ -603,12 +759,12 @@
 
 .adminModalPanel {
   width: min(720px, 96vw);
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: #10141a;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #101318;
   color: #fff;
   overflow: hidden;
-  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
 }
 
 .sideDrawer {
@@ -658,15 +814,15 @@
 }
 
 .uploadMetaTitle {
-  color: #fff;
-  font-size: 14px;
-  font-weight: 700;
+  color: #eceff3;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .uploadMetaText {
-  color: #9ea5af;
-  font-size: 13px;
-  line-height: 1.5;
+  color: #8b929c;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .linkButton {
@@ -699,15 +855,17 @@
 
 .licenseInfoSection h3 {
   margin: 0;
-  color: #b9d2df;
-  font-size: 14px;
-  font-weight: 700;
+  color: #b4bac3;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .licenseInfoSection p {
   margin: 0;
-  color: #8ba2af;
-  font-size: 13px;
+  color: #8b929c;
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -827,4 +985,29 @@
   .metrics {
     grid-template-columns: 1fr;
   }
+}
+
+.skeletonMetricIconFill {
+  width: 100%;
+  height: 100%;
+  border-radius: 9px;
+}
+
+.skeletonMetricLabel {
+  width: 72px;
+  height: 11px;
+  border-radius: 6px;
+}
+
+.skeletonMetricValue {
+  display: block;
+  width: 42px;
+  height: 20px;
+  border-radius: 6px;
+}
+
+.skeletonTableCell {
+  width: 100%;
+  height: 12px;
+  border-radius: 6px;
 }

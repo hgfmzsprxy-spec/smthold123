@@ -32,6 +32,7 @@ import {
   ShieldCheck,
   ShieldX,
   ShoppingCart,
+  Snowflake,
   Plus,
   Play,
   RefreshCw,
@@ -48,12 +49,28 @@ import { computeAverageRating } from "../../lib/myvouches";
 import siteData from "../data/site-data.json";
 import { ProductPaymentMethods } from "./ProductPaymentMethods";
 import { PurchaseCountryFlag } from "./PurchaseCountryFlag";
+import { LoaderCardSkeleton, SkeletonBlock } from "./Skeleton";
 import { LoaderDownloadModal } from "./LoaderDownloadModal";
 import { LoaderRedeemModal } from "./LoaderRedeemModal";
 import { ProductCheckoutModal } from "./ProductCheckoutModal";
-import { clearCompletedRedeem, getLoaderAppId, resolveLoaderDownloadAccess } from "../../lib/loader-redeem";
+import {
+  clearCompletedRedeem,
+  loadCompletedRedeem,
+  saveCompletedRedeem,
+  fetchLoaderDisplayMeta,
+  formatLoaderAppDate,
+  getLoaderAppId,
+  resolveLoaderDownloadAccess,
+  checkApplicationFrozen,
+  extractDiscordProfile,
+} from "../../lib/loader-redeem";
 import { triggerLocalLoaderLaunch } from "../../lib/loader-launch";
-import { computeSubscriptionMetrics, syncLinkedLicense } from "../../lib/loader-subscription";
+import {
+  computeSubscriptionMetrics,
+  isExpiredLinkedLicense,
+  resolveRestoredSubscriptionSession,
+  syncLinkedLicense,
+} from "../../lib/loader-subscription";
 import { supabase } from "../../lib/supabase";
 import {
   CHECKOUT_EMAIL_KEY,
@@ -1606,7 +1623,7 @@ const loaderProducts = [
     image: "/images/fortnite.png",
     featurePreviewCount: 3,
     version: "v2.5.1",
-    updated: "June 24, 2026",
+    updated: "24.06.2026",
     compatibility: "Windows 10/11",
     description: "ultra undetected description!",
     note: "Use the latest game build and disable overlays before launch for the cleanest session.",
@@ -1618,11 +1635,6 @@ const loaderProducts = [
       "Press Launch Loader and confirm the in-game ready status before playing.",
     ],
     modules: ["Aimbot", "Visuals", "Radar", "Streamproof", "Config Sync", "FOV Control", "Quick Launch", "Hotkeys"],
-    preview: [
-      { src: "/images/preview/fortnite1.png", alt: "Fortnite Private Preview 1" },
-      { src: "/images/preview/fortnite2.png", alt: "Fortnite Private Preview 2" },
-      { src: "/images/preview/fortnite3.png", alt: "Fortnite Private Preview 3" },
-    ],
   },
   {
     slug: "arc-raiders",
@@ -1630,7 +1642,7 @@ const loaderProducts = [
     image: "/images/arc_raiders.png",
     featurePreviewCount: 3,
     version: "v1.8.4",
-    updated: "June 26, 2026",
+    updated: "26.06.2026",
     compatibility: "Windows 10/11",
     description: "Arc Raiders loader page with module selection, build sync, and a clean pre-launch checklist.",
     note: "Always let the loader finish file verification before attaching to the running game process.",
@@ -1642,11 +1654,6 @@ const loaderProducts = [
       "Inject the selected module pack and wait for the ready confirmation.",
     ],
     modules: ["Aimbot", "Visuals", "Radar", "Triggerbot", "Realtime Status", "Config Presets"],
-    preview: [
-      { src: "/images/preview/arc1.png", alt: "Arc Raiders Preview 1" },
-      { src: "/images/preview/arc2.png", alt: "Arc Raiders Preview 2" },
-      { src: "/images/preview/arc3.png", alt: "Arc Raiders Preview 3" },
-    ],
   },
   {
     slug: "hwid-spoofer",
@@ -1654,7 +1661,7 @@ const loaderProducts = [
     image: "/images/spoofer_hwid.png",
     featurePreviewCount: 2,
     version: "v3.1.0",
-    updated: "June 28, 2026",
+    updated: "28.06.2026",
     compatibility: "Windows 10/11",
     description: "Dedicated spoofing loader with device profile swap, quick apply flow, and clean restart steps.",
     note: "Close launchers and anti-cheat related processes before applying a new spoof profile.",
@@ -1666,11 +1673,6 @@ const loaderProducts = [
       "Restart the machine or selected services, then launch your game from a fresh session.",
     ],
     modules: ["Hypervisor", "Driver spoofing", "Serial spoofing", "MAC address", "Disk spoofing", "TPM spoofing", "SMBIOS", "Network adapter"],
-    preview: [
-      { src: "/images/preview/spoofer1.png", alt: "HWID Spoofer Preview 1" },
-      { src: "/images/preview/spoofer2.png", alt: "HWID Spoofer Preview 2" },
-      { src: "/images/preview/spoofer3.png", alt: "HWID Spoofer Preview 3" },
-    ],
   },
 ];
 
@@ -1695,6 +1697,18 @@ function productHref(product) {
 
 function getCheckoutProduct(slug) {
   return checkoutProducts.find((product) => product.slug === slug) || checkoutProducts[0];
+}
+
+function getProductPreviewImages(slug) {
+  const checkoutProduct = checkoutProducts.find((product) => product.slug === slug);
+  if (!checkoutProduct) return [];
+
+  return (checkoutProduct.secondaryImages || []).filter((image) => !image.lightboxOnly);
+}
+
+function getProductLightboxImages(slug) {
+  const checkoutProduct = checkoutProducts.find((product) => product.slug === slug);
+  return checkoutProduct?.secondaryImages || [];
 }
 
 function checkoutHrefForItem(item = {}) {
@@ -2885,15 +2899,23 @@ function RulesContent() {
   );
 }
 
-function LoaderCard({ item }) {
+function LoaderCard({ item, displayMeta, subscriptionBadge = null }) {
   const previewCount = item.featurePreviewCount || 3;
   const visibleModules = item.modules.slice(0, previewCount);
   const hiddenModulesCount = Math.max(0, item.modules.length - visibleModules.length);
+  const lastUpdate = displayMeta?.lastUpdate || formatLoaderAppDate(item.updated);
 
   return (
     <Link className="loader-card" href={loaderHref(item)}>
       <div className="loader-card-media">
         <img src={item.image} alt={item.name} />
+        {subscriptionBadge === "active" ? (
+          <span className="loader-card-active-badge">ACTIVE</span>
+        ) : subscriptionBadge === "redeemed" ? (
+          <span className="loader-card-redeemed-badge">REDEEMED</span>
+        ) : (
+          <span className="loader-card-inactive-badge">INACTIVE</span>
+        )}
       </div>
       <div className="loader-card-body">
         <h3>{item.name}</h3>
@@ -2912,7 +2934,7 @@ function LoaderCard({ item }) {
           </div>
           <div className="loader-card-update">
             <CalendarDays size={14} />
-            <span>Last Update: {item.updated}</span>
+            <span>Last Update: {lastUpdate}</span>
           </div>
         </div>
         <div className="loader-card-action">
@@ -2925,6 +2947,83 @@ function LoaderCard({ item }) {
 }
 
 function LoaderContent() {
+  const { user, ready: authReady } = useAuthUser();
+  const [displayMetaBySlug, setDisplayMetaBySlug] = useState({});
+  const [metaLoaded, setMetaLoaded] = useState(false);
+  const [productBadges, setProductBadges] = useState(() =>
+    Object.fromEntries(loaderProducts.map((item) => [item.slug, "inactive"])),
+  );
+
+  const refreshProductBadges = useCallback(async () => {
+    const badges = Object.fromEntries(loaderProducts.map((item) => [item.slug, "inactive"]));
+
+    if (!user) {
+      setProductBadges(badges);
+      return;
+    }
+
+    await Promise.all(
+      loaderProducts.map(async (item) => {
+        const appId = getLoaderAppId(item.slug);
+        if (!appId) return;
+
+        const completed = loadCompletedRedeem(item.slug, appId);
+        const profile = completed?.profile || extractDiscordProfile(user);
+
+        if (!completed?.licenseKey && !profile?.authUserId) return;
+
+        const result = await syncLinkedLicense(supabase, {
+          appId,
+          licenseKey: completed?.licenseKey || null,
+          profile,
+        });
+
+        if (result.mode === "active" || result.mode === "frozen") {
+          badges[item.slug] = "active";
+        } else if (completed?.licenseKey || result.mode === "pending") {
+          badges[item.slug] = "redeemed";
+        }
+      }),
+    );
+
+    setProductBadges(badges);
+  }, [user]);
+
+  useEffect(() => {
+    void refreshProductBadges();
+  }, [authReady, refreshProductBadges, user?.id]);
+
+  useEffect(() => {
+    const onStorage = (event) => {
+      if (!event.key || event.key.includes("loader_completed_redeem")) {
+        void refreshProductBadges();
+      }
+    };
+
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [refreshProductBadges]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void Promise.all(
+      loaderProducts.map(async (item) => {
+        const appId = getLoaderAppId(item.slug);
+        const meta = await fetchLoaderDisplayMeta(supabase, appId, item);
+        return [item.slug, meta];
+      }),
+    ).then((entries) => {
+      if (cancelled) return;
+      setDisplayMetaBySlug(Object.fromEntries(entries));
+      setMetaLoaded(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <section className="section loader-section fade-up" data-scroll-target>
       <div className="container">
@@ -2934,9 +3033,18 @@ function LoaderContent() {
           </div>
         </div>
         <div className="loader-grid">
-          {loaderProducts.map((item) => (
-            <LoaderCard item={item} key={item.slug} />
-          ))}
+          {!metaLoaded
+            ? loaderProducts.map((item) => (
+                <LoaderCardSkeleton featurePreviewCount={item.featurePreviewCount || 3} key={`loader-skeleton-${item.slug}`} />
+              ))
+            : loaderProducts.map((item) => (
+                <LoaderCard
+                  item={item}
+                  displayMeta={displayMetaBySlug[item.slug]}
+                  subscriptionBadge={productBadges[item.slug] || "inactive"}
+                  key={item.slug}
+                />
+              ))}
         </div>
         <div className="loader-guide-video">
           <video
@@ -3015,24 +3123,194 @@ function LoaderLaunchToast({ item, onClose }) {
 
 function LoaderDetailContent({ slug }) {
   const product = getLoaderProduct(slug);
+  const previewImages = useMemo(() => getProductPreviewImages(slug), [slug]);
+  const lightboxImages = useMemo(() => getProductLightboxImages(slug), [slug]);
   const appId = getLoaderAppId(slug);
+  const { user, ready: authReady } = useAuthUser();
   const [redeemOpen, setRedeemOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState(null);
   const [redeemState, setRedeemState] = useState(null);
   const [licenseRecord, setLicenseRecord] = useState(null);
   const [subscriptionMode, setSubscriptionMode] = useState("empty");
   const [subscriptionMetrics, setSubscriptionMetrics] = useState(null);
   const [launchBusy, setLaunchBusy] = useState(false);
   const [launchToast, setLaunchToast] = useState(null);
+  const [appFrozen, setAppFrozen] = useState(false);
+  const [loaderDisplayMeta, setLoaderDisplayMeta] = useState(null);
+  const [loaderMetaReady, setLoaderMetaReady] = useState(false);
   const [downloadAccess, setDownloadAccess] = useState({ downloadUrl: "", fileName: "", fileMeta: "No file uploaded yet." });
   const downloadUrlRef = useRef("");
   const subscriptionPollRef = useRef(null);
 
-  const canLaunch = Boolean(redeemState?.licenseKey && licenseRecord);
+  const hasRedeemedKey = Boolean(redeemState?.licenseKey);
+  const isSubscriptionFrozen = hasRedeemedKey && (subscriptionMode === "frozen" || appFrozen);
+  const displayVersion = loaderDisplayMeta?.version || product.version;
+  const displayLastUpdate = loaderDisplayMeta?.lastUpdate || formatLoaderAppDate(product.updated);
+  const displayStatus = loaderDisplayMeta?.status || "Undetected";
+
+  function getProductStatusClass(status) {
+    const normalized = String(status || "").trim().toLowerCase();
+    if (normalized === "maintenance") return "is-maintenance";
+    if (normalized === "detected") return "is-detected";
+    return "is-undetected";
+  }
+
+  useEffect(() => {
+    setPreviewIndex(null);
+  }, [slug]);
+
+  function openPreviewLightbox(thumbnailIndex) {
+    const thumbnail = previewImages[thumbnailIndex];
+    if (!thumbnail) return;
+
+    const lightboxIndex = lightboxImages.findIndex((image) => image.src === thumbnail.src);
+    setPreviewIndex(lightboxIndex === -1 ? thumbnailIndex : lightboxIndex);
+  }
+
+  useEffect(() => {
+    if (!appId) {
+      setLoaderDisplayMeta(null);
+      setLoaderMetaReady(true);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setLoaderMetaReady(false);
+    void fetchLoaderDisplayMeta(supabase, appId, product).then((meta) => {
+      if (cancelled) return;
+      setLoaderDisplayMeta(meta);
+      setLoaderMetaReady(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appId, slug]);
+
+  useEffect(() => {
+    if (!appId || !hasRedeemedKey) {
+      setAppFrozen(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const refreshAppFrozen = () => {
+      void checkApplicationFrozen(supabase, appId).then((frozen) => {
+        if (!cancelled) setAppFrozen(frozen);
+      });
+    };
+
+    refreshAppFrozen();
+    const timerId = window.setInterval(refreshAppFrozen, 8000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timerId);
+    };
+  }, [appId, hasRedeemedKey]);
 
   const handleRedeemCompleted = useCallback((payload) => {
     setRedeemState(payload?.licenseKey ? { licenseKey: payload.licenseKey, profile: payload.profile } : null);
+    if (payload?.licenseKey && appId) {
+      void checkApplicationFrozen(supabase, appId).then((frozen) => setAppFrozen(frozen));
+    }
+  }, [appId]);
+
+  const handleOpenDownloadFromRedeem = useCallback((access) => {
+    if (!access?.downloadUrl) return;
+
+    if (downloadUrlRef.current && downloadUrlRef.current !== access.downloadUrl) {
+      URL.revokeObjectURL(downloadUrlRef.current);
+    }
+
+    downloadUrlRef.current = access.downloadUrl;
+    setDownloadAccess({
+      downloadUrl: access.downloadUrl,
+      fileName: access.fileName || "",
+      fileMeta: access.fileMeta || "No file uploaded yet.",
+    });
+    setRedeemOpen(false);
+    setDownloadOpen(true);
   }, []);
+
+  const detachSubscriptionUi = useCallback(() => {
+    setRedeemState(null);
+    setLicenseRecord(null);
+    setSubscriptionMode("empty");
+    setSubscriptionMetrics(null);
+    setAppFrozen(false);
+    setRedeemOpen(false);
+    setDownloadOpen(false);
+
+    if (subscriptionPollRef.current) {
+      window.clearInterval(subscriptionPollRef.current);
+      subscriptionPollRef.current = null;
+    }
+
+    if (downloadUrlRef.current) {
+      URL.revokeObjectURL(downloadUrlRef.current);
+      downloadUrlRef.current = "";
+    }
+
+    setDownloadAccess({ downloadUrl: "", fileName: "", fileMeta: "No file uploaded yet." });
+  }, []);
+
+  useEffect(() => {
+    if (!authReady || !appId) return undefined;
+
+    if (!user) {
+      detachSubscriptionUi();
+      return undefined;
+    }
+
+    let cancelled = false;
+    void resolveRestoredSubscriptionSession(supabase, {
+      appId,
+      productSlug: slug,
+      authUser: user,
+    }).then((result) => {
+      if (cancelled) return;
+
+      if (result.clearStorage) {
+        clearCompletedRedeem(slug, appId);
+      }
+
+      if (result.redeemState) {
+        saveCompletedRedeem(result.redeemState, slug, appId);
+        setRedeemState(result.redeemState);
+        return;
+      }
+
+      setRedeemState(null);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appId, authReady, detachSubscriptionUi, slug, user?.id]);
+
+  const clearSubscriptionSession = useCallback(() => {
+    clearCompletedRedeem(slug, appId);
+    setRedeemState(null);
+    setLicenseRecord(null);
+    setSubscriptionMode("empty");
+    setSubscriptionMetrics(null);
+    setAppFrozen(false);
+    setRedeemOpen(false);
+    setDownloadOpen(false);
+
+    if (subscriptionPollRef.current) {
+      window.clearInterval(subscriptionPollRef.current);
+      subscriptionPollRef.current = null;
+    }
+
+    if (downloadUrlRef.current) {
+      URL.revokeObjectURL(downloadUrlRef.current);
+      downloadUrlRef.current = "";
+    }
+
+    setDownloadAccess({ downloadUrl: "", fileName: "", fileMeta: "No file uploaded yet." });
+  }, [appId, slug]);
 
   const refreshSubscription = useCallback(async () => {
     if (!appId || !redeemState?.licenseKey) {
@@ -3048,23 +3326,19 @@ function LoaderDetailContent({ slug }) {
       profile: redeemState.profile,
     });
 
-    if (result.keyMissing) {
-      clearCompletedRedeem(slug, appId);
-      setRedeemState(null);
-      setLicenseRecord(null);
-      setSubscriptionMode("empty");
-      setSubscriptionMetrics(null);
+    if (result.keyMissing || result.mode === "expired") {
+      clearSubscriptionSession();
       return;
     }
 
     setLicenseRecord(result.license);
     setSubscriptionMode(result.mode);
-    if (result.mode === "active" && result.license) {
+    if ((result.mode === "active" || result.mode === "frozen") && result.license) {
       setSubscriptionMetrics(computeSubscriptionMetrics(result.license));
     } else {
       setSubscriptionMetrics(null);
     }
-  }, [appId, redeemState, slug]);
+  }, [appId, clearSubscriptionSession, redeemState]);
 
   useEffect(() => {
     void refreshSubscription();
@@ -3090,16 +3364,28 @@ function LoaderDetailContent({ slug }) {
   }, [appId, redeemState?.licenseKey, redeemState?.profile, refreshSubscription, subscriptionMode]);
 
   useEffect(() => {
-    if (subscriptionMode !== "active" || !licenseRecord) return undefined;
+    if ((subscriptionMode !== "active" && subscriptionMode !== "frozen") || !licenseRecord) return undefined;
 
-    const tick = () => setSubscriptionMetrics(computeSubscriptionMetrics(licenseRecord));
+    if (subscriptionMode === "frozen") {
+      setSubscriptionMetrics(computeSubscriptionMetrics(licenseRecord));
+      return undefined;
+    }
+
+    const tick = () => {
+      if (isExpiredLinkedLicense(licenseRecord)) {
+        clearSubscriptionSession();
+        return;
+      }
+
+      setSubscriptionMetrics(computeSubscriptionMetrics(licenseRecord));
+    };
     tick();
     const timerId = window.setInterval(tick, 1000);
     return () => window.clearInterval(timerId);
-  }, [licenseRecord, subscriptionMode]);
+  }, [clearSubscriptionSession, licenseRecord, subscriptionMode]);
 
   useEffect(() => {
-    if (!canLaunch || !appId || !redeemState?.profile?.authUserId) {
+    if (!hasRedeemedKey || !appId || !redeemState?.profile?.authUserId) {
       if (downloadUrlRef.current) {
         URL.revokeObjectURL(downloadUrlRef.current);
         downloadUrlRef.current = "";
@@ -3122,7 +3408,7 @@ function LoaderDetailContent({ slug }) {
     return () => {
       cancelled = true;
     };
-  }, [appId, canLaunch, redeemState?.profile]);
+  }, [appId, hasRedeemedKey, redeemState?.profile]);
 
   useEffect(
     () => () => {
@@ -3133,7 +3419,11 @@ function LoaderDetailContent({ slug }) {
 
   const handleLaunchClick = useCallback(async () => {
     if (launchBusy) return;
-    if (!canLaunch) {
+    if (isSubscriptionFrozen) {
+      setLaunchToast({ ok: false, message: "This service is currently frozen. Launch is unavailable." });
+      return;
+    }
+    if (!hasRedeemedKey) {
       setRedeemOpen(true);
       return;
     }
@@ -3147,7 +3437,7 @@ function LoaderDetailContent({ slug }) {
       window.setTimeout(() => void refreshSubscription(), 1600);
       window.setTimeout(() => void refreshSubscription(), 3200);
     }
-  }, [canLaunch, launchBusy, redeemState?.licenseKey, refreshSubscription]);
+  }, [hasRedeemedKey, isSubscriptionFrozen, launchBusy, redeemState?.licenseKey, refreshSubscription]);
 
   // Make feature groups similar to product page
   const featureGroups = [
@@ -3182,6 +3472,26 @@ function LoaderDetailContent({ slug }) {
                 <div className="loader-detail-meta-strip">
                   <div className="loader-detail-meta-item">
                     <div className="loader-detail-meta-icon">
+                      <ShieldCheck size={24} />
+                    </div>
+                    <div>
+                      {!loaderMetaReady ? (
+                        <>
+                          <SkeletonBlock className="skeleton-meta-label" />
+                          <SkeletonBlock className="skeleton-meta-value" />
+                        </>
+                      ) : (
+                        <>
+                          <small>STATUS</small>
+                          <strong className={`loader-product-status ${getProductStatusClass(displayStatus)}`}>
+                            {displayStatus}
+                          </strong>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="loader-detail-meta-item">
+                    <div className="loader-detail-meta-icon">
                       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M8 2v4"></path>
                         <path d="M16 2v4"></path>
@@ -3190,8 +3500,17 @@ function LoaderDetailContent({ slug }) {
                       </svg>
                     </div>
                     <div>
-                      <small>LAST UPDATE</small>
-                      <strong>{product.updated}</strong>
+                      {!loaderMetaReady ? (
+                        <>
+                          <SkeletonBlock className="skeleton-meta-label" />
+                          <SkeletonBlock className="skeleton-meta-value" />
+                        </>
+                      ) : (
+                        <>
+                          <small>LAST UPDATE</small>
+                          <strong>{displayLastUpdate}</strong>
+                        </>
+                      )}
                     </div>
                   </div>
                   <div className="loader-detail-meta-item">
@@ -3201,26 +3520,40 @@ function LoaderDetailContent({ slug }) {
                       </svg>
                     </div>
                     <div>
-                      <small>VERSION</small>
-                      <strong>{product.version}</strong>
+                      {!loaderMetaReady ? (
+                        <>
+                          <SkeletonBlock className="skeleton-meta-label" />
+                          <SkeletonBlock className="skeleton-meta-value" />
+                        </>
+                      ) : (
+                        <>
+                          <small>VERSION</small>
+                          <strong>{displayVersion}</strong>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
                 <div className="loader-detail-actions loader-launch-actions">
-                  <button className="button loader-launch-button" type="button" disabled={launchBusy} onClick={() => void handleLaunchClick()}>
+                  <button className="button loader-launch-button" type="button" disabled={launchBusy || isSubscriptionFrozen} onClick={() => void handleLaunchClick()}>
                     {launchBusy ? (
                       <>
                         <Loader2 size={18} className="loader-launch-spinner" />
                         LAUNCHING...
                       </>
+                    ) : isSubscriptionFrozen && hasRedeemedKey ? (
+                      <>
+                        <Snowflake size={18} />
+                        FROZEN
+                      </>
                     ) : (
                       <>
-                        {canLaunch ? <Play size={18} /> : <TicketPercent size={18} />}
-                        {canLaunch ? "Launch" : "Redeem License"}
+                        {hasRedeemedKey ? <Play size={18} /> : <TicketPercent size={18} />}
+                        {hasRedeemedKey ? "Launch" : "Redeem License"}
                       </>
                     )}
                   </button>
-                  {canLaunch ? (
+                  {hasRedeemedKey && !isSubscriptionFrozen ? (
                     <button
                       className="button loader-launch-button loader-launch-button--compact"
                       type="button"
@@ -3272,8 +3605,20 @@ function LoaderDetailContent({ slug }) {
                 </div>
               </div>
               <div className="loader-subscription-body">
-                {subscriptionMode === "active" && subscriptionMetrics ? (
-                  <div className="loader-subscription-live">
+                {!loaderMetaReady ? (
+                  <div className="loader-subscription-empty">
+                    <div className="loader-subscription-empty-icon">
+                      <SkeletonBlock className="skeleton-subscription-icon" />
+                    </div>
+                    <div>
+                      <SkeletonBlock className="skeleton-subscription-title" />
+                      <SkeletonBlock className="skeleton-subscription-text" />
+                    </div>
+                  </div>
+                ) : (subscriptionMode === "active" || subscriptionMode === "frozen") && subscriptionMetrics ? (
+                  <div
+                    className={`loader-subscription-live${subscriptionMode === "frozen" ? " loader-subscription-live--frozen" : ""}`}
+                  >
                     <div className="loader-subscription-live-head">
                       <span className="loader-subscription-live-dot" />
                       <span className="loader-subscription-live-label">{subscriptionMetrics.statusLabel}</span>
@@ -3296,6 +3641,11 @@ function LoaderDetailContent({ slug }) {
                       <span>Expiry Date</span>
                       <span className="loader-subscription-expiry-value">{subscriptionMetrics.expiryDate}</span>
                     </div>
+                    {subscriptionMode === "frozen" ? (
+                      <p className="loader-subscription-frozen-note">
+                        Subscription time is paused while this service is frozen by the administrator.
+                      </p>
+                    ) : null}
                   </div>
                 ) : subscriptionMode === "banned" ? (
                   <div className="loader-subscription-empty">
@@ -3304,10 +3654,29 @@ function LoaderDetailContent({ slug }) {
                     </div>
                     <div>
                       <h3>User was banned</h3>
-                      <p>The license was frozen, access has been lost.</p>
+                      <p>Your license has been revoked and access has been lost.</p>
                     </div>
                   </div>
                 ) : redeemState?.licenseKey ? (
+                  isSubscriptionFrozen ? (
+                    <div className="loader-subscription-live loader-subscription-live--frozen">
+                      <div className="loader-subscription-live-head">
+                        <span className="loader-subscription-live-dot" />
+                        <span className="loader-subscription-live-label">Freezed</span>
+                      </div>
+                      <div className="loader-subscription-live-row">
+                        <span>License Key</span>
+                        <strong>{redeemState.licenseKey}</strong>
+                      </div>
+                      <div className="loader-subscription-live-row">
+                        <span>Status</span>
+                        <strong>Freezed</strong>
+                      </div>
+                      <p className="loader-subscription-frozen-note">
+                        This application is currently frozen. Launch and subscription time are temporarily unavailable.
+                      </p>
+                    </div>
+                  ) : (
                   <div className="loader-subscription-active">
                     <div className="loader-subscription-active-row">
                       <span>License Key</span>
@@ -3315,13 +3684,20 @@ function LoaderDetailContent({ slug }) {
                     </div>
                     <div className="loader-subscription-active-row">
                       <span>Status</span>
-                      <strong>{subscriptionMode === "expired" ? "Expired" : "Not Activated"}</strong>
+                      <strong>
+                        {subscriptionMode === "expired"
+                          ? "Expired"
+                          : subscriptionMode === "pending"
+                            ? "Not Activated"
+                            : "INACTIVE"}
+                      </strong>
                     </div>
                     <div className="loader-subscription-active-separator" />
                     <p className="loader-subscription-active-note">
                       Time starts when the key is activated in the loader.
                     </p>
                   </div>
+                  )
                 ) : (
                   <div className="loader-subscription-empty">
                     <div className="loader-subscription-empty-icon">
@@ -3357,8 +3733,24 @@ function LoaderDetailContent({ slug }) {
               </div>
               <div className="loader-preview-body">
                 <div className="loader-preview-grid">
-                  {product.preview?.map((img, idx) => (
-                    <img key={idx} src={img.src} alt={img.alt} className="loader-preview-image" loading="lazy" />
+                  {(previewImages || []).map((img, idx) => (
+                    <button
+                      type="button"
+                      className="loader-preview-image-shell"
+                      key={`preview-${img.src}`}
+                      disabled={!loaderMetaReady}
+                      onClick={() => openPreviewLightbox(idx)}
+                      aria-label={img.alt}
+                    >
+                      <img
+                        src={img.src}
+                        alt={loaderMetaReady ? img.alt : ""}
+                        className={`loader-preview-image${loaderMetaReady ? "" : " loader-preview-image--ghost"}`}
+                        loading="lazy"
+                        aria-hidden={!loaderMetaReady}
+                      />
+                      {!loaderMetaReady ? <SkeletonBlock className="loader-preview-image-overlay" /> : null}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -3367,6 +3759,15 @@ function LoaderDetailContent({ slug }) {
         </div>
       </div>
 
+      {lightboxImages.length ? (
+        <ProductImageLightbox
+          images={lightboxImages}
+          index={previewIndex}
+          onIndexChange={setPreviewIndex}
+          onClose={() => setPreviewIndex(null)}
+        />
+      ) : null}
+
       <LoaderRedeemModal
         open={redeemOpen}
         onOpenChange={setRedeemOpen}
@@ -3374,6 +3775,7 @@ function LoaderDetailContent({ slug }) {
         appId={appId}
         linkedLicenseKey={redeemState?.licenseKey || ""}
         onCompleted={handleRedeemCompleted}
+        onOpenDownload={handleOpenDownloadFromRedeem}
       />
 
       <LoaderDownloadModal

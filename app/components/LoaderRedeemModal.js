@@ -2,11 +2,14 @@
 
 import { ChevronLeft, Info, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { lockBodyScroll } from "../../lib/body-scroll-lock";
 import { supabase } from "../../lib/supabase";
 import {
   REDEEM_STEP_LABELS,
   REDEEM_STEP_SCALES,
   buildApplicationDownloadUrl,
+  buildDownloadFileMeta,
   claimDiscordForLicense,
   cleanupDiscordAuthReturnUrl,
   clearDiscordAuthIntent,
@@ -72,7 +75,15 @@ function RedeemThankyouStage({ playing }) {
   );
 }
 
-export function LoaderRedeemModal({ open, onOpenChange, productSlug, appId, linkedLicenseKey = "", onCompleted }) {
+export function LoaderRedeemModal({
+  open,
+  onOpenChange,
+  productSlug,
+  appId,
+  linkedLicenseKey = "",
+  onCompleted,
+  onOpenDownload,
+}) {
   const [step, setStep] = useState(1);
   const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [licenseInput, setLicenseInput] = useState("");
@@ -87,6 +98,7 @@ export function LoaderRedeemModal({ open, onOpenChange, productSlug, appId, link
   const [finishedLicenseKey, setFinishedLicenseKey] = useState("");
   const [downloadUrl, setDownloadUrl] = useState("");
   const [downloadFileName, setDownloadFileName] = useState("");
+  const [downloadFileMeta, setDownloadFileMeta] = useState("No file uploaded yet.");
   const outroTimerRef = useRef(null);
   const downloadUrlRef = useRef("");
   const licenseInputRef = useRef(null);
@@ -94,6 +106,7 @@ export function LoaderRedeemModal({ open, onOpenChange, productSlug, appId, link
   const playingOutroRef = useRef(false);
   const onCompletedRef = useRef(onCompleted);
   const onOpenChangeRef = useRef(onOpenChange);
+  const onOpenDownloadRef = useRef(onOpenDownload);
   const initKeyRef = useRef("");
   const prevLinkedLicenseKeyRef = useRef(linkedLicenseKey);
 
@@ -105,6 +118,10 @@ export function LoaderRedeemModal({ open, onOpenChange, productSlug, appId, link
     onOpenChangeRef.current = onOpenChange;
   }, [onOpenChange]);
 
+  useEffect(() => {
+    onOpenDownloadRef.current = onOpenDownload;
+  }, [onOpenDownload]);
+
   const setMessageState = (setter, text, tone = "") => setter({ text: text || "", tone: tone || "" });
 
   const revokeDownloadUrl = useCallback(() => {
@@ -114,6 +131,7 @@ export function LoaderRedeemModal({ open, onOpenChange, productSlug, appId, link
     }
     setDownloadUrl((current) => (current ? "" : current));
     setDownloadFileName((current) => (current ? "" : current));
+    setDownloadFileMeta("No file uploaded yet.");
   }, []);
 
   const resetModalState = useCallback(() => {
@@ -130,8 +148,8 @@ export function LoaderRedeemModal({ open, onOpenChange, productSlug, appId, link
     setConnectedProfile(null);
     setFinishedLicenseKey("");
     revokeDownloadUrl();
-    clearPendingRedeem();
-  }, [revokeDownloadUrl]);
+    clearPendingRedeem(productSlug, appId);
+  }, [appId, productSlug, revokeDownloadUrl]);
 
   useEffect(() => {
     const prev = prevLinkedLicenseKeyRef.current;
@@ -139,6 +157,12 @@ export function LoaderRedeemModal({ open, onOpenChange, productSlug, appId, link
     if (prev && !linkedLicenseKey) {
       resetModalState();
       initKeyRef.current = "";
+      return;
+    }
+
+    if (linkedLicenseKey) {
+      setFinishedLicenseKey(linkedLicenseKey);
+      setStep(3);
     }
   }, [linkedLicenseKey, resetModalState]);
 
@@ -166,12 +190,14 @@ export function LoaderRedeemModal({ open, onOpenChange, productSlug, appId, link
         downloadUrlRef.current = url;
         setDownloadUrl(url);
         setDownloadFileName(String(appMeta.download_file_name || "").trim());
+        setDownloadFileMeta(buildDownloadFileMeta(appMeta));
         return;
       }
     }
 
     setDownloadUrl("");
     setDownloadFileName("");
+    setDownloadFileMeta("No file uploaded yet.");
   }, [appId]);
 
   const showCompletedRedeem = useCallback(async (licenseKey, profile) => {
@@ -185,6 +211,7 @@ export function LoaderRedeemModal({ open, onOpenChange, productSlug, appId, link
 
   const processDiscordReturn = useCallback(async () => {
     if (!appId) return;
+
     const pending = loadPendingRedeem(productSlug, appId);
     if (!pending?.licenseKey) return;
 
@@ -209,7 +236,7 @@ export function LoaderRedeemModal({ open, onOpenChange, productSlug, appId, link
     const validation = await validateLicense(pending.licenseKey, appId);
     if (!validation.ok) {
       setMessageState(setDiscordMessage, validation.error, "error");
-      clearPendingRedeem();
+      clearPendingRedeem(productSlug, appId);
       return;
     }
 
@@ -217,12 +244,12 @@ export function LoaderRedeemModal({ open, onOpenChange, productSlug, appId, link
 
     if (validation.data.discord_auth_user_id && validation.data.discord_auth_user_id !== profile.authUserId) {
       setMessageState(setDiscordMessage, "This license is already connected to another Discord account.", "error");
-      clearPendingRedeem();
+      clearPendingRedeem(productSlug, appId);
       return;
     }
 
     if (validation.data.discord_auth_user_id === profile.authUserId) {
-      clearPendingRedeem();
+      clearPendingRedeem(productSlug, appId);
       saveCompletedRedeem({ licenseKey: pending.licenseKey, profile }, productSlug, appId);
       await showCompletedRedeem(pending.licenseKey, profile);
       return;
@@ -234,7 +261,7 @@ export function LoaderRedeemModal({ open, onOpenChange, productSlug, appId, link
       return;
     }
 
-    clearPendingRedeem();
+    clearPendingRedeem(productSlug, appId);
     saveCompletedRedeem({ licenseKey: pending.licenseKey, profile }, productSlug, appId);
     await showCompletedRedeem(pending.licenseKey, profile);
   }, [appId, productSlug, showCompletedRedeem]);
@@ -281,13 +308,11 @@ export function LoaderRedeemModal({ open, onOpenChange, productSlug, appId, link
       setConnectedProfile(completed.profile || null);
       setFinishedLicenseKey(completed.licenseKey);
       setStep(3);
-      onCompletedRef.current?.({ licenseKey: completed.licenseKey, profile: completed.profile || null });
       void refreshDownloadAccess(completed.profile || null);
     } else {
       setConnectedProfile(null);
       setFinishedLicenseKey("");
       setStep(1);
-      onCompletedRef.current?.(null);
     }
 
     void processDiscordReturn().finally(() => {
@@ -304,12 +329,9 @@ export function LoaderRedeemModal({ open, onOpenChange, productSlug, appId, link
   }, [handleCloseRequest]);
 
   useEffect(() => {
-    if (!open) {
-      document.body.classList.remove("menu-open");
-      return undefined;
-    }
+    if (!open) return undefined;
 
-    document.body.classList.add("menu-open");
+    const unlockScroll = lockBodyScroll();
     const timer = window.setTimeout(() => licenseInputRef.current?.focus(), 30);
 
     const onKeyDown = (event) => {
@@ -320,7 +342,7 @@ export function LoaderRedeemModal({ open, onOpenChange, productSlug, appId, link
     return () => {
       window.clearTimeout(timer);
       window.removeEventListener("keydown", onKeyDown);
-      document.body.classList.remove("menu-open");
+      unlockScroll();
     };
   }, [open]);
 
@@ -393,7 +415,7 @@ export function LoaderRedeemModal({ open, onOpenChange, productSlug, appId, link
   }
 
   async function handleDiscordLoginLink() {
-    clearPendingRedeem();
+    clearPendingRedeem(productSlug, appId);
     saveDiscordAuthIntent({ source: "navbar", at: Date.now() });
     await supabase.auth.signInWithOAuth({
       provider: "discord",
@@ -408,20 +430,30 @@ export function LoaderRedeemModal({ open, onOpenChange, productSlug, appId, link
     playOutro();
   }
 
-  function handleDownloadClick(event) {
+  function handleOpenDownloadClick() {
     if (!downloadUrl) {
-      event.preventDefault();
       setMessageState(setFinishMessage, "No uploaded file is available right now.", "error");
       return;
     }
-    playOutro();
+
+    const access = {
+      downloadUrl,
+      fileName: downloadFileName,
+      fileMeta: downloadFileMeta,
+    };
+
+    downloadUrlRef.current = "";
+    setDownloadUrl("");
+    setDownloadFileName("");
+    setDownloadFileMeta("No file uploaded yet.");
+    onOpenDownloadRef.current?.(access);
   }
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
   const progressScale = REDEEM_STEP_SCALES[step - 1] || REDEEM_STEP_SCALES[0];
 
-  return (
+  return createPortal(
     <div
       className={`redeem-modal${playingOutro ? " playing-outro" : ""}`}
       role="dialog"
@@ -531,7 +563,11 @@ export function LoaderRedeemModal({ open, onOpenChange, productSlug, appId, link
                 </div>
                 <div>
                   <div className="redeem-summary-label">Status</div>
-                  <div className="redeem-summary-value">{currentLicense?.status || "Not Activated"}</div>
+                  <div className="redeem-summary-value">
+                    {String(currentLicense?.status || "").trim().toLowerCase() === "not activated"
+                      ? "REDEEMED"
+                      : currentLicense?.status || "REDEEMED"}
+                  </div>
                 </div>
               </div>
               <div className="redeem-actions">
@@ -574,15 +610,13 @@ export function LoaderRedeemModal({ open, onOpenChange, productSlug, appId, link
                 </div>
               </div>
               <div className="redeem-actions">
-                <a
+                <button
                   className="redeem-button redeem-button-primary"
-                  href={downloadUrl || "#"}
-                  download={downloadFileName || undefined}
-                  aria-disabled={downloadUrl ? "false" : "true"}
-                  onClick={handleDownloadClick}
+                  type="button"
+                  onClick={handleOpenDownloadClick}
                 >
                   Download Loader
-                </a>
+                </button>
               </div>
               <div className="redeem-actions">
                 <button className="redeem-link-button" type="button" onClick={handleSkipForNow}>
@@ -598,6 +632,7 @@ export function LoaderRedeemModal({ open, onOpenChange, productSlug, appId, link
       </div>
 
       <RedeemThankyouStage playing={playingOutro} />
-    </div>
+    </div>,
+    document.body,
   );
 }
