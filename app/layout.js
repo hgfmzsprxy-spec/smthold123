@@ -6,8 +6,8 @@ export const metadata = {
   title: "unbanhwid.com",
   description: "Top Provider of Undetected Premium Game Cheats - Instant Delivery & 24/7 Support",
   icons: {
-    icon: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    icon: "/images/favcion.png",
+    apple: "/images/favcion.png",
   },
 };
 

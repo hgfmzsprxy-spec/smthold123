@@ -77,6 +77,39 @@ body.site-protected [contenteditable="true"] {
   }
 }
 
+.site-access-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 18px;
+  background: var(--bg);
+}
+
+.site-access-spinner {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 3px solid rgba(163, 46, 59, 0.18);
+  border-top-color: var(--primary);
+  animation: site-access-spin 0.85s linear infinite;
+}
+
+.site-access-label {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.46);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+@keyframes site-access-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 html::-webkit-scrollbar {
   width: 0;
   height: 0;

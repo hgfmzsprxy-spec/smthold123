@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-
-const VERIFY_COOKIE = "__uhwid_v";
+import { VERIFY_COOKIE } from "./lib/site-access.js";
 
 const SCRAPER_UA_PATTERN =
   /wget|curl\/|python-requests|scrapy|httrack|sitesucker|webcopy|webzip|saveweb|teleport|harvest|site-snagger|libwww|go-http-client|java\/|axios\/|headless|phantomjs|selenium|puppeteer|playwright|webtozip|saveweb2zip|sitecopy|nutch|mechanize|aiohttp|okhttp|httpclient|colly|grabber|bytespider|petalbot|semrush|ahrefs|mj12bot|dotbot/i;
@@ -47,45 +46,18 @@ function looksLikeFakeBrowser(request) {
   return false;
 }
 
-function buildChallengeResponse() {
-  const secureFlag = process.env.NODE_ENV === "production" ? "; Secure" : "";
+function buildAccessRedirect(request) {
+  const redirectUrl = request.nextUrl.clone();
+  const nextPath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
 
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="robots" content="noindex,nofollow" />
-  <title>Loading</title>
-</head>
-<body>
-  <script>
-    (function () {
-      try {
-        if (navigator.webdriver) {
-          document.body.innerHTML = "";
-          return;
-        }
+  redirectUrl.pathname = "/site-access";
+  redirectUrl.search = "";
 
-        document.cookie = "${VERIFY_COOKIE}=1; path=/; max-age=604800; SameSite=Lax${secureFlag}";
-        location.replace(location.href);
-      } catch (error) {
-        location.reload();
-      }
-    })();
-  </script>
-</body>
-</html>`;
+  if (nextPath && nextPath !== "/site-access") {
+    redirectUrl.searchParams.set("next", nextPath);
+  }
 
-  return new NextResponse(html, {
-    status: 200,
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "no-store, no-cache, must-revalidate, private",
-      "Pragma": "no-cache",
-      "X-Robots-Tag": "noindex, nofollow",
-    },
-  });
+  return applySecurityHeaders(NextResponse.redirect(redirectUrl));
 }
 
 export function middleware(request) {
@@ -95,7 +67,7 @@ export function middleware(request) {
   const isSearchBot = SEARCH_BOT_PATTERN.test(userAgent);
   const isVerified = request.cookies.get(VERIFY_COOKIE)?.value === "1";
 
-  if (pathname.startsWith("/api") || pathname.startsWith("/admin")) {
+  if (pathname.startsWith("/api") || pathname.startsWith("/admin") || pathname === "/site-access") {
     return applySecurityHeaders(NextResponse.next());
   }
 
@@ -109,7 +81,7 @@ export function middleware(request) {
     }
 
     if (!isVerified && isHtmlDocumentRequest(request)) {
-      return buildChallengeResponse();
+      return buildAccessRedirect(request);
     }
   }
 

@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 
 const DEVTOOLS_SIZE_THRESHOLD = 140;
 const DEVTOOLS_POLL_MS = 750;
-const VERIFY_COOKIE = "__uhwid_v";
 
 const SCRAPER_HOST_PATTERN =
   /saveweb2zip|webtozip|website-ripper|httrack|sitesucker|teleport|webcopy|archive\.org/i;
@@ -75,14 +74,6 @@ function blockScraperReferrer() {
   redirectOnDevTools();
 }
 
-function setVerifyCookie() {
-  if (typeof document === "undefined") return;
-  if (navigator.webdriver) return;
-
-  const secure = window.location.protocol === "https:" ? "; Secure" : "";
-  document.cookie = `${VERIFY_COOKIE}=1; path=/; max-age=604800; SameSite=Lax${secure}`;
-}
-
 function breakOutOfIframe() {
   try {
     if (window.self !== window.top) {
@@ -98,10 +89,9 @@ export default function SiteProtection() {
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") return undefined;
-    if (pathname?.startsWith("/admin")) return undefined;
+    if (pathname?.startsWith("/admin") || pathname === "/site-access") return undefined;
 
     document.body.classList.add("site-protected");
-    setVerifyCookie();
     blockScraperReferrer();
     breakOutOfIframe();
 
