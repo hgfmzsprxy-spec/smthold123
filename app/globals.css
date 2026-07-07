@@ -71,6 +71,12 @@ body.site-protected [contenteditable="true"] {
   user-select: text;
 }
 
+@media print {
+  body.site-protected {
+    display: none !important;
+  }
+}
+
 html::-webkit-scrollbar {
   width: 0;
   height: 0;
