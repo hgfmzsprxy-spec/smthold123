@@ -1,0 +1,71 @@
+{
+  "pomoc": {
+    "terms": [
+      {
+        "slug": "rules",
+        "title": "Terms & Conditions",
+        "content": "<h1>Terms & Conditions</h1><p>These rules define the basic terms of using Unbanhwid.com services and digital products.</p><h3>1. General Terms</h3><ol><li>Customers must provide accurate account and contact information during checkout.</li><li>Digital products are delivered instantly after successful payment whenever automated delivery is available.</li><li>Customers are responsible for reading product requirements before purchase.</li><li>Sharing, reselling, leaking, or redistributing product files, loaders, keys, or account access is forbidden.</li></ol><h3>2. Purchases</h3><ol><li>Prices may change depending on product, duration, promotion, and payment method.</li><li>Access duration starts when the product key or account access is delivered unless stated otherwise.</li><li>Support is available through the official Unbanhwid.com contact channels.</li></ol><h3>3. Contact</h3><p>For support or other inquiries, contact <strong>admin@unbanhwid.com</strong>.</p>"
+      },
+      {
+        "slug": "privacy-policy",
+        "title": "Refunds & Privacy Policy",
+        "content": "<h1>Refunds & Privacy Policy</h1><p>Unbanhwid.com processes only the data required to operate the storefront, deliver orders, provide support, and maintain account security.</p><h3>1. Data We Process</h3><ol><li>Email address and order details supplied during checkout.</li><li>Support messages and technical information voluntarily provided by the customer.</li><li>Basic browser/session data required for cart, login, and security features.</li></ol><h3>2. Purpose</h3><ol><li>Order delivery, account access, customer support, fraud prevention, and service maintenance.</li><li>We do not sell customer data.</li></ol><h3>3. Refunds</h3><ol><li>We sell Software as a Service (SaaS) products. Under our official refund policy, refunds are not accepted by default once access has been delivered. We may make an exception if something genuinely does not work for you, even after you have consulted with our support team and we were unable to resolve the issue.</li></ol><h3>4. Contact</h3><p>For privacy or support requests, contact <strong>admin@unbanhwid.com</strong>.</p>"
+      }
+    ]
+  },
+  "sklep": {
+    "features": [
+      {
+        "slug": "instant-delivery",
+        "name": "Instant Delivery",
+        "description": "Access is delivered after successful checkout."
+      },
+      {
+        "slug": "support",
+        "name": "Support",
+        "description": "Customer support is available through official contact channels."
+      },
+      {
+        "slug": "updates",
+        "name": "Updates",
+        "description": "Products receive maintenance updates when needed."
+      }
+    ],
+    "servers": [
+      {
+        "name": "Rainbow Six",
+        "slug": "rainbow-six",
+        "packages": [],
+        "products": [
+          {
+            "name": "Rainbow Six Lite",
+            "slug": "rainbow-six-lite",
+            "image": "/images/best-seller-product.png",
+            "range": true,
+            "minPrice": 9.99,
+            "minOldPrice": 14.99,
+            "new": true
+          },
+          {
+            "name": "Rainbow Six Premium",
+            "slug": "rainbow-six-premium",
+            "image": "/images/best-seller-product.png",
+            "range": true,
+            "minPrice": 14.99,
+            "minOldPrice": 24.99,
+            "highlight": "Premium"
+          },
+          {
+            "name": "Rainbow Six Full",
+            "slug": "rainbow-six-full",
+            "image": "/images/best-seller-product.png",
+            "range": true,
+            "minPrice": 24.99,
+            "minOldPrice": 34.99,
+            "discount": 28
+          }
+        ]
+      }
+    ]
+  }
+}
