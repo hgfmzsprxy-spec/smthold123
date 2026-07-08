@@ -49,7 +49,7 @@ import { computeAverageRating } from "../../lib/myvouches";
 import siteData from "../data/site-data.json";
 import { ProductPaymentMethods } from "./ProductPaymentMethods";
 import { PurchaseCountryFlag } from "./PurchaseCountryFlag";
-import { LoaderCardSkeleton, SkeletonBlock } from "./Skeleton";
+import { SkeletonBlock } from "./Skeleton";
 import { LoaderDownloadModal } from "./LoaderDownloadModal";
 import { LoaderRedeemModal } from "./LoaderRedeemModal";
 import { ProductCheckoutModal } from "./ProductCheckoutModal";
@@ -58,6 +58,9 @@ import {
   loadCompletedRedeem,
   saveCompletedRedeem,
   fetchLoaderDisplayMeta,
+  getInitialLoaderDisplayMetaMap,
+  getStaticLoaderDisplayMetaMap,
+  refreshLoaderDisplayMetaMap,
   formatLoaderAppDate,
   getLoaderAppId,
   resolveLoaderDownloadAccess,
@@ -100,8 +103,8 @@ const homeGameProducts = [
   {
     slug: "hwid-spoofer",
     name: "HWID Spoofer",
-    price: "24.99 USD",
-    oldPrice: "34.99 USD",
+    price: "14.99 USD",
+    oldPrice: "24.99 USD",
     image: "/images/spoofer_hwid.png",
     tags: ["# Best"],
   },
@@ -931,8 +934,8 @@ const bestSellerProducts = [
   {
     slug: "hwid-spoofer",
     name: "HWID Spoofer",
-    price: "24.99 USD",
-    oldPrice: "34.99 USD",
+    price: "14.99 USD",
+    oldPrice: "24.99 USD",
     image: "/images/spoofer_hwid.png",
     tags: ["# UNDETECTED"],
   },
@@ -1536,15 +1539,13 @@ const checkoutProducts = [
     slug: "hwid-spoofer",
     name: "HWID Spoofer",
     shortName: "Spoofer",
-    price: "24.99 USD",
+    price: "14.99 USD",
     image: "/images/spoofer_hwid.png",
     description:
       "A dedicated HWID spoofer with fast setup, stable protection, and instant delivery after purchase.",
     variants: [
-      { label: "1 Day", price: "24.99 USD" },
-      { label: "3 Days", price: "39.99 USD" },
-      { label: "1 Week", price: "59.99 USD" },
-      { label: "1 Month", price: "89.99 USD" },
+      { label: "One-Time License", price: "14.99 USD" },
+      { label: "Lifetime License", price: "29.99 USD" },
     ],
   },
   {
@@ -2908,7 +2909,7 @@ function LoaderCard({ item, displayMeta, subscriptionBadge = null }) {
   return (
     <Link className="loader-card" href={loaderHref(item)}>
       <div className="loader-card-media">
-        <img src={item.image} alt={item.name} />
+        <img src={item.image} alt={item.name} loading="eager" fetchPriority="high" decoding="async" />
         {subscriptionBadge === "active" ? (
           <span className="loader-card-active-badge">ACTIVE</span>
         ) : subscriptionBadge === "redeemed" ? (
@@ -2948,8 +2949,7 @@ function LoaderCard({ item, displayMeta, subscriptionBadge = null }) {
 
 function LoaderContent() {
   const { user, ready: authReady } = useAuthUser();
-  const [displayMetaBySlug, setDisplayMetaBySlug] = useState({});
-  const [metaLoaded, setMetaLoaded] = useState(false);
+  const [displayMetaBySlug, setDisplayMetaBySlug] = useState(() => getStaticLoaderDisplayMetaMap(loaderProducts));
   const [productBadges, setProductBadges] = useState(() =>
     Object.fromEntries(loaderProducts.map((item) => [item.slug, "inactive"])),
   );
@@ -3007,16 +3007,10 @@ function LoaderContent() {
   useEffect(() => {
     let cancelled = false;
 
-    void Promise.all(
-      loaderProducts.map(async (item) => {
-        const appId = getLoaderAppId(item.slug);
-        const meta = await fetchLoaderDisplayMeta(supabase, appId, item);
-        return [item.slug, meta];
-      }),
-    ).then((entries) => {
-      if (cancelled) return;
-      setDisplayMetaBySlug(Object.fromEntries(entries));
-      setMetaLoaded(true);
+    setDisplayMetaBySlug(getInitialLoaderDisplayMetaMap(loaderProducts));
+
+    void refreshLoaderDisplayMetaMap(loaderProducts).then((nextMeta) => {
+      if (!cancelled) setDisplayMetaBySlug(nextMeta);
     });
 
     return () => {
@@ -3033,18 +3027,14 @@ function LoaderContent() {
           </div>
         </div>
         <div className="loader-grid">
-          {!metaLoaded
-            ? loaderProducts.map((item) => (
-                <LoaderCardSkeleton featurePreviewCount={item.featurePreviewCount || 3} key={`loader-skeleton-${item.slug}`} />
-              ))
-            : loaderProducts.map((item) => (
-                <LoaderCard
-                  item={item}
-                  displayMeta={displayMetaBySlug[item.slug]}
-                  subscriptionBadge={productBadges[item.slug] || "inactive"}
-                  key={item.slug}
-                />
-              ))}
+          {loaderProducts.map((item) => (
+            <LoaderCard
+              item={item}
+              displayMeta={displayMetaBySlug[item.slug]}
+              subscriptionBadge={productBadges[item.slug] || "inactive"}
+              key={item.slug}
+            />
+          ))}
         </div>
         <div className="loader-guide-video">
           <video
