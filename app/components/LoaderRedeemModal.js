@@ -10,6 +10,7 @@ import {
   REDEEM_STEP_SCALES,
   buildApplicationDownloadUrl,
   buildDownloadFileMeta,
+  buildDownloadFileSha,
   claimDiscordForLicense,
   cleanupDiscordAuthReturnUrl,
   clearDiscordAuthIntent,
@@ -99,6 +100,7 @@ export function LoaderRedeemModal({
   const [downloadUrl, setDownloadUrl] = useState("");
   const [downloadFileName, setDownloadFileName] = useState("");
   const [downloadFileMeta, setDownloadFileMeta] = useState("No file uploaded yet.");
+  const [downloadFileSha, setDownloadFileSha] = useState("");
   const outroTimerRef = useRef(null);
   const downloadUrlRef = useRef("");
   const licenseInputRef = useRef(null);
@@ -191,6 +193,7 @@ export function LoaderRedeemModal({
         setDownloadUrl(url);
         setDownloadFileName(String(appMeta.download_file_name || "").trim());
         setDownloadFileMeta(buildDownloadFileMeta(appMeta));
+        setDownloadFileSha(buildDownloadFileSha(appMeta));
         return;
       }
     }
@@ -198,6 +201,7 @@ export function LoaderRedeemModal({
     setDownloadUrl("");
     setDownloadFileName("");
     setDownloadFileMeta("No file uploaded yet.");
+    setDownloadFileSha("");
   }, [appId]);
 
   const showCompletedRedeem = useCallback(async (licenseKey, profile) => {
@@ -440,12 +444,14 @@ export function LoaderRedeemModal({
       downloadUrl,
       fileName: downloadFileName,
       fileMeta: downloadFileMeta,
+      fileSha: downloadFileSha,
     };
 
     downloadUrlRef.current = "";
     setDownloadUrl("");
     setDownloadFileName("");
     setDownloadFileMeta("No file uploaded yet.");
+    setDownloadFileSha("");
     onOpenDownloadRef.current?.(access);
   }
 

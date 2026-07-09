@@ -612,6 +612,48 @@
   align-items: center;
 }
 
+.licenseSearchWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 260px;
+}
+
+.licenseSearchIcon {
+  position: absolute;
+  left: 11px;
+  color: rgba(255, 255, 255, 0.42);
+  pointer-events: none;
+}
+
+.licenseSearchInput {
+  width: 100%;
+  min-width: 260px;
+  height: 38px;
+  padding: 0 12px 0 34px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+}
+
+.licenseSearchInput:hover:not(:disabled),
+.licenseSearchInput:focus:not(:disabled) {
+  border-color: rgba(163, 46, 59, 0.7);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.licenseSearchInput:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.licenseSearchInput::placeholder {
+  color: rgba(255, 255, 255, 0.34);
+}
+
 .status {
   display: inline-flex;
   align-items: center;
@@ -823,6 +865,194 @@
   color: #8b929c;
   font-size: 12px;
   line-height: 1.45;
+}
+
+.uploadFileInput {
+  display: none;
+}
+
+.uploadDropZone {
+  display: grid;
+  place-items: center;
+  min-height: 148px;
+  padding: 18px;
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+.uploadDropZoneActive {
+  border-color: rgba(245, 214, 218, 0.55);
+  background: rgba(245, 214, 218, 0.08);
+  transform: translateY(-1px);
+}
+
+.uploadDropZoneBusy {
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.uploadDropZoneContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  color: #b4bac3;
+}
+
+.uploadDropZoneContent strong {
+  color: #eceff3;
+  font-size: 14px;
+}
+
+.uploadDropZoneContent p {
+  margin: 4px 0 0;
+  color: #8b929c;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.packageUploadProgress {
+  display: grid;
+  gap: 8px;
+}
+
+.packageUploadProgressMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #b4bac3;
+  font-size: 12px;
+}
+
+.packageUploadProgressMeta strong {
+  color: #eceff3;
+  font-size: 12px;
+}
+
+.packageUploadProgressTrack {
+  position: relative;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.packageUploadProgressFill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform: scaleX(var(--package-upload-progress-scale, 0));
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(245, 214, 218, 0.85), rgba(255, 255, 255, 0.95));
+  transition: transform 0.18s ease;
+}
+
+.uploadMetaActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.uploadMetaSha {
+  display: grid;
+  gap: 6px;
+}
+
+.uploadMetaShaLabel {
+  color: #b4bac3;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.uploadMetaShaValue {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.22);
+  color: #eceff3;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.dangerLinkButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #ff9f9f;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dangerLinkButton:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.dangerLinkButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.packageToast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: min(360px, calc(100vw - 32px));
+  max-width: min(460px, calc(100vw - 32px));
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(1, 221, 165, 0.24);
+  background: rgba(10, 12, 16, 0.96);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
+  color: #7ff4cf;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.packageToastError {
+  border-color: rgba(255, 80, 80, 0.28);
+  color: #ffaaaa;
+}
+
+.packageToastSuccess {
+  border-color: rgba(1, 221, 165, 0.24);
+  color: #7ff4cf;
+}
+
+.packageToastClose {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  cursor: pointer;
+}
+
+.packageToastClose:hover {
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .linkButton {

@@ -17,9 +17,12 @@ import {
   CircleX,
   Copy,
   Cpu,
+  Fingerprint,
   Gamepad2,
+  HardDrive,
   Headphones,
   House,
+  KeyRound,
   Layers,
   Lock,
   LogIn,
@@ -37,6 +40,8 @@ import {
   Play,
   RefreshCw,
   Loader2,
+  Info,
+  Search,
   Star,
   Tags,
   TicketPercent,
@@ -63,6 +68,7 @@ import {
   refreshLoaderDisplayMetaMap,
   formatLoaderAppDate,
   getLoaderAppId,
+  getCachedLoaderDownloadAccess,
   resolveLoaderDownloadAccess,
   checkApplicationFrozen,
   extractDiscordProfile,
@@ -73,6 +79,7 @@ import {
   isExpiredLinkedLicense,
   resolveRestoredSubscriptionSession,
   syncLinkedLicense,
+  syncSubscriptionMetrics,
 } from "../../lib/loader-subscription";
 import { supabase } from "../../lib/supabase";
 import {
@@ -218,6 +225,7 @@ function scrollTop() {
 
 const CART_STORAGE_KEY = "unbanhwid.com-cart";
 const CART_EVENT = "unbanhwid.com-cart-change";
+const DISCORD_INVITE_URL = "https://discord.gg/unbanhwid";
 
 function CartBasketIcon({ size = 19 }) {
   return (
@@ -710,7 +718,7 @@ function Footer() {
                 <small>CONTACT US AT</small>
                 <strong>admin@unbanhwid.com</strong>
               </span>
-              <a className="footer-contact-action" href="mailto:admin@unbanhwid.com" aria-label="Contact unbanhwid.com">
+              <a className="footer-contact-action" href={DISCORD_INVITE_URL} aria-label="Contact support on Discord">
                 <ArrowRight size={21} strokeWidth={3.2} />
               </a>
             </div>
@@ -720,7 +728,7 @@ function Footer() {
               </p>
             </div>
           </div>
-          <a className="discord-card" href="https://discord.gg/unbanhwid.com" data-reveal>
+          <a className="discord-card" href={DISCORD_INVITE_URL} data-reveal>
             <img src="/images/discord-community-banner.png" alt="" />
             <span>
               Join Our
@@ -789,8 +797,8 @@ function HeaderStatus() {
 }
 
 function HomeHero() {
-  function scrollToGames() {
-    document.querySelector("#games")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  function scrollToProducts() {
+    document.querySelector("#home-products")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   return (
@@ -803,11 +811,11 @@ function HomeHero() {
           </div>
           <p data-reveal>Top Provider of Undetected Premium Game Cheats - Instant Delivery &amp; 24/7 Support</p>
           <div className="hero-banner-actions" data-reveal>
-            <button className="button button-secondary hero-banner-button" type="button" onClick={scrollToGames}>
+            <button className="button button-secondary hero-banner-button" type="button" onClick={scrollToProducts}>
               Shop now
               <FilledCartIcon size={18} />
             </button>
-            <a className="button button-primary-soft hero-banner-button hero-discord-button" href="https://discord.gg/unbanhwid.com">
+            <a className="button button-primary-soft hero-banner-button hero-discord-button" href={DISCORD_INVITE_URL}>
               Join Discord
               <DiscordIcon size={15} />
             </a>
@@ -815,6 +823,129 @@ function HomeHero() {
         </div>
       </div>
     </header>
+  );
+}
+
+function getRevealDelayMs(node) {
+  const cssDelay = getComputedStyle(node).getPropertyValue("--reveal-delay").trim();
+  if (cssDelay.endsWith("ms")) {
+    return Number.parseFloat(cssDelay);
+  }
+
+  if (cssDelay.endsWith("s")) {
+    return Number.parseFloat(cssDelay) * 1000;
+  }
+
+  const group = node.closest("[data-reveal-group]");
+  return Number(group?.getAttribute("data-reveal-base") || 0);
+}
+
+function HeroStatItem({ stat, value }) {
+  const itemRef = useRef(null);
+  const decimals = stat.key === "rating" ? 2 : 0;
+  const target = useMemo(() => {
+    const parsed = Number.parseFloat(String(value).replace(",", "."));
+    return Number.isFinite(parsed) ? parsed : 0;
+  }, [value]);
+  const [display, setDisplay] = useState(() => (decimals > 0 ? "0.00" : "0"));
+  const Icon = stat.icon;
+
+  useEffect(() => {
+    const node = itemRef.current;
+    if (!node) return undefined;
+
+    let frame = 0;
+    let revealTimer = 0;
+    let started = false;
+
+    function runCountUp() {
+      if (started) return;
+      started = true;
+
+      const prefersReducedMotion =
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      if (prefersReducedMotion) {
+        setDisplay(decimals > 0 ? target.toFixed(decimals) : String(Math.round(target)));
+        return;
+      }
+
+      const durationMs = 2000;
+      let startTime = 0;
+
+      setDisplay(decimals > 0 ? "0.00" : "0");
+
+      function tick(timestamp) {
+        if (!startTime) startTime = timestamp;
+        const progress = Math.min((timestamp - startTime) / durationMs, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const currentValue = target * eased;
+
+        setDisplay(decimals > 0 ? currentValue.toFixed(decimals) : String(Math.round(currentValue)));
+
+        if (progress < 1) {
+          frame = requestAnimationFrame(tick);
+        } else {
+          setDisplay(decimals > 0 ? target.toFixed(decimals) : String(Math.round(target)));
+        }
+      }
+
+      frame = requestAnimationFrame(tick);
+    }
+
+    function scheduleCountUp() {
+      window.clearTimeout(revealTimer);
+      revealTimer = window.setTimeout(runCountUp, getRevealDelayMs(node));
+    }
+
+    if (node.classList.contains("is-visible")) {
+      scheduleCountUp();
+    } else {
+      const mutation = new MutationObserver(() => {
+        if (!node.classList.contains("is-visible")) return;
+        mutation.disconnect();
+        scheduleCountUp();
+      });
+
+      mutation.observe(node, { attributes: true, attributeFilter: ["class"] });
+
+      const fallback = new IntersectionObserver(
+        ([entry]) => {
+          if (!entry.isIntersecting) return;
+          fallback.disconnect();
+          mutation.disconnect();
+          scheduleCountUp();
+        },
+        { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }
+      );
+
+      fallback.observe(node);
+
+      return () => {
+        mutation.disconnect();
+        fallback.disconnect();
+        window.clearTimeout(revealTimer);
+        cancelAnimationFrame(frame);
+      };
+    }
+
+    return () => {
+      window.clearTimeout(revealTimer);
+      cancelAnimationFrame(frame);
+    };
+  }, [decimals, target]);
+
+  return (
+    <div className="hero-stat-item" ref={itemRef}>
+      <div className="hero-stat-icon">
+        <Icon size={stat.iconSize || 34} />
+      </div>
+      <div>
+        <strong className="hero-stat-value">{display}</strong>
+        <span>{stat.label}</span>
+      </div>
+    </div>
   );
 }
 
@@ -839,21 +970,9 @@ function HeroStats({ reviewCount = 0, averageRating = null }) {
     <section className="hero-stats-section" aria-label="unbanhwid.com stats">
       <div className="container">
         <div className="hero-stats-panel" data-reveal-group data-reveal-base="70">
-          {heroStats.map((stat) => {
-            const Icon = stat.icon;
-
-            return (
-              <div className="hero-stat-item" key={stat.label}>
-                <div className="hero-stat-icon">
-                  <Icon size={stat.iconSize || 34} />
-                </div>
-                <div>
-                  <strong>{stat.value}</strong>
-                  <span>{stat.label}</span>
-                </div>
-              </div>
-            );
-          })}
+          {heroStats.map((stat) => (
+            <HeroStatItem key={stat.label} stat={stat} value={stat.value} />
+          ))}
         </div>
       </div>
     </section>
@@ -919,7 +1038,7 @@ const bestSellerProducts = [
     slug: "fortnite-private",
     name: "Fortnite Private",
     price: "5.99 USD",
-    oldPrice: "19.99 USD",
+    oldPrice: "7.99 USD",
     image: "/images/fortnite.png",
     tags: ["# UNDETECTED "],
   },
@@ -927,7 +1046,7 @@ const bestSellerProducts = [
     slug: "arc-raiders",
     name: "Arc Raiders",
     price: "4.99 USD",
-    oldPrice: "19.99 USD",
+    oldPrice: "9.99 USD",
     image: "/images/arc_raiders.png",
     tags: ["# UNDETECTED"],
   },
@@ -937,7 +1056,7 @@ const bestSellerProducts = [
     price: "14.99 USD",
     oldPrice: "24.99 USD",
     image: "/images/spoofer_hwid.png",
-    tags: ["# UNDETECTED"],
+    tags: ["# BEST SELLER"],
   },
 ];
 
@@ -950,7 +1069,7 @@ const whyChooseUsBenefits = [
   {
     icon: ShieldCheck,
     title: "HWID Unban Experts",
-    description: "Purpose-built tools to help you recover from hardware bans fast.",
+    description: "It helps you unban yourself from your favorite games in a moment.",
   },
   {
     icon: Headphones,
@@ -972,6 +1091,26 @@ const whyChooseUsBenefits = [
     title: "Proven Track Record",
     description: "Trusted by thousands of customers with verified reviews.",
   },
+];
+
+const beforeSpoofPoints = [
+  "Hardware serials banned",
+  "Blocked Matchmaking & Lobbies",
+  "Fear of Losing Progress",
+  "Wasting Time on Ban Appeals",
+  "Failed manual bypass attempts",
+  "Friends play without you",
+  "Wasting your skill progress",
+];
+
+const afterSpoofPoints = [
+  "Permanently HWID unbanned",
+  "Fresh hardware serials identity",
+  "Play again without instant kicks",
+  "No worries and determination",
+  "Ranked ladder await once more",
+  "A Fresh and Clean Start",
+  "Friends can join you",
 ];
 
 const RECENT_PURCHASES_STORAGE_KEY = "unbanhwid.com-recent-purchases-v2";
@@ -1316,6 +1455,312 @@ const fortniteRequirements = [
   { label: "Platform", value: "Epic Games", icon: Layers },
 ];
 
+const hwidSpooferRequirements = [
+  { label: "Operating System", value: "Windows 10 & 11", icon: Monitor },
+  { label: "Motherboards", value: "98,71% Supported", icon: Cpu },
+  { label: "Tournament Ready", value: "Yes", icon: Trophy },
+  { label: "Spoofer Type", value: "Permanent", icon: Fingerprint },
+  { label: "Disk Spoofing", value: "Yes", icon: HardDrive },
+  { label: "TPM Spoofing", value: "Yes", icon: KeyRound },
+];
+
+const hwidSpooferPlanComparisonRows = [
+  { label: "1 User application access", oneTime: true, lifetime: true },
+  { label: "Unlimited usage access", oneTime: false, lifetime: true },
+  { label: "Detailed instructions", oneTime: true, lifetime: true },
+  { label: "Reliable customer support", oneTime: true, lifetime: true },
+  { key: "smbios_fixer", label: "SMBIOS & Manufacturer Fixer", oneTime: false, lifetime: true },
+  { label: "Basic Spoofing", oneTime: true, lifetime: true },
+  { key: "disk_spoofer", label: "Disk spoofer included", oneTime: false, lifetime: true },
+  { label: "TPM 2.0 Spoofing", oneTime: true, lifetime: true },
+  { key: "tpm_bypass", label: "TPM 2.0 Bypass", oneTime: false, lifetime: true },
+];
+
+const hwidSpooferModuleInfoCards = [
+  {
+    key: "smbios_fixer",
+    title: "SMBIOS Fixer",
+    body: [
+      "This is merely an additional tool. It is used to repair serials, manufacturers, strings, versions of your PC component parts.",
+      "It's not required for unban.",
+    ],
+  },
+  {
+    key: "disk_spoofer",
+    title: "Disk Spoofing",
+    body: [
+      "Disk spoofing is not required for all games, and may not be required at all - depends. The Disk spoofer is just an addition and a faster solution.",
+      "The only advantage is saving time. For people with a One-Time subscription, we also have disk ban bypass solution that works 100%.",
+    ],
+  },
+  {
+    key: "tpm_spoofing",
+    title: "TPM 2.0 Spoofing",
+    body: [
+      "Trusted Platform Module 2.0 (TPM) is an add-on only. It is not required for any game, since our HWID Spoofer supports TPM spoofing.",
+      "Bypass is definitely a quick and convenient option, especially for regular cheaters.",
+    ],
+  },
+];
+
+const hwidSpooferPlanInfoCopy = {
+  smbios_fixer: hwidSpooferModuleInfoCards[0],
+  disk_spoofer: hwidSpooferModuleInfoCards[1],
+  tpm_bypass: {
+    title: "TPM 2.0 Bypass",
+    body: [
+      "Trusted Platform Module 2.0 (TPM) is an add-on only. It is not required for any game, since our HWID Spoofer supports TPM spoofing.",
+      "Bypass is definitely a quick and convenient option, especially for regular cheaters.",
+    ],
+  },
+};
+
+const hwidSpooferGames = [
+  "Fortnite",
+  "Valorant",
+  "Call of Duty",
+  "Apex Legends",
+  "DayZ",
+  "Delta Force",
+  "The Finals",
+  "Marvel Rivals",
+  "Battlefield",
+  "Arena Breakout Infinite",
+  "Rust",
+  "Roblox",
+  "FiveM",
+  "GTA V Online",
+  "Rainbow Six Siege",
+  "PUBG: Battlegrounds",
+  "EA Sports FC / FIFA",
+  "League of Legends",
+  "Minecraft",
+  "Rocket League",
+  "World of Warcraft",
+  "Overwatch 2",
+  "Destiny 2",
+  "Warframe",
+  "Team Fortress 2",
+  "ARK: Survival Ascended",
+  "Dead by Daylight",
+  "Sea of Thieve",
+  "Lost Ark",
+  "Enlisted",
+  "WOT & WOW",
+];
+
+const hwidSpooferMotherboards = [
+  "AAEON",
+  "Acer",
+  "American Portwell Technology",
+  "AOpen",
+  "AORUS",
+  "Arbor Technology",
+  "ASRock",
+  "ASUS",
+  "Biostar",
+  "Colorful",
+  "Commell",
+  "Dell",
+  "DFI",
+  "EVGA",
+  "Fujitsu",
+  "Gigabyte",
+  "HP",
+  "IBase",
+  "iGame",
+  "Intel",
+  "Lanner",
+  "Lenovo",
+  "MSI",
+  "MSI OEM",
+  "NZXT",
+  "ONDA",
+  "Pegatron",
+  "PNY",
+  "PowerColor",
+  "Prime",
+  "ProArt",
+  "Quanta",
+  "ROG",
+  "Samsung",
+  "Sapphire",
+  "SECO",
+  "Shuttle",
+  "SOYO",
+  "Toshiba",
+  "TUF Gaming",
+  "Zotac",
+];
+
+const hwidSpooferAsusMotherboards = new Set(["ASUS", "AORUS", "ROG", "TUF Gaming", "ProArt"]);
+const hwidSpooferLenovoDellMotherboards = new Set(["Lenovo", "Dell"]);
+
+const hwidSpooferUnsupportedGames = new Set(["Arena Breakout Infinite", "Delta Force"]);
+
+function checkHwidSpooferCompatibility(game, motherboard) {
+  if (motherboard === "Samsung") {
+    return {
+      supported: false,
+      reason: "Samsung motherboards are not supported for any game.",
+    };
+  }
+
+  if (hwidSpooferUnsupportedGames.has(game)) {
+    return {
+      supported: false,
+      reason: `${game} is not supported on any motherboard.`,
+    };
+  }
+
+  if (game === "Valorant" && hwidSpooferAsusMotherboards.has(motherboard)) {
+    return {
+      supported: false,
+      reason: "Valorant is not supported on ASUS motherboards.",
+    };
+  }
+
+  if (game === "Valorant" && hwidSpooferLenovoDellMotherboards.has(motherboard)) {
+    return {
+      supported: false,
+      reason: `Valorant is not supported on ${motherboard} motherboards.`,
+    };
+  }
+
+  return {
+    supported: true,
+    reason: "This game and motherboard are supported by our HWID Spoofer",
+  };
+}
+
+function filterHwidSpooferOptions(options, query) {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return [];
+
+  return options.filter((option) => option.toLowerCase().includes(normalized)).slice(0, 8);
+}
+
+const hwidSpooferUnsupportedEntries = [
+  {
+    label: "Arena Breakout Infinite",
+    description: "Unsupported on all motherboards.",
+  },
+  {
+    label: "Delta Force",
+    description: "Unsupported on all motherboards.",
+  },
+  {
+    label: "Valorant",
+    description: "Unsupported on ASUS, AORUS, ROG, TUF Gaming, ProArt, Lenovo, and Dell motherboards.",
+  },
+  {
+    label: "Samsung",
+    description: "Unsupported for all games.",
+  },
+];
+
+const hwidSpooferSupportedAntiCheats = [
+  "Activision RICOCHET Anti-Cheat",
+  "Easy Anti-Cheat",
+  "EasyAntiCheat EOS",
+  "EA Anti-Cheat (EAAC)",
+  "Riot Vanguard",
+  "BattlEye",
+  "BEService",
+  "XIGNCODE3",
+  "COD RICOCHET",
+  "Anzu Anti-Cheat",
+  "FACEIT Anti-Cheat",
+  "Denuvo Anti-Cheat",
+  "EA anticheat",
+  "EA Javelin",
+  "EQU8 Anti-Cheat",
+  "GameGuard",
+  "GameShield",
+  "Byfron",
+  "Roblox Hyperion",
+  "Valve Anti-Cheat",
+];
+
+const hwidSpooferFeatures = [
+  {
+    title: "Spoofing Modules",
+    groups: [
+      {
+        title: "Hardware Identifiers",
+        items: [
+          "Baseboard serial number",
+          "SMBIOS system UUID",
+          "BIOS serial & vendor string",
+          "Network adapters",
+          "Registry values",
+          "NIC & Kernel MAC address",
+          "Monitor EDID serials",
+          "TPM 2.0 Serial numbers",
+          "Storage drive serials (DISKS)",
+        ],
+      },
+      {
+        title: "Cleanup Targets",
+        items: [
+          "Registry hardware fingerprints",
+          "Windows prefetch cache",
+          "Event log entries",
+          "USN journal records",
+          "EFI boot variables",
+          "Pagefile traces",
+          "Setupapi device logs",
+          "WMI repository cache",
+          "Recent documents / jump lists",
+          "Browser hardware fingerprints",
+          "Additional targets not publicly listed",
+        ],
+      },
+    ],
+  },
+  {
+    title: "Other Features & Benefits",
+    groups: [
+      {
+        title: "Product Features",
+        items: [
+          "Clean UI & User-Friendly Interface",
+          "SMBIOS Manufacturer fixer",
+          "Permanent disk(s) spoofing",
+          "Built-in custom EFI spoofing",
+          "Stays unbanned after reinstallation",
+          "Permanent Disk Spoofing Tool",
+          "Fortnite Tournament Fixer",
+          "TPM 2.0 Bypass",
+          "Detailed instructions [Photos &Videos]",
+          "Friendly & Helpful support",
+          "Free Anydesk support",
+        ],
+      },
+      {
+        title: "HOW IT WORKS",
+        items: [
+          "S.M.A.R.T Legit spoofing system",
+          "All Identifiers spoofed in memory",
+          "Firmware-Level Fingerprint vectors",
+          "Anti-Cheat telementry interception",
+          "Driver enumeration pattern masking",
+          "One-click execution, no setup",
+        ],
+      },
+    ],
+  },
+  {
+    title: "Supported Anti-Cheats",
+    groups: [
+      {
+        title: "FULL LIST OF ANTI-CHEATS",
+        items: hwidSpooferSupportedAntiCheats,
+      },
+    ],
+  },
+];
+
 const fortniteFeatures = [
   {
     title: "Aimbot",
@@ -1547,6 +1992,13 @@ const checkoutProducts = [
       { label: "One-Time License", price: "14.99 USD" },
       { label: "Lifetime License", price: "29.99 USD" },
     ],
+    secondaryImages: [
+      { src: "/images/secondary-images/beforespoof.png", alt: "Before Spoof" },
+      { src: "/images/secondary-images/spoofing.png", alt: "Spoofing" },
+      { src: "/images/secondary-images/afterspoof.png", alt: "After Spoof" },
+    ],
+    requirements: hwidSpooferRequirements,
+    features: hwidSpooferFeatures,
   },
   {
     slug: "arc-raiders",
@@ -1604,8 +2056,8 @@ const productRequirements = [
 
 const productFeatures = [
   {
-    title: "Aimbot",
-    items: ["Smooth aiming controls", "FOV customization", "Distance checks", "Target filters"],
+    title: "Spoofing Process",
+    items: ["Smooth aiminsg controls", "FOV customization", "Distance checks", "Target filters"],
   },
   {
     title: "Visuals",
@@ -1677,6 +2129,54 @@ const loaderProducts = [
   },
 ];
 
+const arcRaidersLoaderFeatures = [
+  {
+    title: "Information",
+    items: [
+      "Windows 10 & 11",
+      "Processors: AMD & Intel",
+      "Anti-cheat: Denuvo",
+      "Spoofer Included: No",
+      "Platform: Steam & Epic Games",
+    ],
+  },
+  {
+    title: "Aimbot",
+    items: ["Aimbot", "Aim prediction", "Customization", "Triggerbot", "Miscellaneous"],
+  },
+  {
+    title: "Visuals",
+    items: ["ESP", "Loot ESP", "Loot Category", "Smart Loot", "Display Style"],
+  },
+];
+
+const fortniteLoaderFeatures = [
+  {
+    title: "Information",
+    items: [
+      "Windows 10 & 11",
+      "Processors: AMD & Intel",
+      "Anti-cheat: Easy Anti-Cheat",
+      "Spoofer: No (disk hidder only)",
+      "Platform: Epic Games",
+    ],
+  },
+  {
+    title: "Aimbot",
+    items: ["Aimbot", "Humanization", "Aim prediction", "Customization", "Weapon configuration"],
+  },
+  {
+    title: "Visuals",
+    items: ["ESP", "Visuals Checks", "Sliders config", "Display options", "Other"],
+  },
+];
+
+const loaderFeatureSectionsBySlug = {
+  "hwid-spoofer": () => hwidSpooferFeatures.slice(0, 2),
+  "arc-raiders": () => arcRaidersLoaderFeatures,
+  "fortnite-private": () => fortniteLoaderFeatures,
+};
+
 function productSlug(name = "") {
   return name
     .toLowerCase()
@@ -1686,6 +2186,45 @@ function productSlug(name = "") {
 
 function loaderHref(product) {
   return `/loader/${product.slug}`;
+}
+
+function isLoaderProductInactive(displayMeta) {
+  const status = String(displayMeta?.status || "").trim();
+  return status === "Maintenance" || status === "Detected";
+}
+
+function resolveLoaderProductBadge({ result, completed, displayMeta }) {
+  const hasStoredKey = Boolean(completed?.licenseKey);
+  const hasLinkedLicense = Boolean(result?.license);
+  const hasLicenseContext = hasStoredKey || hasLinkedLicense;
+
+  if (hasLicenseContext) {
+    if (result?.keyMissing) {
+      return "inactive";
+    }
+
+    const mode = result?.mode || "empty";
+
+    if (mode === "expired") {
+      return "inactive";
+    }
+
+    if (mode === "banned") {
+      return "banned";
+    }
+
+    if (mode === "active" || mode === "frozen") {
+      return "active";
+    }
+
+    return "redeemed";
+  }
+
+  if (isLoaderProductInactive(displayMeta)) {
+    return "inactive";
+  }
+
+  return "inactive";
 }
 
 function getLoaderProduct(slug) {
@@ -1818,6 +2357,147 @@ function WhyChooseUsSection() {
               </article>
             );
           })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BeforeAfterSection() {
+  const sliderRef = useRef(null);
+  const [position, setPosition] = useState(50);
+  const [frameWidth, setFrameWidth] = useState(0);
+  const draggingRef = useRef(false);
+
+  const updateFrameWidth = useCallback(() => {
+    if (!sliderRef.current) return;
+    setFrameWidth(sliderRef.current.offsetWidth);
+  }, []);
+
+  useLayoutEffect(() => {
+    updateFrameWidth();
+
+    if (!sliderRef.current || typeof ResizeObserver === "undefined") {
+      return undefined;
+    }
+
+    const observer = new ResizeObserver(() => updateFrameWidth());
+    observer.observe(sliderRef.current);
+    return () => observer.disconnect();
+  }, [updateFrameWidth]);
+
+  const setPositionFromClientX = useCallback((clientX) => {
+    const rect = sliderRef.current?.getBoundingClientRect();
+    if (!rect?.width) return;
+
+    const nextPosition = ((clientX - rect.left) / rect.width) * 100;
+    setPosition(Math.min(100, Math.max(0, nextPosition)));
+  }, []);
+
+  useEffect(() => {
+    const handlePointerMove = (event) => {
+      if (!draggingRef.current) return;
+      setPositionFromClientX(event.clientX);
+    };
+
+    const stopDragging = () => {
+      draggingRef.current = false;
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", stopDragging);
+    window.addEventListener("pointercancel", stopDragging);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", stopDragging);
+      window.removeEventListener("pointercancel", stopDragging);
+    };
+  }, [setPositionFromClientX]);
+
+  const startDragging = (event) => {
+    draggingRef.current = true;
+    sliderRef.current?.setPointerCapture?.(event.pointerId);
+    setPositionFromClientX(event.clientX);
+  };
+
+  return (
+    <section className="section before-after-section" data-reveal-group data-reveal-base="70">
+      <div className="container">
+        <div className="before-after-head" data-reveal>
+          <h2>
+            <Layers size={26} strokeWidth={2.4} />
+            Before and After Spoof
+          </h2>
+        </div>
+
+        <div className="before-after-layout" data-reveal-group data-reveal-base="130">
+          <div className="before-after-side before-after-side-before" data-reveal>
+            <h3>Before Spoof</h3>
+            <ul>
+              {beforeSpoofPoints.map((point) => (
+                <li key={point}>
+                  <X size={16} strokeWidth={2.4} aria-hidden="true" />
+                  <span>{point}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div
+            className="before-after-slider"
+            data-reveal
+            ref={sliderRef}
+            onPointerDown={startDragging}
+            role="presentation"
+          >
+            <img
+              className="before-after-image before-after-image-after"
+              src="/images/secondary-images/after.png"
+              alt="After spoof"
+              draggable={false}
+            />
+
+            <div className="before-after-before-clip" style={{ width: `${position}%` }}>
+              <img
+                className="before-after-image before-after-image-before"
+                src="/images/secondary-images/before.png"
+                alt="Before spoof"
+                style={{ width: frameWidth ? `${frameWidth}px` : "100%" }}
+                draggable={false}
+              />
+            </div>
+
+            <div className="before-after-handle" style={{ left: `${position}%` }} aria-hidden="true">
+              <span />
+            </div>
+
+            <span className="before-after-label before-after-label-before">BEFORE</span>
+            <span className="before-after-label before-after-label-after">AFTER</span>
+          </div>
+
+          <div className="before-after-side before-after-side-after" data-reveal>
+            <h3>After Spoof</h3>
+            <ul>
+              {afterSpoofPoints.map((point) => (
+                <li key={point}>
+                  <Check size={16} strokeWidth={2.4} aria-hidden="true" />
+                  <span>{point}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="before-after-actions" data-reveal>
+            <Link className="button button-secondary before-after-action-primary" href="/product/hwid-spoofer">
+              <ShoppingCart size={18} />
+              Purchase, UNBAN NOW!
+            </Link>
+            <Link className="button button-primary-soft before-after-action-secondary" href="/product/hwid-spoofer#product-features">
+              <ScrollText size={18} />
+              Check my compatibility
+            </Link>
+          </div>
         </div>
       </div>
     </section>
@@ -2038,6 +2718,538 @@ function ProductImageLightbox({ images, index, onIndexChange, onClose }) {
   );
 }
 
+function HwidSpooferAutocompleteField({
+  id,
+  kicker,
+  options,
+  value,
+  selected,
+  onValueChange,
+  onSelect,
+}) {
+  const wrapperRef = useRef(null);
+  const inputWrapRef = useRef(null);
+  const suggestionsRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [highlightIndex, setHighlightIndex] = useState(0);
+  const [menuStyle, setMenuStyle] = useState(null);
+  const suggestions = useMemo(() => filterHwidSpooferOptions(options, value), [options, value]);
+
+  const updateMenuPosition = useCallback(() => {
+    const anchor = inputWrapRef.current;
+    if (!anchor) return;
+
+    const rect = anchor.getBoundingClientRect();
+    setMenuStyle({
+      top: `${rect.bottom - 1}px`,
+      left: `${rect.left}px`,
+      width: `${rect.width}px`,
+    });
+  }, []);
+
+  useEffect(() => {
+    setHighlightIndex(0);
+  }, [value, suggestions.length]);
+
+  useLayoutEffect(() => {
+    if (!open || !suggestions.length) {
+      setMenuStyle(null);
+      return undefined;
+    }
+
+    updateMenuPosition();
+
+    function handleReposition() {
+      updateMenuPosition();
+    }
+
+    window.addEventListener("scroll", handleReposition, true);
+    window.addEventListener("resize", handleReposition);
+
+    return () => {
+      window.removeEventListener("scroll", handleReposition, true);
+      window.removeEventListener("resize", handleReposition);
+    };
+  }, [open, suggestions.length, updateMenuPosition]);
+
+  useEffect(() => {
+    function handlePointerDown(event) {
+      if (
+        wrapperRef.current?.contains(event.target) ||
+        suggestionsRef.current?.contains(event.target)
+      ) {
+        return;
+      }
+
+      setOpen(false);
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, []);
+
+  function chooseOption(option) {
+    onValueChange(option);
+    onSelect(option);
+    setOpen(false);
+  }
+
+  function handleKeyDown(event) {
+    if (!open || !suggestions.length) {
+      if (event.key === "ArrowDown" && suggestions.length) {
+        setOpen(true);
+      }
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setHighlightIndex((current) => (current + 1) % suggestions.length);
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setHighlightIndex((current) => (current - 1 + suggestions.length) % suggestions.length);
+      return;
+    }
+
+    if (event.key === "Enter" && suggestions[highlightIndex]) {
+      event.preventDefault();
+      chooseOption(suggestions[highlightIndex]);
+      return;
+    }
+
+    if (event.key === "Escape") {
+      setOpen(false);
+    }
+  }
+
+  return (
+    <div className="hwid-check-field" ref={wrapperRef}>
+      <div className="hwid-check-field-head">
+        <label className="hwid-check-label" htmlFor={id}>
+          {kicker}
+        </label>
+        <span className={`hwid-check-field-status${selected ? " is-selected" : " is-not-selected"}`}>
+          {selected ? <Check size={12} /> : null}
+          {selected ? "Selected" : "Not Selected"}
+        </span>
+      </div>
+      <div
+        ref={inputWrapRef}
+        className={`hwid-check-input-wrap${open && suggestions.length ? " is-open" : ""}`}
+      >
+        <input
+          id={id}
+          className="hwid-check-input"
+          type="text"
+          value={value}
+          placeholder="Start typing to search..."
+          autoComplete="off"
+          spellCheck={false}
+          onChange={(event) => {
+            onValueChange(event.target.value);
+            onSelect(null);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={handleKeyDown}
+          aria-autocomplete="list"
+          aria-expanded={open && suggestions.length > 0}
+          aria-controls={`${id}-suggestions`}
+        />
+      </div>
+      {open && suggestions.length && menuStyle
+        ? createPortal(
+            <ul
+              ref={suggestionsRef}
+              className="hwid-check-suggestions hwid-check-suggestions--portal"
+              id={`${id}-suggestions`}
+              role="listbox"
+              style={menuStyle}
+            >
+              {suggestions.map((option, index) => (
+                <li key={option} role="option" aria-selected={index === highlightIndex}>
+                  <button
+                    type="button"
+                    className={index === highlightIndex ? "active" : ""}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => chooseOption(option)}
+                  >
+                    {option}
+                  </button>
+                </li>
+              ))}
+            </ul>,
+            document.body,
+          )
+        : null}
+    </div>
+  );
+}
+
+function HwidSpooferPlanCompareIcon({ included }) {
+  if (included) {
+    return <CircleCheck size={18} className="product-plan-compare-icon product-plan-compare-icon--yes" aria-hidden="true" />;
+  }
+
+  return <CircleX size={18} className="product-plan-compare-icon product-plan-compare-icon--no" aria-hidden="true" />;
+}
+
+function HwidSpooferPlanComparison() {
+  const [infoKey, setInfoKey] = useState("");
+
+  const infoCopy = infoKey ? hwidSpooferPlanInfoCopy[infoKey] || null : null;
+
+  return (
+    <article className="product-plan-compare-card" data-reveal>
+      <div className="product-plan-compare-scroll">
+        <table className="product-plan-compare-table">
+          <thead>
+            <tr>
+              <th scope="col" className="product-plan-compare-feature-col" />
+              <th scope="col">One-Time License</th>
+              <th scope="col">Lifetime License</th>
+            </tr>
+          </thead>
+          <tbody>
+            {hwidSpooferPlanComparisonRows.map((row) => (
+              <tr key={row.label}>
+                <th scope="row">
+                  <span className="product-plan-compare-feature">
+                    <span>{row.label}</span>
+                    {row.key ? (
+                      <button
+                        type="button"
+                        className="product-plan-compare-info-button"
+                        onClick={() => setInfoKey((current) => (current === row.key ? "" : row.key))}
+                        aria-label="Information"
+                        aria-expanded={infoKey === row.key}
+                      >
+                        <Info size={14} aria-hidden="true" />
+                      </button>
+                    ) : null}
+                  </span>
+                </th>
+                <td aria-label={row.oneTime ? "Included" : "Not included"}>
+                  <HwidSpooferPlanCompareIcon included={row.oneTime} />
+                </td>
+                <td aria-label={row.lifetime ? "Included" : "Not included"}>
+                  <HwidSpooferPlanCompareIcon included={row.lifetime} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {infoCopy ? (
+        <div className="redeem-info-card product-plan-compare-info-card">
+          <button className="redeem-info-back" type="button" onClick={() => setInfoKey("")}>
+            <ChevronLeft size={16} />
+            <span>Back</span>
+          </button>
+          <div className="redeem-info-copy">
+            <p>
+              <strong>{infoCopy.title}</strong>
+            </p>
+            {infoCopy.body.map((text) => (
+              <p key={text}>{text}</p>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+function HwidSpooferModuleInfoCards() {
+  return (
+    <div className="hwid-module-info-grid" data-reveal-group data-reveal-base="110">
+      {hwidSpooferModuleInfoCards.map((card) => (
+        <article className="product-feature-card hwid-module-info-card" key={card.key} data-reveal>
+          <h3>{card.title}</h3>
+          <div className="hwid-module-info-copy">
+            {card.body.map((paragraph) => (
+              <p key={paragraph}>{paragraph}</p>
+            ))}
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function HwidSpooferCompatibilityChecker() {
+  const [motherboardQuery, setMotherboardQuery] = useState("");
+  const [gameQuery, setGameQuery] = useState("");
+  const [selectedMotherboard, setSelectedMotherboard] = useState(null);
+  const [selectedGame, setSelectedGame] = useState(null);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+  const [infoView, setInfoView] = useState(false);
+  const [viewHeight, setViewHeight] = useState(null);
+  const [hasRevealed, setHasRevealed] = useState(false);
+  const cardRef = useRef(null);
+  const checkerViewRef = useRef(null);
+  const lockedHeightRef = useRef(null);
+
+  const measureCheckerHeight = useCallback(() => {
+    if (!checkerViewRef.current) return null;
+
+    const height = checkerViewRef.current.offsetHeight;
+    lockedHeightRef.current = height;
+    setViewHeight(height);
+    return height;
+  }, []);
+
+  useEffect(() => {
+    const node = cardRef.current;
+    if (!node || hasRevealed) return undefined;
+
+    if (!("IntersectionObserver" in window)) {
+      setHasRevealed(true);
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setHasRevealed(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -8% 0px" },
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasRevealed]);
+
+  useLayoutEffect(() => {
+    const node = cardRef.current;
+    if (!node) return undefined;
+
+    const grid = node.closest("[data-reveal-group]");
+    if (!grid) return undefined;
+
+    const base = Number(grid.getAttribute("data-reveal-base") || 0);
+    const step = Number(grid.getAttribute("data-reveal-step") || 95);
+    const cards = grid.querySelectorAll(".product-feature-card");
+    const index = Array.from(cards).indexOf(node);
+
+    if (index >= 0) {
+      node.style.setProperty("--reveal-delay", `${Math.min(base + index * step, 720)}ms`);
+    }
+  }, []);
+
+  useEffect(() => {
+    const node = cardRef.current;
+    if (!hasRevealed || !node) return undefined;
+
+    function lockReveal() {
+      node.classList.add("is-reveal-locked");
+    }
+
+    node.addEventListener("transitionend", lockReveal, { once: true });
+    const timer = window.setTimeout(lockReveal, 900);
+
+    return () => {
+      node.removeEventListener("transitionend", lockReveal);
+      window.clearTimeout(timer);
+    };
+  }, [hasRevealed]);
+
+  useLayoutEffect(() => {
+    if (infoView) return undefined;
+
+    measureCheckerHeight();
+
+    if (!checkerViewRef.current || typeof ResizeObserver === "undefined") {
+      return undefined;
+    }
+
+    const observer = new ResizeObserver(() => {
+      measureCheckerHeight();
+    });
+    observer.observe(checkerViewRef.current);
+    return () => observer.disconnect();
+  }, [infoView, measureCheckerHeight, result, error]);
+
+  function resetResult() {
+    setResult(null);
+    setError("");
+  }
+
+  function handleAnalyze() {
+    resetResult();
+
+    if (!selectedMotherboard || !hwidSpooferMotherboards.includes(selectedMotherboard)) {
+      setError("Select your motherboard from the suggestions list.");
+      return;
+    }
+
+    if (!selectedGame || !hwidSpooferGames.includes(selectedGame)) {
+      setError("Select your game from the suggestions list.");
+      return;
+    }
+
+    setResult(checkHwidSpooferCompatibility(selectedGame, selectedMotherboard));
+  }
+
+  function toggleInfoView() {
+    if (!infoView) {
+      measureCheckerHeight();
+    }
+
+    setInfoView((current) => !current);
+    resetResult();
+  }
+
+  const lockedHeight = viewHeight ?? lockedHeightRef.current;
+
+  return (
+    <article
+      ref={cardRef}
+      className={`product-feature-card hwid-check-card${infoView ? " is-info-view" : ""}${hasRevealed ? " is-revealed" : ""}`}
+    >
+      <div className="hwid-check-app-shell">
+        <div className="hwid-check-app-bar">
+          <span className="hwid-check-app-title" key={infoView ? "info" : "check"}>
+            {infoView ? "UNSUPPORTED COMPONENTS & GAMES" : "COMPATIBILITY CHECK"}
+          </span>
+          <div className="hwid-check-window-controls" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
+        </div>
+
+        <div className="hwid-check-app-content">
+          <div
+            className="hwid-check-views"
+            style={infoView && lockedHeight ? { height: `${lockedHeight}px` } : undefined}
+          >
+            {!infoView ? (
+              <div
+                ref={checkerViewRef}
+                className="hwid-check-view hwid-check-view--checker hwid-check-view--enter"
+                key="checker"
+              >
+                <p className="hwid-check-intro">
+                  Select your motherboard and game, then run the analysis to verify support.
+                </p>
+
+                <div className="hwid-check-body">
+                  <HwidSpooferAutocompleteField
+                    id="hwid-check-game"
+                    kicker="Game"
+                    options={hwidSpooferGames}
+                    value={gameQuery}
+                    selected={selectedGame}
+                    onValueChange={(nextValue) => {
+                      setGameQuery(nextValue);
+                      resetResult();
+                    }}
+                    onSelect={(nextValue) => {
+                      setSelectedGame(nextValue);
+                      resetResult();
+                    }}
+                  />
+
+                  <HwidSpooferAutocompleteField
+                    id="hwid-check-motherboard"
+                    kicker="Motherboard"
+                    options={hwidSpooferMotherboards}
+                    value={motherboardQuery}
+                    selected={selectedMotherboard}
+                    onValueChange={(nextValue) => {
+                      setMotherboardQuery(nextValue);
+                      resetResult();
+                    }}
+                    onSelect={(nextValue) => {
+                      setSelectedMotherboard(nextValue);
+                      resetResult();
+                    }}
+                  />
+
+                  <div className={`hwid-check-action-row${result || error ? " has-feedback" : ""}`}>
+                    <div className="hwid-check-action-buttons">
+                      <button className="button button-secondary hwid-check-analyze" type="button" onClick={handleAnalyze}>
+                        <Search size={18} />
+                        Analyze
+                      </button>
+                      <button
+                        className="hwid-check-info-button"
+                        type="button"
+                        onClick={toggleInfoView}
+                        aria-label="Show unsupported components and games"
+                        aria-pressed={false}
+                      >
+                        <Info size={16} />
+                      </button>
+                    </div>
+                    {result ? (
+                      <div
+                        key={`${selectedGame}-${selectedMotherboard}-${result.supported}`}
+                        className={`hwid-check-result hwid-check-result--${result.supported ? "supported" : "unsupported"}`}
+                      >
+                        {result.supported ? (
+                          <Check size={18} className="hwid-check-result-icon hwid-check-result-icon--supported" />
+                        ) : (
+                          <X size={18} className="hwid-check-result-icon hwid-check-result-icon--unsupported" />
+                        )}
+                        <div className="hwid-check-result-copy">
+                          <strong>{result.supported ? "Supported" : "Unsupported"}</strong>
+                          <p>{result.reason}</p>
+                        </div>
+                      </div>
+                    ) : error ? (
+                      <p className="hwid-check-error hwid-check-error--inline" role="alert">
+                        {error}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="hwid-check-view hwid-check-view--info hwid-check-view--enter" key="info">
+                <p className="hwid-check-intro">
+                  These games and components are currently unsupported by the HWID Spoofer.
+                </p>
+
+                <div className="hwid-check-body hwid-check-body--info">
+                  <ul className="hwid-check-unsupported-list">
+                    {hwidSpooferUnsupportedEntries.map((entry) => (
+                      <li key={entry.label}>
+                        <X size={14} className="hwid-check-unsupported-icon" />
+                        <div>
+                          <strong>{entry.label}</strong>
+                          <span>{entry.description}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <button
+                    className="hwid-check-back-button"
+                    type="button"
+                    onClick={toggleInfoView}
+                  >
+                    <ChevronLeft size={16} />
+                    Back
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function ProductCheckout({ slug }) {
   const product = getCheckoutProduct(slug);
   const previewImages = product.secondaryImages || [];
@@ -2194,6 +3406,20 @@ function ProductCheckout({ slug }) {
                 </strong>
               </div>
               <ProductPaymentMethods />
+              {product.slug === "hwid-spoofer" ? (
+                <>
+                  <div className="loader-note product-spoofer-announcement" data-reveal>
+                    <p>
+                      This is a Permanent HWID Spoofer, meaning your hardware serials will be changed permanently and will
+                      not revert.
+                    </p>
+                  </div>
+                  <Link className="product-spoofer-compatibility-link" href="#product-features" data-reveal>
+                    Before Purchase, check compatibility
+                    <CircleArrowDown size={16} />
+                  </Link>
+                </>
+              ) : null}
               {notice ? <div className="product-notice">{notice}</div> : null}
             </aside>
           </div>
@@ -2229,11 +3455,12 @@ function ProductCheckout({ slug }) {
                 );
               })}
             </div>
+            {product.slug === "hwid-spoofer" ? <HwidSpooferPlanComparison /> : null}
           </div>
         </div>
       </section>
 
-      <section className="product-features-section" data-reveal-group data-reveal-base="80">
+      <section className="product-features-section" id="product-features" data-reveal-group data-reveal-base="80">
         <div className="container">
           <div className="product-section-title" data-reveal>
             <span>Features</span>
@@ -2269,6 +3496,12 @@ function ProductCheckout({ slug }) {
                 )}
               </article>
             ))}
+            {product.slug === "hwid-spoofer" ? (
+              <>
+                <HwidSpooferCompatibilityChecker />
+                <HwidSpooferModuleInfoCards />
+              </>
+            ) : null}
           </div>
         </div>
       </section>
@@ -2912,6 +4145,8 @@ function LoaderCard({ item, displayMeta, subscriptionBadge = null }) {
         <img src={item.image} alt={item.name} loading="eager" fetchPriority="high" decoding="async" />
         {subscriptionBadge === "active" ? (
           <span className="loader-card-active-badge">ACTIVE</span>
+        ) : subscriptionBadge === "banned" ? (
+          <span className="loader-card-banned-badge">BANNED</span>
         ) : subscriptionBadge === "redeemed" ? (
           <span className="loader-card-redeemed-badge">REDEEMED</span>
         ) : (
@@ -2950,27 +4185,34 @@ function LoaderCard({ item, displayMeta, subscriptionBadge = null }) {
 function LoaderContent() {
   const { user, ready: authReady } = useAuthUser();
   const [displayMetaBySlug, setDisplayMetaBySlug] = useState(() => getStaticLoaderDisplayMetaMap(loaderProducts));
+  const displayMetaRef = useRef(displayMetaBySlug);
   const [productBadges, setProductBadges] = useState(() =>
     Object.fromEntries(loaderProducts.map((item) => [item.slug, "inactive"])),
   );
 
-  const refreshProductBadges = useCallback(async () => {
-    const badges = Object.fromEntries(loaderProducts.map((item) => [item.slug, "inactive"]));
+  useEffect(() => {
+    displayMetaRef.current = displayMetaBySlug;
+  }, [displayMetaBySlug]);
 
+  const refreshProductBadges = useCallback(async () => {
     if (!user) {
-      setProductBadges(badges);
+      setProductBadges(Object.fromEntries(loaderProducts.map((item) => [item.slug, "inactive"])));
       return;
     }
 
-    await Promise.all(
+    const nextBadges = await Promise.all(
       loaderProducts.map(async (item) => {
         const appId = getLoaderAppId(item.slug);
-        if (!appId) return;
+        if (!appId) return [item.slug, "inactive"];
 
+        const displayMeta = displayMetaRef.current[item.slug];
         const completed = loadCompletedRedeem(item.slug, appId);
         const profile = completed?.profile || extractDiscordProfile(user);
+        const hasStoredKey = Boolean(completed?.licenseKey);
 
-        if (!completed?.licenseKey && !profile?.authUserId) return;
+        if (!hasStoredKey && !profile?.authUserId) {
+          return [item.slug, "inactive"];
+        }
 
         const result = await syncLinkedLicense(supabase, {
           appId,
@@ -2978,20 +4220,28 @@ function LoaderContent() {
           profile,
         });
 
-        if (result.mode === "active" || result.mode === "frozen") {
-          badges[item.slug] = "active";
-        } else if (completed?.licenseKey || result.mode === "pending") {
-          badges[item.slug] = "redeemed";
+        if (result.keyMissing && hasStoredKey) {
+          clearCompletedRedeem(item.slug, appId);
         }
+
+        return [
+          item.slug,
+          resolveLoaderProductBadge({
+            result,
+            completed,
+            displayMeta,
+          }),
+        ];
       }),
     );
 
-    setProductBadges(badges);
+    setProductBadges(Object.fromEntries(nextBadges));
   }, [user]);
 
   useEffect(() => {
+    if (!authReady) return;
     void refreshProductBadges();
-  }, [authReady, refreshProductBadges, user?.id]);
+  }, [authReady, refreshProductBadges, user?.id, displayMetaBySlug]);
 
   useEffect(() => {
     const onStorage = (event) => {
@@ -3003,6 +4253,16 @@ function LoaderContent() {
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, [refreshProductBadges]);
+
+  useEffect(() => {
+    if (!authReady || !user) return undefined;
+
+    const timerId = window.setInterval(() => {
+      void refreshProductBadges();
+    }, 8000);
+
+    return () => window.clearInterval(timerId);
+  }, [authReady, refreshProductBadges, user?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -3127,14 +4387,28 @@ function LoaderDetailContent({ slug }) {
   const [launchBusy, setLaunchBusy] = useState(false);
   const [launchToast, setLaunchToast] = useState(null);
   const [appFrozen, setAppFrozen] = useState(false);
+  const [appFreezeReady, setAppFreezeReady] = useState(false);
+  const [redeemBootstrapReady, setRedeemBootstrapReady] = useState(false);
+  const [subscriptionRefreshReady, setSubscriptionRefreshReady] = useState(false);
   const [loaderDisplayMeta, setLoaderDisplayMeta] = useState(null);
   const [loaderMetaReady, setLoaderMetaReady] = useState(false);
-  const [downloadAccess, setDownloadAccess] = useState({ downloadUrl: "", fileName: "", fileMeta: "No file uploaded yet." });
+  const [downloadAccess, setDownloadAccess] = useState({
+    downloadUrl: "",
+    fileName: "",
+    fileMeta: "No file uploaded yet.",
+    fileSha: "",
+  });
+  const [downloadAccessReady, setDownloadAccessReady] = useState(false);
   const downloadUrlRef = useRef("");
   const subscriptionPollRef = useRef(null);
+  const bannedMetricsSnapshotRef = useRef(null);
 
   const hasRedeemedKey = Boolean(redeemState?.licenseKey);
-  const isSubscriptionFrozen = hasRedeemedKey && (subscriptionMode === "frozen" || appFrozen);
+  const isLaunchBanned = hasRedeemedKey && subscriptionMode === "banned";
+  const isLaunchFrozen = appFrozen || (hasRedeemedKey && subscriptionMode === "frozen");
+  const launchActionReady =
+    loaderMetaReady && appFreezeReady && authReady && redeemBootstrapReady && subscriptionRefreshReady;
+  const isSubscriptionFrozen = hasRedeemedKey && isLaunchFrozen;
   const displayVersion = loaderDisplayMeta?.version || product.version;
   const displayLastUpdate = loaderDisplayMeta?.lastUpdate || formatLoaderAppDate(product.updated);
   const displayStatus = loaderDisplayMeta?.status || "Undetected";
@@ -3179,15 +4453,21 @@ function LoaderDetailContent({ slug }) {
   }, [appId, slug]);
 
   useEffect(() => {
-    if (!appId || !hasRedeemedKey) {
+    if (!appId) {
       setAppFrozen(false);
+      setAppFreezeReady(true);
       return undefined;
     }
 
     let cancelled = false;
+    setAppFreezeReady(false);
+
     const refreshAppFrozen = () => {
       void checkApplicationFrozen(supabase, appId).then((frozen) => {
-        if (!cancelled) setAppFrozen(frozen);
+        if (!cancelled) {
+          setAppFrozen(frozen);
+          setAppFreezeReady(true);
+        }
       });
     };
 
@@ -3197,7 +4477,119 @@ function LoaderDetailContent({ slug }) {
       cancelled = true;
       window.clearInterval(timerId);
     };
-  }, [appId, hasRedeemedKey]);
+  }, [appId]);
+
+  const detachSubscriptionUi = useCallback(() => {
+    setRedeemState(null);
+    setLicenseRecord(null);
+    setSubscriptionMode("empty");
+    setSubscriptionMetrics(null);
+    setRedeemOpen(false);
+    setDownloadOpen(false);
+    setDownloadAccessReady(false);
+
+    if (subscriptionPollRef.current) {
+      window.clearInterval(subscriptionPollRef.current);
+      subscriptionPollRef.current = null;
+    }
+
+    if (downloadUrlRef.current) {
+      URL.revokeObjectURL(downloadUrlRef.current);
+      downloadUrlRef.current = "";
+    }
+
+    setDownloadAccess({ downloadUrl: "", fileName: "", fileMeta: "No file uploaded yet.", fileSha: "" });
+  }, []);
+
+  const applyDownloadAccess = useCallback((result, { ready = true } = {}) => {
+    if (downloadUrlRef.current && downloadUrlRef.current !== result.downloadUrl) {
+      URL.revokeObjectURL(downloadUrlRef.current);
+    }
+
+    downloadUrlRef.current = result.downloadUrl || "";
+    setDownloadAccess(result);
+    setDownloadAccessReady(ready);
+  }, []);
+
+  useEffect(() => {
+    if (!appId) {
+      setDownloadAccessReady(false);
+      return;
+    }
+
+    const cached = getCachedLoaderDownloadAccess(appId);
+    if (cached.fileName || cached.downloadUrl) {
+      applyDownloadAccess(cached, { ready: true });
+    }
+  }, [appId, applyDownloadAccess]);
+
+  useEffect(() => {
+    if (!authReady || !user || !appId || hasRedeemedKey) return undefined;
+
+    const profile = extractDiscordProfile(user);
+    if (!profile?.authUserId) return undefined;
+
+    let cancelled = false;
+
+    void resolveLoaderDownloadAccess(supabase, appId, profile).then((result) => {
+      if (result.downloadUrl) {
+        URL.revokeObjectURL(result.downloadUrl);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appId, applyDownloadAccess, authReady, hasRedeemedKey, user?.id]);
+
+  useEffect(() => {
+    if (!authReady) {
+      setRedeemBootstrapReady(false);
+      return undefined;
+    }
+
+    if (!user) {
+      detachSubscriptionUi();
+      setRedeemBootstrapReady(true);
+      return undefined;
+    }
+
+    if (!appId) {
+      setRedeemBootstrapReady(true);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setRedeemBootstrapReady(false);
+
+    void resolveRestoredSubscriptionSession(supabase, {
+      appId,
+      productSlug: slug,
+      authUser: user,
+    })
+      .then((result) => {
+        if (cancelled) return;
+
+        if (result.clearStorage) {
+          clearCompletedRedeem(slug, appId);
+        }
+
+        if (result.redeemState) {
+          saveCompletedRedeem(result.redeemState, slug, appId);
+          setRedeemState(result.redeemState);
+          return;
+        }
+
+        setRedeemState(null);
+      })
+      .finally(() => {
+        if (!cancelled) setRedeemBootstrapReady(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appId, authReady, detachSubscriptionUi, slug, user?.id]);
 
   const handleRedeemCompleted = useCallback((payload) => {
     setRedeemState(payload?.licenseKey ? { licenseKey: payload.licenseKey, profile: payload.profile } : null);
@@ -3214,78 +4606,23 @@ function LoaderDetailContent({ slug }) {
     }
 
     downloadUrlRef.current = access.downloadUrl;
-    setDownloadAccess({
+    applyDownloadAccess({
       downloadUrl: access.downloadUrl,
       fileName: access.fileName || "",
       fileMeta: access.fileMeta || "No file uploaded yet.",
+      fileSha: access.fileSha || "",
     });
     setRedeemOpen(false);
     setDownloadOpen(true);
-  }, []);
-
-  const detachSubscriptionUi = useCallback(() => {
-    setRedeemState(null);
-    setLicenseRecord(null);
-    setSubscriptionMode("empty");
-    setSubscriptionMetrics(null);
-    setAppFrozen(false);
-    setRedeemOpen(false);
-    setDownloadOpen(false);
-
-    if (subscriptionPollRef.current) {
-      window.clearInterval(subscriptionPollRef.current);
-      subscriptionPollRef.current = null;
-    }
-
-    if (downloadUrlRef.current) {
-      URL.revokeObjectURL(downloadUrlRef.current);
-      downloadUrlRef.current = "";
-    }
-
-    setDownloadAccess({ downloadUrl: "", fileName: "", fileMeta: "No file uploaded yet." });
-  }, []);
-
-  useEffect(() => {
-    if (!authReady || !appId) return undefined;
-
-    if (!user) {
-      detachSubscriptionUi();
-      return undefined;
-    }
-
-    let cancelled = false;
-    void resolveRestoredSubscriptionSession(supabase, {
-      appId,
-      productSlug: slug,
-      authUser: user,
-    }).then((result) => {
-      if (cancelled) return;
-
-      if (result.clearStorage) {
-        clearCompletedRedeem(slug, appId);
-      }
-
-      if (result.redeemState) {
-        saveCompletedRedeem(result.redeemState, slug, appId);
-        setRedeemState(result.redeemState);
-        return;
-      }
-
-      setRedeemState(null);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [appId, authReady, detachSubscriptionUi, slug, user?.id]);
+  }, [applyDownloadAccess]);
 
   const clearSubscriptionSession = useCallback(() => {
     clearCompletedRedeem(slug, appId);
+    bannedMetricsSnapshotRef.current = null;
     setRedeemState(null);
     setLicenseRecord(null);
     setSubscriptionMode("empty");
     setSubscriptionMetrics(null);
-    setAppFrozen(false);
     setRedeemOpen(false);
     setDownloadOpen(false);
 
@@ -3299,7 +4636,8 @@ function LoaderDetailContent({ slug }) {
       downloadUrlRef.current = "";
     }
 
-    setDownloadAccess({ downloadUrl: "", fileName: "", fileMeta: "No file uploaded yet." });
+    setDownloadAccess({ downloadUrl: "", fileName: "", fileMeta: "No file uploaded yet.", fileSha: "" });
+    setDownloadAccessReady(false);
   }, [appId, slug]);
 
   const refreshSubscription = useCallback(async () => {
@@ -3323,12 +4661,36 @@ function LoaderDetailContent({ slug }) {
 
     setLicenseRecord(result.license);
     setSubscriptionMode(result.mode);
-    if ((result.mode === "active" || result.mode === "frozen") && result.license) {
-      setSubscriptionMetrics(computeSubscriptionMetrics(result.license));
+    if ((result.mode === "active" || result.mode === "frozen" || result.mode === "banned") && result.license) {
+      setSubscriptionMetrics(syncSubscriptionMetrics(result.license, result.mode, bannedMetricsSnapshotRef));
     } else {
+      bannedMetricsSnapshotRef.current = null;
       setSubscriptionMetrics(null);
     }
   }, [appId, clearSubscriptionSession, redeemState]);
+
+  useEffect(() => {
+    if (!authReady || !redeemBootstrapReady) {
+      setSubscriptionRefreshReady(false);
+      return undefined;
+    }
+
+    if (!hasRedeemedKey) {
+      setSubscriptionRefreshReady(true);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setSubscriptionRefreshReady(false);
+
+    void refreshSubscription().finally(() => {
+      if (!cancelled) setSubscriptionRefreshReady(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authReady, redeemBootstrapReady, hasRedeemedKey, redeemState?.licenseKey, refreshSubscription]);
 
   useEffect(() => {
     void refreshSubscription();
@@ -3354,10 +4716,15 @@ function LoaderDetailContent({ slug }) {
   }, [appId, redeemState?.licenseKey, redeemState?.profile, refreshSubscription, subscriptionMode]);
 
   useEffect(() => {
-    if ((subscriptionMode !== "active" && subscriptionMode !== "frozen") || !licenseRecord) return undefined;
+    if (
+      (subscriptionMode !== "active" && subscriptionMode !== "frozen" && subscriptionMode !== "banned") ||
+      !licenseRecord
+    ) {
+      return undefined;
+    }
 
-    if (subscriptionMode === "frozen") {
-      setSubscriptionMetrics(computeSubscriptionMetrics(licenseRecord));
+    if (subscriptionMode === "frozen" || subscriptionMode === "banned") {
+      setSubscriptionMetrics(syncSubscriptionMetrics(licenseRecord, subscriptionMode, bannedMetricsSnapshotRef));
       return undefined;
     }
 
@@ -3375,30 +4742,43 @@ function LoaderDetailContent({ slug }) {
   }, [clearSubscriptionSession, licenseRecord, subscriptionMode]);
 
   useEffect(() => {
-    if (!hasRedeemedKey || !appId || !redeemState?.profile?.authUserId) {
+    if (!authReady || !appId) return undefined;
+
+    if (!hasRedeemedKey) {
       if (downloadUrlRef.current) {
         URL.revokeObjectURL(downloadUrlRef.current);
         downloadUrlRef.current = "";
       }
-      setDownloadAccess({ downloadUrl: "", fileName: "", fileMeta: "No file uploaded yet." });
+      setDownloadAccess({ downloadUrl: "", fileName: "", fileMeta: "No file uploaded yet.", fileSha: "" });
+      setDownloadAccessReady(false);
       return undefined;
     }
 
+    const profile = redeemState?.profile || (user ? extractDiscordProfile(user) : null);
+    if (!profile?.authUserId) return undefined;
+
+    const cached = getCachedLoaderDownloadAccess(appId);
+    if (cached.fileName || cached.downloadUrl) {
+      applyDownloadAccess(cached, { ready: true });
+    } else {
+      setDownloadAccessReady(false);
+    }
+
     let cancelled = false;
-    void resolveLoaderDownloadAccess(supabase, appId, redeemState.profile).then((result) => {
+
+    void resolveLoaderDownloadAccess(supabase, appId, profile).then((result) => {
       if (cancelled) {
         if (result.downloadUrl) URL.revokeObjectURL(result.downloadUrl);
         return;
       }
-      if (downloadUrlRef.current) URL.revokeObjectURL(downloadUrlRef.current);
-      downloadUrlRef.current = result.downloadUrl || "";
-      setDownloadAccess(result);
+
+      applyDownloadAccess(result, { ready: true });
     });
 
     return () => {
       cancelled = true;
     };
-  }, [appId, hasRedeemedKey, redeemState?.profile]);
+  }, [appId, applyDownloadAccess, authReady, hasRedeemedKey, redeemState?.profile, user?.id]);
 
   useEffect(
     () => () => {
@@ -3409,7 +4789,11 @@ function LoaderDetailContent({ slug }) {
 
   const handleLaunchClick = useCallback(async () => {
     if (launchBusy) return;
-    if (isSubscriptionFrozen) {
+    if (isLaunchBanned) {
+      setLaunchToast({ ok: false, message: "Your license has been banned. Launch is unavailable." });
+      return;
+    }
+    if (isLaunchFrozen) {
       setLaunchToast({ ok: false, message: "This service is currently frozen. Launch is unavailable." });
       return;
     }
@@ -3427,23 +4811,74 @@ function LoaderDetailContent({ slug }) {
       window.setTimeout(() => void refreshSubscription(), 1600);
       window.setTimeout(() => void refreshSubscription(), 3200);
     }
-  }, [hasRedeemedKey, isSubscriptionFrozen, launchBusy, redeemState?.licenseKey, refreshSubscription]);
+  }, [hasRedeemedKey, isLaunchBanned, isLaunchFrozen, launchBusy, redeemState?.licenseKey, refreshSubscription]);
 
   // Make feature groups similar to product page
-  const featureGroups = [
-    {
-      title: "Core",
-      items: product.modules.slice(0, 3),
-    },
-    {
-      title: "Visuals",
-      items: product.modules.slice(3, 6),
-    },
-    {
-      title: "Extra",
-      items: product.modules.slice(6),
-    },
-  ];
+  const loaderFeatureSections =
+    loaderFeatureSectionsBySlug[slug]?.() ??
+    [
+      {
+        title: "Core",
+        items: product.modules.slice(0, 3),
+      },
+      {
+        title: "Visuals",
+        items: product.modules.slice(3, 6),
+      },
+      {
+        title: "Extra",
+        items: product.modules.slice(6),
+      },
+    ];
+
+  const loaderFeaturesSection = (
+    <div className={`loader-features-below-hero${slug === "hwid-spoofer" ? " loader-features-below-hero--stacked" : ""}`}>
+      <div
+        className={
+          slug === "hwid-spoofer"
+            ? "loader-feature-grid loader-feature-grid--stacked"
+            : "product-feature-grid loader-feature-grid"
+        }
+      >
+        {loaderFeatureSections.map((section, sectionIndex) => (
+          <article
+            className="product-feature-card loader-feature-card"
+            key={`${section.title || "section"}-${sectionIndex}`}
+          >
+            <h3>{section.title}</h3>
+            {section.groups?.length ? (
+              section.groups.map((group, groupIndex) => (
+                <div className="product-feature-group" key={`${group.title || "group"}-${groupIndex}`}>
+                  {group.title ? <h4 className="product-feature-group-title">{group.title}</h4> : null}
+                  <ul>
+                    {group.items.map((item, itemIndex) => (
+                      <li key={`${itemIndex}-${item}`}>
+                        <Check size={16} />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))
+            ) : (
+              <ul>
+                {section.items.map((item, itemIndex) => (
+                  <li key={`${itemIndex}-${item}`}>
+                    <Check size={16} />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </article>
+        ))}
+      </div>
+      <Link className="button button-logout full loader-features-details-button" href={`${productHref({ slug })}#product-features`}>
+        Browse all Features & Details
+        <ArrowRight size={16} strokeWidth={2.4} />
+      </Link>
+    </div>
+  );
 
   return (
     <section className="section loader-section fade-up" data-scroll-target>
@@ -3525,56 +4960,55 @@ function LoaderDetailContent({ slug }) {
                   </div>
                 </div>
                 <div className="loader-detail-actions loader-launch-actions">
-                  <button className="button loader-launch-button" type="button" disabled={launchBusy || isSubscriptionFrozen} onClick={() => void handleLaunchClick()}>
-                    {launchBusy ? (
-                      <>
-                        <Loader2 size={18} className="loader-launch-spinner" />
-                        LAUNCHING...
-                      </>
-                    ) : isSubscriptionFrozen && hasRedeemedKey ? (
-                      <>
-                        <Snowflake size={18} />
-                        FROZEN
-                      </>
-                    ) : (
-                      <>
-                        {hasRedeemedKey ? <Play size={18} /> : <TicketPercent size={18} />}
-                        {hasRedeemedKey ? "Launch" : "Redeem License"}
-                      </>
-                    )}
-                  </button>
-                  {hasRedeemedKey && !isSubscriptionFrozen ? (
-                    <button
-                      className="button loader-launch-button loader-launch-button--compact"
-                      type="button"
-                      aria-label="Download loader"
-                      onClick={() => setDownloadOpen(true)}
-                    >
-                      <CircleArrowDown size={20} />
-                    </button>
-                  ) : null}
+                  {!launchActionReady ? (
+                    <SkeletonBlock className="skeleton-loader-launch-button" />
+                  ) : (
+                    <>
+                      <button
+                        className="button loader-launch-button"
+                        type="button"
+                        disabled={launchBusy || isLaunchBanned || isLaunchFrozen}
+                        onClick={() => void handleLaunchClick()}
+                      >
+                        {launchBusy ? (
+                          <>
+                            <Loader2 size={18} className="loader-launch-spinner" />
+                            LAUNCHING...
+                          </>
+                        ) : isLaunchBanned ? (
+                          <>
+                            <ShieldX size={18} />
+                            BANNED
+                          </>
+                        ) : isLaunchFrozen ? (
+                          <>
+                            <Snowflake size={18} />
+                            FROZEN
+                          </>
+                        ) : (
+                          <>
+                            {hasRedeemedKey ? <Play size={18} /> : <TicketPercent size={18} />}
+                            {hasRedeemedKey ? "Launch" : "Redeem License"}
+                          </>
+                        )}
+                      </button>
+                      {hasRedeemedKey && !isLaunchBanned && !isLaunchFrozen ? (
+                        <button
+                          className="button loader-launch-button loader-launch-button--compact"
+                          type="button"
+                          aria-label="Download loader"
+                          onClick={() => setDownloadOpen(true)}
+                        >
+                          <CircleArrowDown size={20} />
+                        </button>
+                      ) : null}
+                    </>
+                  )}
                 </div>
               </div>
             </article>
 
-            {/* Features section directly below hero */}
-            <div className="loader-features-below-hero">
-              <div className="product-feature-grid loader-feature-grid">
-                {featureGroups.map((section) => (
-                  <article className="product-feature-card loader-feature-card" key={section.title}>
-                    <h3>{section.title}</h3>
-                    <ul>
-                      {section.items.map((item) => (
-                        <li key={item}>
-                          <Check size={16} />
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </article>
-                ))}
-              </div>
-            </div>
+            {loaderFeaturesSection}
           </div>
 
           <aside className="loader-detail-stack">
@@ -3605,9 +5039,14 @@ function LoaderDetailContent({ slug }) {
                       <SkeletonBlock className="skeleton-subscription-text" />
                     </div>
                   </div>
-                ) : (subscriptionMode === "active" || subscriptionMode === "frozen") && subscriptionMetrics ? (
+                ) : (subscriptionMode === "active" || subscriptionMode === "frozen" || subscriptionMode === "banned") &&
+                  subscriptionMetrics ? (
                   <div
-                    className={`loader-subscription-live${subscriptionMode === "frozen" ? " loader-subscription-live--frozen" : ""}`}
+                    className={`loader-subscription-live${
+                      subscriptionMode === "frozen" || subscriptionMode === "banned"
+                        ? " loader-subscription-live--frozen"
+                        : ""
+                    }`}
                   >
                     <div className="loader-subscription-live-head">
                       <span className="loader-subscription-live-dot" />
@@ -3635,17 +5074,11 @@ function LoaderDetailContent({ slug }) {
                       <p className="loader-subscription-frozen-note">
                         Subscription time is paused while this service is frozen by the administrator.
                       </p>
+                    ) : subscriptionMode === "banned" ? (
+                      <p className="loader-subscription-frozen-note">
+                        Your license has been revoked. Subscription time is frozen.
+                      </p>
                     ) : null}
-                  </div>
-                ) : subscriptionMode === "banned" ? (
-                  <div className="loader-subscription-empty">
-                    <div className="loader-subscription-empty-icon">
-                      <ShieldX size={20} />
-                    </div>
-                    <div>
-                      <h3>User was banned</h3>
-                      <p>Your license has been revoked and access has been lost.</p>
-                    </div>
                   </div>
                 ) : redeemState?.licenseKey ? (
                   isSubscriptionFrozen ? (
@@ -3771,9 +5204,11 @@ function LoaderDetailContent({ slug }) {
       <LoaderDownloadModal
         open={downloadOpen}
         onOpenChange={setDownloadOpen}
+        loading={hasRedeemedKey && !downloadAccessReady}
         downloadUrl={downloadAccess.downloadUrl}
         fileName={downloadAccess.fileName}
         fileMeta={downloadAccess.fileMeta}
+        fileSha={downloadAccess.fileSha}
       />
 
       <LoaderLaunchToast item={launchToast} onClose={() => setLaunchToast(null)} />
@@ -4112,13 +5547,14 @@ function LoginContent() {
   }
 
   return (
-    <section className="section login-section fade-up">
-      <div className="container">
-        {user ? (
-          <div className="login-success-layout">
-            <div className="login-card">
-              <div className="login-card-head">
-                <h2>Successfully logged in</h2>
+    <>
+      <section className="section login-section fade-up">
+        <div className="container">
+          {user ? (
+            <div className="login-success-layout">
+              <div className="login-card">
+                <div className="login-card-head">
+                  <h2>Successfully logged in</h2>
                 <p>Your Discord account is connected and ready to use.</p>
               </div>
 
@@ -4175,7 +5611,7 @@ function LoginContent() {
 
               <div className="login-support">
                 <span>or</span>
-                <a className="button button-logout full" href="mailto:admin@unbanhwid.com">
+                <a className="button button-logout full" href={DISCORD_INVITE_URL}>
                   Contact support
                   <ArrowRight size={16} strokeWidth={2.4} />
                 </a>
@@ -4186,8 +5622,9 @@ function LoginContent() {
             <Faq items={guestFaqItems} />
           </div>
         )}
-      </div>
-    </section>
+        </div>
+      </section>
+    </>
   );
 }
 
@@ -4201,6 +5638,7 @@ export function HomePage({ reviewCount = 0, averageRating = null }) {
       <ModesSection selectedGame={selectedGame} setSelectedGame={setSelectedGame} />
       {selectedGame ? null : <BestSellersSection />}
       {selectedGame ? null : <WhyChooseUsSection />}
+      {selectedGame ? null : <BeforeAfterSection />}
       <PurchasesSection />
     </PageChrome>
   );
@@ -4245,7 +5683,7 @@ export function RulesPage() {
 export function LoaderPage() {
   return (
     <PageChrome active="loader">
-      <SimpleHeader title="Loader" subtitle="Choose a product card and open its dedicated loader page." linkText="Go to loaders" />
+      <SimpleHeader title="Remote Loader" subtitle="Choose product, redeem the license and start dominating lobbies!" linkText="Select product" />
       <LoaderContent />
     </PageChrome>
   );
@@ -4258,8 +5696,8 @@ export function LoaderDetailPage({ slug }) {
     <PageChrome active="loader">
       <SimpleHeader
         title={`${product.name} Loader`}
-        subtitle="Dedicated product loader page with quick setup and launch flow."
-        linkText="Go to loader"
+        subtitle="Dedicated product loader page with remote setup and launch flow."
+        linkText="Launch"
       />
       <LoaderDetailContent slug={slug} />
     </PageChrome>

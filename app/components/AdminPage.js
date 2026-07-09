@@ -15,14 +15,18 @@ import {
   LogOut,
   Pencil,
   RefreshCw,
+  Search,
   Snowflake,
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SkeletonBlock } from "./Skeleton";
+import { arrayBufferToBase64, triggerBase64FileDownload } from "../../lib/base64-file";
 import {
+  buildBanLicensePatch,
   buildFreezeLicensePatch,
+  buildUnbanLicensePatch,
   buildUnfreezeLicensePatch,
   formatLicenseExpiresLabel,
   isApplicationFrozen,
@@ -268,6 +272,17 @@ function AdminDashboardSkeleton() {
             <div className={styles.tableHeader}>
               <h2 className={styles.noSpaceBottom}>Licenses</h2>
               <div className={styles.headerActions}>
+                <label className={styles.licenseSearchWrap}>
+                  <Search size={16} className={styles.licenseSearchIcon} aria-hidden="true" />
+                  <input
+                    type="search"
+                    className={styles.licenseSearchInput}
+                    placeholder="Search license or Discord username"
+                    disabled
+                    tabIndex={-1}
+                    aria-hidden="true"
+                  />
+                </label>
                 <button className={styles.secondaryButton} type="button" disabled tabIndex={-1} aria-hidden="true">
                   <Snowflake size={16} />
                   Freeze
@@ -362,13 +377,39 @@ function durationToMs(value, unit) {
   }
 }
 
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("Unable to read selected file."));
-    reader.readAsDataURL(file);
+async function preparePackageUpload(file, onProgress) {
+  const buffer = await file.arrayBuffer();
+  if (onProgress) onProgress(0.12);
+
+  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+  const sha256 = Array.from(new Uint8Array(hashBuffer))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+
+  if (onProgress) onProgress(0.22);
+
+  const base64 = arrayBufferToBase64(buffer, (ratio) => {
+    if (onProgress) onProgress(0.22 + ratio * 0.38);
   });
+
+  if (onProgress) onProgress(0.6);
+
+  return { base64, sha256 };
+}
+
+function formatPackageSize(bytes) {
+  const numeric = Number(bytes || 0);
+  if (!Number.isFinite(numeric) || numeric <= 0) return "0 B";
+  if (numeric < 1024) return `${numeric} B`;
+  if (numeric < 1024 * 1024) return `${(numeric / 1024).toFixed(1)} KB`;
+  return `${(numeric / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function validatePackageFile(file) {
+  if (!file) return "Select a package file first.";
+  if (!/\.(rar|exe)$/i.test(file.name || "")) return "Only .rar or .exe files are allowed.";
+  if (file.size > 15 * 1024 * 1024) return "File is too large. Maximum size is 15 MB.";
+  return "";
 }
 
 function getLicenseFallbackStatus(license) {
@@ -507,6 +548,26 @@ function getDiscordAvatarUrl(license) {
   return "";
 }
 
+function getLicenseDiscordDisplayName(license) {
+  return (
+    license?.discord_username ||
+    license?.discord_user ||
+    license?.discord_name ||
+    license?.discord_id ||
+    ""
+  );
+}
+
+function licenseMatchesSearch(license, query) {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return true;
+
+  const licenseKey = String(license?.license_key || license?.id || "").toLowerCase();
+  const discordUser = String(getLicenseDiscordDisplayName(license)).toLowerCase();
+
+  return licenseKey.includes(normalized) || discordUser.includes(normalized);
+}
+
 export default function AdminPage() {
   const allowedAdminEmail = useMemo(() => "admin@admin.com", []);
 
@@ -528,6 +589,8 @@ export default function AdminPage() {
   const [allLicenses, setAllLicenses] = useState([]);
   const [selectedAppId, setSelectedAppId] = useState("");
   const [selectedLicenses, setSelectedLicenses] = useState([]);
+  const [licenseSearchQuery, setLicenseSearchQuery] = useState("");
+  const preFreezeStatusRef = useRef(new Map());
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -571,6 +634,13 @@ export default function AdminPage() {
   const [expiresTick, setExpiresTick] = useState(0);
 
   const [uploadFile, setUploadFile] = useState(null);
+  const [packageUploading, setPackageUploading] = useState(false);
+  const [packageDeleting, setPackageDeleting] = useState(false);
+  const [packageUploadProgress, setPackageUploadProgress] = useState(0);
+  const [packageDragActive, setPackageDragActive] = useState(false);
+  const [packageToast, setPackageToast] = useState(null);
+  const packageFileInputRef = useRef(null);
+  const packageToastTimerRef = useRef(null);
 
   const [createAppMessage, setCreateAppMessage] = useState({ text: "", type: "" });
   const [editAppMessage, setEditAppMessage] = useState({ text: "", type: "" });
@@ -594,6 +664,11 @@ export default function AdminPage() {
     });
     return map;
   }, [allLicenses]);
+
+  const visibleSelectedLicenses = useMemo(
+    () => selectedLicenses.filter((license) => licenseMatchesSearch(license, licenseSearchQuery)),
+    [selectedLicenses, licenseSearchQuery]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -777,6 +852,80 @@ export default function AdminPage() {
     return updated;
   }
 
+  async function updateApplicationRecordWithProgress(app, payload, onProgress) {
+    if (!session.accessToken) throw new Error("Sign in first.");
+
+    const refreshed = await refreshAccessToken(false);
+    if (!refreshed && session.refreshToken) {
+      clearSession();
+      throw new Error("Session expired. Please sign in again.");
+    }
+
+    const accessToken = JSON.parse(localStorage.getItem(sessionStorageKey()) || "{}")?.accessToken || session.accessToken;
+    const body = JSON.stringify(payload);
+    const url = `${config.url}/rest/v1/applications?id=eq.${encodeURIComponent(app.id)}`;
+
+    const sendRequest = (retryOnUnauthorized = true) =>
+      new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PATCH", url);
+        xhr.setRequestHeader("apikey", config.anonKey);
+        xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
+        xhr.setRequestHeader("accept", "application/json");
+        xhr.setRequestHeader("content-type", "application/json");
+        xhr.setRequestHeader("Prefer", "return=representation");
+
+        xhr.upload.onprogress = (event) => {
+          if (!onProgress || !event.lengthComputable) return;
+          onProgress(event.loaded / event.total);
+        };
+
+        xhr.onload = async () => {
+          if (xhr.status === 401 && retryOnUnauthorized) {
+            const okay = await refreshAccessToken(true);
+            if (okay) {
+              try {
+                resolve(await updateApplicationRecordWithProgress(app, payload, onProgress));
+              } catch (error) {
+                reject(error);
+              }
+              return;
+            }
+          }
+
+          if (xhr.status < 200 || xhr.status >= 300) {
+            let errorText = `HTTP ${xhr.status}`;
+            try {
+              const parsed = JSON.parse(xhr.responseText || "{}");
+              errorText = extractErrorMessage(parsed) || errorText;
+            } catch {
+              if (xhr.responseText) errorText = xhr.responseText;
+            }
+            reject(new Error(errorText));
+            return;
+          }
+
+          if (xhr.status === 204 || !xhr.responseText) {
+            resolve(null);
+            return;
+          }
+
+          try {
+            resolve(JSON.parse(xhr.responseText));
+          } catch {
+            resolve(null);
+          }
+        };
+
+        xhr.onerror = () => reject(new Error("Upload failed. Check your connection and try again."));
+        xhr.send(body);
+      });
+
+    const updated = await sendRequest();
+    void syncLicenseAppMetadata(app, payload);
+    return updated;
+  }
+
   async function updateLicenseRecord(licenseId, payload) {
     return restRequest(`licenses?id=eq.${encodeURIComponent(licenseId)}`, {
       method: "PATCH",
@@ -930,8 +1079,26 @@ export default function AdminPage() {
     return () => window.clearInterval(timerId);
   }, [signedIn, selectedLicenses.length]);
 
+  useEffect(() => {
+    if (!activePackageApp?.id) return;
+    setActivePackageApp((current) => {
+      if (!current?.id) return current;
+      const synced = applications.find((entry) => entry.id === current.id);
+      return synced || current;
+    });
+  }, [applications, activePackageApp?.id]);
+
+  useEffect(() => {
+    return () => {
+      if (packageToastTimerRef.current) {
+        window.clearTimeout(packageToastTimerRef.current);
+      }
+    };
+  }, []);
+
   function selectApplication(appId) {
     setSelectedAppId(appId);
+    setLicenseSearchQuery("");
     setGenerateMessage({ text: "", type: "" });
   }
 
@@ -955,8 +1122,148 @@ export default function AdminPage() {
       status: app.status || "Active",
     });
     setUploadFile(null);
+    setPackageUploading(false);
+    setPackageDeleting(false);
+    setPackageUploadProgress(0);
+    setPackageDragActive(false);
     setPackageMessage({ text: "", type: "" });
     setPackageModalOpen(true);
+    if (packageFileInputRef.current) {
+      packageFileInputRef.current.value = "";
+    }
+  }
+
+  function notifyPackageAction(text, type = "success") {
+    setPackageMessage({ text, type });
+    setDashboardMessage({ text, type });
+    setPackageToast({ text, type, id: Date.now() });
+
+    if (packageToastTimerRef.current) {
+      window.clearTimeout(packageToastTimerRef.current);
+    }
+
+    packageToastTimerRef.current = window.setTimeout(() => {
+      setPackageToast(null);
+      packageToastTimerRef.current = null;
+    }, 5000);
+  }
+
+  function buildPackagePayload(app, file, base64Data, sha256) {
+    const nextVersion = packageForm.version.trim() || app.version || "1.0.0";
+
+    return {
+      version: nextVersion,
+      status: packageForm.status,
+      download_file_name: String(file.name || "").trim() || null,
+      download_file_type: String(file.type || "application/octet-stream").trim() || "application/octet-stream",
+      download_file_size: Number(file.size || 0) || 0,
+      download_file_data_base64: base64Data,
+      download_file_sha256: sha256 || null,
+      download_updated_at: new Date().toISOString(),
+    };
+  }
+
+  async function uploadPackageFile(file) {
+    if (!activePackageApp || packageUploading || packageDeleting) return;
+
+    const validationError = validatePackageFile(file);
+    if (validationError) {
+      notifyPackageAction(validationError, "error");
+      return;
+    }
+
+    setUploadFile(file);
+    setPackageUploading(true);
+    setPackageUploadProgress(0);
+    setPackageMessage({ text: "", type: "" });
+
+    try {
+      const { base64, sha256 } = await preparePackageUpload(file, (progress) => {
+        setPackageUploadProgress(Math.round(progress * 60));
+      });
+      const payload = buildPackagePayload(activePackageApp, file, base64, sha256);
+
+      patchApplicationLocal(activePackageApp.id, payload);
+      setPackageUploadProgress(62);
+
+      await updateApplicationRecordWithProgress(activePackageApp, payload, (progress) => {
+        setPackageUploadProgress(Math.round(62 + progress * 38));
+      });
+
+      setPackageUploadProgress(100);
+      notifyPackageAction(`Package "${file.name}" uploaded successfully.`, "success");
+      setUploadFile(null);
+      if (packageFileInputRef.current) {
+        packageFileInputRef.current.value = "";
+      }
+    } catch (error) {
+      notifyPackageAction(error?.message || String(error), "error");
+      refreshDashboardSilently();
+    } finally {
+      setPackageUploading(false);
+      window.setTimeout(() => setPackageUploadProgress(0), 700);
+    }
+  }
+
+  function handlePackageFileInput(event) {
+    const file = event.target.files?.[0] || null;
+    if (!file) return;
+    void uploadPackageFile(file);
+  }
+
+  function handlePackageDragOver(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!packageUploading && !packageDeleting) {
+      setPackageDragActive(true);
+    }
+  }
+
+  function handlePackageDragLeave(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    setPackageDragActive(false);
+  }
+
+  function handlePackageDrop(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    setPackageDragActive(false);
+    if (packageUploading || packageDeleting) return;
+
+    const file = event.dataTransfer?.files?.[0] || null;
+    if (!file) return;
+    void uploadPackageFile(file);
+  }
+
+  async function handleDeletePackage() {
+    if (!activePackageApp?.download_file_name || packageUploading || packageDeleting) return;
+
+    const packageName = activePackageApp.download_file_name;
+    if (!window.confirm(`Remove current package "${packageName}"?`)) return;
+
+    setPackageDeleting(true);
+    setPackageMessage({ text: "", type: "" });
+
+    const payload = {
+      download_file_name: null,
+      download_file_type: null,
+      download_file_size: null,
+      download_file_data_base64: null,
+      download_file_sha256: null,
+      download_updated_at: null,
+    };
+
+    try {
+      patchApplicationLocal(activePackageApp.id, payload);
+      await updateApplicationRecord(activePackageApp, payload);
+      notifyPackageAction(`Package "${packageName}" removed.`, "success");
+    } catch (error) {
+      notifyPackageAction(error?.message || String(error), "error");
+      refreshDashboardSilently();
+    } finally {
+      setPackageDeleting(false);
+    }
   }
 
   function openLicenseInfo(license) {
@@ -973,11 +1280,16 @@ export default function AdminPage() {
 
   function handlePackageDownload(app) {
     if (!app?.download_file_data_base64 || !app?.download_file_name) return;
-    const link = document.createElement("a");
-    const mimeType = app.download_file_type || "application/octet-stream";
-    link.href = `data:${mimeType};base64,${app.download_file_data_base64}`;
-    link.download = app.download_file_name;
-    link.click();
+
+    try {
+      triggerBase64FileDownload({
+        base64: app.download_file_data_base64,
+        fileName: app.download_file_name,
+        mimeType: app.download_file_type || "application/octet-stream",
+      });
+    } catch (error) {
+      notifyPackageAction(error?.message || "Could not download package.", "error");
+    }
   }
 
   async function handleEmailStep(event) {
@@ -1145,45 +1457,30 @@ export default function AdminPage() {
     event.preventDefault();
     setPackageMessage({ text: "", type: "" });
 
-    if (!activePackageApp) return;
+    if (!activePackageApp || packageUploading || packageDeleting) return;
+
+    if (uploadFile) {
+      await uploadPackageFile(uploadFile);
+      return;
+    }
 
     try {
       const nextVersion = packageForm.version.trim() || null;
       const payload = {
         version: nextVersion,
+        status: packageForm.status,
       };
 
-      if (uploadFile) {
-        if (!/\.(rar|exe)$/i.test(uploadFile.name || "")) {
-          setPackageMessage({ text: "Only .rar or .exe files are allowed.", type: "error" });
-          return;
-        }
-        if (uploadFile.size > 15 * 1024 * 1024) {
-          setPackageMessage({ text: "File is too large. Maximum size is 15 MB.", type: "error" });
-          return;
-        }
-
-        const dataUrl = await fileToDataUrl(uploadFile);
-        payload.download_file_name = String(uploadFile.name || "").trim() || null;
-        payload.download_file_type = String(uploadFile.type || "application/octet-stream").trim() || "application/octet-stream";
-        payload.download_file_size = Number(uploadFile.size || 0) || 0;
-        payload.download_file_data_base64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
-        payload.download_updated_at = new Date().toISOString();
-      } else if (nextVersion && nextVersion !== String(activePackageApp.version || "").trim()) {
+      if (nextVersion && nextVersion !== String(activePackageApp.version || "").trim()) {
         payload.download_updated_at = new Date().toISOString();
       }
 
       patchApplicationLocal(activePackageApp.id, payload);
-      setPackageMessage({ text: "Package saved.", type: "success" });
-      setPackageModalOpen(false);
-      setUploadFile(null);
-
-      void updateApplicationRecord(activePackageApp, payload).catch((error) => {
-        setPackageMessage({ text: error?.message || String(error), type: "error" });
-        refreshDashboardSilently();
-      });
+      await updateApplicationRecord(activePackageApp, payload);
+      notifyPackageAction("Package settings saved.", "success");
     } catch (error) {
-      setPackageMessage({ text: error?.message || String(error), type: "error" });
+      notifyPackageAction(error?.message || String(error), "error");
+      refreshDashboardSilently();
     }
   }
 
@@ -1262,7 +1559,11 @@ export default function AdminPage() {
 
     if (isFrozen) {
       const licensesToUnfreeze = appLicenses.filter((entry) => isFrozenLicense(entry));
-      patchApplicationLocal(app.id, { is_frozen: false });
+      const restoreStatus = preFreezeStatusRef.current.get(app.id) || "Active";
+      preFreezeStatusRef.current.delete(app.id);
+      const applicationPatch = { status: restoreStatus };
+
+      patchApplicationLocal(app.id, applicationPatch);
 
       licensesToUnfreeze.forEach((license) => {
         const patch = buildUnfreezeLicensePatch(license);
@@ -1273,16 +1574,20 @@ export default function AdminPage() {
         });
       });
 
-      void updateApplicationRecord(app, { is_frozen: false }).catch((error) => {
-        patchApplicationLocal(app.id, { is_frozen: true });
+      void updateApplicationRecord(app, applicationPatch).catch((error) => {
+        patchApplicationLocal(app.id, { status: app.status || "Maintenance" });
         reportActionError(error);
         refreshDashboardSilently();
       });
       return;
     }
 
+    const previousStatus = app.status || "Active";
+    preFreezeStatusRef.current.set(app.id, previousStatus);
+    const applicationPatch = { status: "Maintenance" };
     const licensesToFreeze = appLicenses.filter((entry) => isFreezableLicense(entry));
-    patchApplicationLocal(app.id, { is_frozen: true });
+
+    patchApplicationLocal(app.id, applicationPatch);
 
     licensesToFreeze.forEach((license) => {
       const patch = buildFreezeLicensePatch(license);
@@ -1293,8 +1598,9 @@ export default function AdminPage() {
       });
     });
 
-    void updateApplicationRecord(app, { is_frozen: true }).catch((error) => {
-      patchApplicationLocal(app.id, { is_frozen: false });
+    void updateApplicationRecord(app, applicationPatch).catch((error) => {
+      preFreezeStatusRef.current.delete(app.id);
+      patchApplicationLocal(app.id, { status: previousStatus });
       reportActionError(error);
       refreshDashboardSilently();
     });
@@ -1328,12 +1634,20 @@ export default function AdminPage() {
 
   function handleToggleBan(license) {
     const previousStatus = license.status || "";
+    const previousFrozenAt = license.frozen_at ?? null;
+    const previousFrozenRemaining = license.frozen_remaining_ms ?? null;
+    const previousExpiresAt = license.expires_at ?? null;
     const isCurrentlyBanned = String(previousStatus).toLowerCase() === "banned";
-    const nextStatus = isCurrentlyBanned ? getLicenseFallbackStatus(license) : "Banned";
+    const patch = isCurrentlyBanned ? buildUnbanLicensePatch(license) : buildBanLicensePatch(license);
 
-    patchLicenseLocal(license.id, { status: nextStatus });
-    void updateLicenseRecord(license.id, { status: nextStatus }).catch((error) => {
-      patchLicenseLocal(license.id, { status: previousStatus });
+    patchLicenseLocal(license.id, patch);
+    void updateLicenseRecord(license.id, patch).catch((error) => {
+      patchLicenseLocal(license.id, {
+        status: previousStatus,
+        frozen_at: previousFrozenAt,
+        frozen_remaining_ms: previousFrozenRemaining,
+        expires_at: previousExpiresAt,
+      });
       reportActionError(error);
     });
   }
@@ -1661,7 +1975,9 @@ export default function AdminPage() {
                                 <span className={styles.status}>
                                   <span className={`${styles.indicationColor} ${styles[`tone${tone}`]}`} />
                                   {formatApplicationStatus(app.status)}
-                                  {isApplicationFrozen(app) ? " · Freezed" : ""}
+                                  {isApplicationFrozen(app) && String(app.status || "").trim().toLowerCase() !== "maintenance"
+                                    ? " · Freezed"
+                                    : ""}
                                 </span>
                               </div>
                               <div className={styles.tableEllipsis}>{app.webhook || "-"}</div>
@@ -1736,6 +2052,18 @@ export default function AdminPage() {
                     <div className={styles.tableHeader}>
                       <h2 className={styles.noSpaceBottom}>Licenses {selectedApp ? `· ${selectedApp.name}` : ""}</h2>
                       <div className={styles.headerActions}>
+                        <label className={styles.licenseSearchWrap}>
+                          <Search size={16} className={styles.licenseSearchIcon} aria-hidden="true" />
+                          <input
+                            type="search"
+                            className={styles.licenseSearchInput}
+                            placeholder="Search license or Discord username"
+                            value={licenseSearchQuery}
+                            onChange={(event) => setLicenseSearchQuery(event.target.value)}
+                            disabled={!selectedApp}
+                            aria-label="Search license or Discord username"
+                          />
+                        </label>
                         <button
                           className={styles.secondaryButton}
                           type="button"
@@ -1772,95 +2100,96 @@ export default function AdminPage() {
                         </div>
 
                         {selectedLicenses.length ? (
-                          selectedLicenses.map((license) => {
-                            void expiresTick;
-                            const tone = getStatusTone(license.status);
-                            const displayUser =
-                              license.discord_username ||
-                              license.discord_user ||
-                              license.discord_name ||
-                              license.discord_id ||
-                              "-";
-                            const avatarUrl = getDiscordAvatarUrl(license);
+                          visibleSelectedLicenses.length ? (
+                            visibleSelectedLicenses.map((license) => {
+                              void expiresTick;
+                              const tone = getStatusTone(license.status);
+                              const displayUser = getLicenseDiscordDisplayName(license) || "-";
+                              const avatarUrl = getDiscordAvatarUrl(license);
 
-                            return (
-                              <div className={styles.licenseTableRow} key={license.id}>
-                                <div className={styles.licenseDiscordUser}>
-                                  {avatarUrl ? (
-                                    <img className={styles.licenseAvatar} src={avatarUrl} alt={displayUser} />
-                                  ) : (
-                                    <div className={styles.licenseAvatarPlaceholder} />
-                                  )}
-                                  <span className={styles.licenseDiscordName}>{displayUser}</span>
-                                </div>
-                                <div className={styles.tableEllipsis}>{license.license_key || license.id}</div>
-                                <div className={styles.licenseDurationCell}>
-                                  {license.duration_unit === "unlimited"
-                                    ? "Unlimited"
-                                    : `${license.duration_value || "-"} ${license.duration_unit || ""}`.trim()}
-                                </div>
-                                <div>
-                                  <span className={styles.status}>
-                                    <span className={`${styles.indicationColor} ${styles[`tone${tone}`]}`} />
-                                    {formatLicenseStatus(license.status)}
-                                  </span>
-                                </div>
-                                <div className={styles.licenseExpiresCell}>{formatLicenseExpiresLabel(license)}</div>
-                                <div className={styles.tableActionsCell}>
-                                  <div className={styles.adminInlineActions}>
-                                    <button
-                                      type="button"
-                                      className={styles.rowActionButton}
-                                      title="HWID Reset"
-                                      aria-label="HWID Reset"
-                                      onClick={() => handleResetHwid(license)}
-                                    >
-                                      <RefreshCw size={15} />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className={styles.rowActionButton}
-                                      title="Extend Time"
-                                      aria-label="Extend Time"
-                                      onClick={() => openExtendLicense(license)}
-                                    >
-                                      <Clock3 size={15} />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className={styles.rowActionButton}
-                                      title="License Information"
-                                      aria-label="License Information"
-                                      onClick={() => openLicenseInfo(license)}
-                                    >
-                                      <Info size={15} />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className={styles.rowActionButton}
-                                      title="Ban"
-                                      aria-label="Ban"
-                                      onClick={() => handleToggleBan(license)}
-                                    >
-                                      <Ban size={15} />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className={styles.rowActionButton}
-                                      title="Delete"
-                                      aria-label="Delete"
-                                      onClick={() => handleDeleteLicense(license)}
-                                    >
-                                      <Trash2 size={15} />
-                                    </button>
+                              return (
+                                <div className={styles.licenseTableRow} key={license.id}>
+                                  <div className={styles.licenseDiscordUser}>
+                                    {avatarUrl ? (
+                                      <img className={styles.licenseAvatar} src={avatarUrl} alt={displayUser} />
+                                    ) : (
+                                      <div className={styles.licenseAvatarPlaceholder} />
+                                    )}
+                                    <span className={styles.licenseDiscordName}>{displayUser}</span>
+                                  </div>
+                                  <div className={styles.tableEllipsis}>{license.license_key || license.id}</div>
+                                  <div className={styles.licenseDurationCell}>
+                                    {license.duration_unit === "unlimited"
+                                      ? "Unlimited"
+                                      : `${license.duration_value || "-"} ${license.duration_unit || ""}`.trim()}
+                                  </div>
+                                  <div>
+                                    <span className={styles.status}>
+                                      <span className={`${styles.indicationColor} ${styles[`tone${tone}`]}`} />
+                                      {formatLicenseStatus(license.status)}
+                                    </span>
+                                  </div>
+                                  <div className={styles.licenseExpiresCell}>{formatLicenseExpiresLabel(license)}</div>
+                                  <div className={styles.tableActionsCell}>
+                                    <div className={styles.adminInlineActions}>
+                                      <button
+                                        type="button"
+                                        className={styles.rowActionButton}
+                                        title="HWID Reset"
+                                        aria-label="HWID Reset"
+                                        onClick={() => handleResetHwid(license)}
+                                      >
+                                        <RefreshCw size={15} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className={styles.rowActionButton}
+                                        title="Extend Time"
+                                        aria-label="Extend Time"
+                                        onClick={() => openExtendLicense(license)}
+                                      >
+                                        <Clock3 size={15} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className={styles.rowActionButton}
+                                        title="License Information"
+                                        aria-label="License Information"
+                                        onClick={() => openLicenseInfo(license)}
+                                      >
+                                        <Info size={15} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className={styles.rowActionButton}
+                                        title="Ban"
+                                        aria-label="Ban"
+                                        onClick={() => handleToggleBan(license)}
+                                      >
+                                        <Ban size={15} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className={styles.rowActionButton}
+                                        title="Delete"
+                                        aria-label="Delete"
+                                        onClick={() => handleDeleteLicense(license)}
+                                      >
+                                        <Trash2 size={15} />
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            );
-                          })
+                              );
+                            })
+                          ) : (
+                            <div className={styles.emptyState}>No licenses match your search.</div>
+                          )
                         ) : (
                           <div className={styles.emptyState}>
-                            {selectedApp ? "No licenses for this application yet." : "Click License on an application to view keys."}
+                            {selectedApp
+                              ? "No licenses for this application yet."
+                              : "Click License on an application to view keys."}
                           </div>
                         )}
                       </div>
@@ -1868,7 +2197,11 @@ export default function AdminPage() {
 
                     <div className={styles.tableBottomCaption}>
                       <div>
-                        {selectedApp ? `Loaded ${selectedLicenses.length} license(s).` : "Click License on an application to view keys."}
+                        {selectedApp
+                          ? licenseSearchQuery.trim()
+                            ? `Showing ${visibleSelectedLicenses.length} of ${selectedLicenses.length} license(s).`
+                            : `Loaded ${selectedLicenses.length} license(s).`
+                          : "Click License on an application to view keys."}
                       </div>
                     </div>
                   </div>
@@ -2072,41 +2405,112 @@ export default function AdminPage() {
                             </select>
                           </div>
                         </div>
-                        <div className={styles.group}>
-                          <label htmlFor="package-file">Package File</label>
+                        <div
+                          className={`${styles.uploadDropZone}${packageDragActive ? ` ${styles.uploadDropZoneActive}` : ""}${
+                            packageUploading ? ` ${styles.uploadDropZoneBusy}` : ""
+                          }`}
+                          onDragEnter={handlePackageDragOver}
+                          onDragOver={handlePackageDragOver}
+                          onDragLeave={handlePackageDragLeave}
+                          onDrop={handlePackageDrop}
+                        >
                           <input
+                            ref={packageFileInputRef}
                             id="package-file"
                             type="file"
                             accept=".rar,.exe"
-                            onChange={(event) => setUploadFile(event.target.files?.[0] || null)}
+                            className={styles.uploadFileInput}
+                            disabled={packageUploading || packageDeleting}
+                            onChange={handlePackageFileInput}
                           />
+                          <div className={styles.uploadDropZoneContent}>
+                            <Download size={22} />
+                            <div>
+                              <strong>Drop package here or click to upload</strong>
+                              <p>.rar or .exe up to 15 MB · upload starts immediately</p>
+                            </div>
+                            <button
+                              className={styles.secondaryButton}
+                              type="button"
+                              disabled={packageUploading || packageDeleting}
+                              onClick={() => packageFileInputRef.current?.click()}
+                            >
+                              Choose File
+                            </button>
+                          </div>
                         </div>
+                        {packageUploading ? (
+                          <div className={styles.packageUploadProgress} aria-live="polite">
+                            <div className={styles.packageUploadProgressMeta}>
+                              <span>
+                                Uploading{uploadFile?.name ? ` ${uploadFile.name}` : " package"}
+                                ...
+                              </span>
+                              <strong>{packageUploadProgress}%</strong>
+                            </div>
+                            <div className={styles.packageUploadProgressTrack} aria-hidden="true">
+                              <div
+                                className={styles.packageUploadProgressFill}
+                                style={{ "--package-upload-progress-scale": (packageUploadProgress / 100).toFixed(4) }}
+                              />
+                            </div>
+                          </div>
+                        ) : null}
                         <div className={styles.uploadMetaBox}>
                           <div className={styles.uploadMetaTitle}>Current package</div>
                           <div className={styles.uploadMetaText}>
                             {activePackageApp?.download_file_name
-                              ? `${activePackageApp.download_file_name} · ${activePackageApp.download_file_size || 0} bytes`
+                              ? `${activePackageApp.download_file_name} · ${formatPackageSize(activePackageApp.download_file_size)}`
                               : "No package uploaded yet."}
                           </div>
-                          {activePackageApp?.download_file_data_base64 ? (
-                            <button
-                              className={styles.linkButton}
-                              type="button"
-                              onClick={() => handlePackageDownload(activePackageApp)}
-                            >
-                              Download current package
-                            </button>
+                          {activePackageApp?.download_file_sha256 ? (
+                            <div className={styles.uploadMetaSha}>
+                              <span className={styles.uploadMetaShaLabel}>SHA-256</span>
+                              <code className={styles.uploadMetaShaValue}>{activePackageApp.download_file_sha256}</code>
+                            </div>
+                          ) : null}
+                          {activePackageApp?.download_file_name ? (
+                            <div className={styles.uploadMetaActions}>
+                              {activePackageApp?.download_file_data_base64 ? (
+                                <button
+                                  className={styles.linkButton}
+                                  type="button"
+                                  disabled={packageUploading || packageDeleting}
+                                  onClick={() => handlePackageDownload(activePackageApp)}
+                                >
+                                  Download current package
+                                </button>
+                              ) : null}
+                              <button
+                                className={styles.dangerLinkButton}
+                                type="button"
+                                disabled={packageUploading || packageDeleting}
+                                onClick={() => void handleDeletePackage()}
+                              >
+                                <Trash2 size={14} />
+                                {packageDeleting ? "Removing..." : "Remove package"}
+                              </button>
+                            </div>
                           ) : null}
                         </div>
                         <div className={`${styles.message} ${packageMessage.type ? styles[`message${packageMessage.type}`] : ""}`}>
                           {packageMessage.text}
                         </div>
                         <div className={styles.formActions}>
-                          <button className={styles.secondaryButton} type="button" onClick={() => setPackageModalOpen(false)}>
-                            Cancel
+                          <button
+                            className={styles.secondaryButton}
+                            type="button"
+                            disabled={packageUploading || packageDeleting}
+                            onClick={() => setPackageModalOpen(false)}
+                          >
+                            Close
                           </button>
-                          <button className={styles.primaryButton} type="submit">
-                            Save Package
+                          <button
+                            className={styles.primaryButton}
+                            type="submit"
+                            disabled={packageUploading || packageDeleting}
+                          >
+                            {packageUploading ? "Uploading..." : "Save Settings"}
                           </button>
                         </div>
                       </form>
@@ -2333,6 +2737,25 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+
+      {packageToast ? (
+        <div
+          className={`${styles.packageToast} ${packageToast.type === "error" ? styles.packageToastError : styles.packageToastSuccess}`}
+          role="status"
+          aria-live="polite"
+        >
+          {packageToast.type === "error" ? <X size={18} /> : <CircleCheck size={18} />}
+          <span>{packageToast.text}</span>
+          <button
+            className={styles.packageToastClose}
+            type="button"
+            aria-label="Dismiss notification"
+            onClick={() => setPackageToast(null)}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      ) : null}
     </main>
   );
 }

@@ -4,9 +4,56 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { runAccessChecks, setAccessCookie } from "../../lib/site-access";
 
-const DEVTOOLS_SIZE_THRESHOLD = 160;
+const DEVTOOLS_SIZE_THRESHOLD = 200;
 const DEVTOOLS_POLL_MS = 500;
 const DEVTOOLS_CONFIRM_COUNT = 3;
+const ZOOM_GRACE_MS = 3000;
+
+function getViewportGaps() {
+  if (typeof window === "undefined") {
+    return { width: 0, height: 0 };
+  }
+
+  return {
+    width: Math.max(0, window.outerWidth - window.innerWidth),
+    height: Math.max(0, window.outerHeight - window.innerHeight),
+  };
+}
+
+function isVisualZoomActive() {
+  if (typeof window === "undefined" || !window.visualViewport) return false;
+  return Math.abs((window.visualViewport.scale || 1) - 1) > 0.02;
+}
+
+function looksLikeBrowserZoom(baselineGaps) {
+  if (isVisualZoomActive()) return true;
+
+  const gaps = getViewportGaps();
+  const widthDelta = gaps.width - baselineGaps.width;
+  const heightDelta = gaps.height - baselineGaps.height;
+
+  if (widthDelta > 0 && heightDelta > 0) return true;
+  if (widthDelta > 0 && widthDelta < DEVTOOLS_SIZE_THRESHOLD) return true;
+  if (heightDelta > 0 && heightDelta < DEVTOOLS_SIZE_THRESHOLD) return true;
+
+  return false;
+}
+
+function isDevToolsDockOpen(baselineGaps) {
+  const gaps = getViewportGaps();
+  const widthDelta = gaps.width - baselineGaps.width;
+  const heightDelta = gaps.height - baselineGaps.height;
+
+  if (widthDelta >= DEVTOOLS_SIZE_THRESHOLD && widthDelta > heightDelta + 80) {
+    return true;
+  }
+
+  if (heightDelta >= DEVTOOLS_SIZE_THRESHOLD + 80 && heightDelta > widthDelta + 80) {
+    return true;
+  }
+
+  return false;
+}
 
 function isProtectionEnabled() {
   return process.env.NEXT_PUBLIC_DISABLE_SITE_PROTECTION !== "true";
@@ -56,13 +103,9 @@ function isBlockedShortcut(event) {
   return false;
 }
 
-function isDevToolsOpen() {
+function isDevToolsOpen(baselineGaps) {
   if (typeof window === "undefined") return false;
-
-  const widthGap = window.outerWidth - window.innerWidth;
-  const heightGap = window.outerHeight - window.innerHeight;
-
-  return widthGap > DEVTOOLS_SIZE_THRESHOLD || heightGap > DEVTOOLS_SIZE_THRESHOLD;
+  return isDevToolsDockOpen(baselineGaps);
 }
 
 function redirectOnDevTools() {
@@ -116,11 +159,38 @@ export default function SiteProtection() {
 
     let devToolsTriggered = false;
     let devToolsPositiveCount = 0;
+    let baselineGaps = getViewportGaps();
+    let zoomGraceUntil = 0;
+
+    function markZoomGrace() {
+      zoomGraceUntil = Date.now() + ZOOM_GRACE_MS;
+      devToolsPositiveCount = 0;
+    }
+
+    function isZoomGraceActive() {
+      return Date.now() < zoomGraceUntil;
+    }
+
+    function syncLayoutBaseline() {
+      baselineGaps = getViewportGaps();
+    }
 
     function pollDevTools() {
       if (devToolsTriggered || !canReliablyDetectDevTools()) return;
 
-      if (!isDevToolsOpen()) {
+      if (isZoomGraceActive()) {
+        devToolsPositiveCount = 0;
+        return;
+      }
+
+      if (looksLikeBrowserZoom(baselineGaps)) {
+        syncLayoutBaseline();
+        devToolsPositiveCount = 0;
+        return;
+      }
+
+      if (!isDevToolsOpen(baselineGaps)) {
+        syncLayoutBaseline();
         devToolsPositiveCount = 0;
         return;
       }
@@ -130,6 +200,29 @@ export default function SiteProtection() {
 
       devToolsTriggered = true;
       redirectOnDevTools();
+    }
+
+    function handleResize() {
+      markZoomGrace();
+
+      if (looksLikeBrowserZoom(baselineGaps) || !isDevToolsDockOpen(baselineGaps)) {
+        syncLayoutBaseline();
+      }
+    }
+
+    function handleZoomShortcut(event) {
+      if (!event.ctrlKey && !event.metaKey) return;
+
+      const key = String(event.key || "");
+      if (key === "+" || key === "-" || key === "=" || key === "0" || key === "_" || key === ")") {
+        markZoomGrace();
+      }
+    }
+
+    function handleZoomWheel(event) {
+      if (event.ctrlKey) {
+        markZoomGrace();
+      }
     }
 
     document.body.classList.add("site-protected");
@@ -164,6 +257,8 @@ export default function SiteProtection() {
     }
 
     function handleKeyDown(event) {
+      handleZoomShortcut(event);
+
       if (isBlockedShortcut(event)) {
         event.preventDefault();
         event.stopPropagation();
@@ -179,7 +274,8 @@ export default function SiteProtection() {
     const devToolsPollingEnabled = canReliablyDetectDevTools();
     if (devToolsPollingEnabled) {
       pollId = window.setInterval(pollDevTools, DEVTOOLS_POLL_MS);
-      window.addEventListener("resize", pollDevTools);
+      window.addEventListener("resize", handleResize);
+      window.addEventListener("wheel", handleZoomWheel, { passive: true });
       document.addEventListener("visibilitychange", handleVisibilityLeak);
     }
     document.addEventListener("contextmenu", handleContextMenu);
@@ -194,7 +290,8 @@ export default function SiteProtection() {
       document.body.classList.remove("site-protected");
       if (pollId) window.clearInterval(pollId);
       if (devToolsPollingEnabled) {
-        window.removeEventListener("resize", pollDevTools);
+        window.removeEventListener("resize", handleResize);
+        window.removeEventListener("wheel", handleZoomWheel);
         document.removeEventListener("visibilitychange", handleVisibilityLeak);
       }
       document.removeEventListener("contextmenu", handleContextMenu);
