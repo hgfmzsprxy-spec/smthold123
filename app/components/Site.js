@@ -567,6 +567,23 @@ function PageChrome({ active, children }) {
   );
 }
 
+export function resolveSiteNavActive(pathname = "") {
+  const path = String(pathname || "");
+
+  if (path.startsWith("/loader")) return "loader";
+  if (path.startsWith("/reviews")) return "reviews";
+  if (path.startsWith("/terms") || path.startsWith("/pomoc")) return "terms";
+  if (path.startsWith("/login")) return "login";
+  if (path.startsWith("/cart")) return "cart";
+  if (path.startsWith("/product")) return "shop";
+
+  return "home";
+}
+
+export function SiteChrome({ active, children }) {
+  return <PageChrome active={active}>{children}</PageChrome>;
+}
+
 function HeroBackdrop() {
   return <div className="hero-backdrop" aria-hidden="true" />;
 }
@@ -680,7 +697,7 @@ function Navbar({ active }) {
 
               return (
                 <li key={item.key}>
-                  <Link className={`nav-item ${active === item.key ? "active" : ""}`} href={item.href}>
+                  <Link className={`nav-item ${active === item.key ? "active" : ""}`} href={item.href} prefetch>
                     <Icon className="nav-icon" size={16} strokeWidth={2.2} />
                     <span>{item.label}</span>
                   </Link>
@@ -688,7 +705,7 @@ function Navbar({ active }) {
               );
             })}
             <li className="nav-cart-wrap">
-              <Link className={`nav-cart ${active === "cart" ? "active" : ""}`} href="/cart" aria-label={`Cart with ${cartCount} products`}>
+              <Link className={`nav-cart ${active === "cart" ? "active" : ""}`} href="/cart" prefetch aria-label={`Cart with ${cartCount} products`}>
                 <CartBasketIcon size={24} />
                 {cartCount > 0 ? <span>{cartCount}</span> : null}
               </Link>
@@ -5671,7 +5688,7 @@ export function HomePage({ reviewCount = 0, averageRating = null }) {
   const [selectedGame, setSelectedGame] = useState(null);
 
   return (
-    <PageChrome active="home">
+    <>
       <HomeHero />
       <HeroStats reviewCount={reviewCount} averageRating={averageRating} />
       <ModesSection selectedGame={selectedGame} setSelectedGame={setSelectedGame} />
@@ -5679,7 +5696,7 @@ export function HomePage({ reviewCount = 0, averageRating = null }) {
       {selectedGame ? null : <WhyChooseUsSection />}
       {selectedGame ? null : <BeforeAfterSection />}
       <PurchasesSection />
-    </PageChrome>
+    </>
   );
 }
 
@@ -5703,28 +5720,28 @@ export function ReviewsPage({ reviews: initialReviews = [] }) {
     );
 
   return (
-    <PageChrome active="reviews">
+    <>
       <SimpleHeader title={reviewsTitle} linkText="See reviews" />
       <ReviewsContent reviews={initialReviews} onReviewsMetaChange={handleReviewsMetaChange} />
-    </PageChrome>
+    </>
   );
 }
 
 export function RulesPage() {
   return (
-    <PageChrome active="terms">
+    <>
       <SimpleHeader title="Terms & Conditions" linkText="read" />
       <RulesContent />
-    </PageChrome>
+    </>
   );
 }
 
 export function LoaderPage() {
   return (
-    <PageChrome active="loader">
+    <>
       <SimpleHeader title="Remote Loader" subtitle="Choose product, redeem the license and start dominating lobbies!" linkText="Select product" />
       <LoaderContent />
-    </PageChrome>
+    </>
   );
 }
 
@@ -5732,47 +5749,39 @@ export function LoaderDetailPage({ slug }) {
   const product = getLoaderProduct(slug);
 
   return (
-    <PageChrome active="loader">
+    <>
       <SimpleHeader
         title={`${product.name} Loader`}
         subtitle="Dedicated product loader page with remote setup and launch flow."
         linkText="Launch"
       />
       <LoaderDetailContent slug={slug} />
-    </PageChrome>
+    </>
   );
 }
 
 export function LoginPage() {
   return (
-    <PageChrome active="login">
+    <>
       <SimpleHeader className="simple-header--login" title="Login" subtitle="Access your unbanhwid.com account." />
       <LoginContent />
-    </PageChrome>
+    </>
   );
 }
 
 export function CartPage() {
-  return (
-    <PageChrome active="cart">
-      <CartContent />
-    </PageChrome>
-  );
+  return <CartContent />;
 }
 
 export function ShopPage() {
-  return (
-    <PageChrome active="shop">
-      <ShopContent />
-    </PageChrome>
-  );
+  return <ShopContent />;
 }
 
 export function ProductDetailPage({ slug }) {
   return (
-    <PageChrome active="shop">
+    <>
       <ProductCheckout slug={slug} />
       <PurchasesSection />
-    </PageChrome>
+    </>
   );
 }
