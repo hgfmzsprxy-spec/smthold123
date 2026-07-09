@@ -1,4 +1,4 @@
-import { CartPage } from "../components/Site";
+import { CartPage } from "../../components/Site";
 
 export const metadata = {
   title: "Cart | unbanhwid.com",
