@@ -18,7 +18,6 @@ import {
   extractDiscordProfile,
   fetchApplicationMeta,
   getRedeemRedirectUrl,
-  loadCompletedRedeem,
   loadPendingRedeem,
   restoreCachedApplicationMeta,
   saveCachedApplicationMeta,
@@ -159,12 +158,6 @@ export function LoaderRedeemModal({
     if (prev && !linkedLicenseKey) {
       resetModalState();
       initKeyRef.current = "";
-      return;
-    }
-
-    if (linkedLicenseKey) {
-      setFinishedLicenseKey(linkedLicenseKey);
-      setStep(3);
     }
   }, [linkedLicenseKey, resetModalState]);
 
@@ -307,22 +300,10 @@ export function LoaderRedeemModal({
     if (initKeyRef.current === initKey) return;
     initKeyRef.current = initKey;
 
-    const completed = loadCompletedRedeem(productSlug, appId);
-    if (completed?.licenseKey) {
-      setConnectedProfile(completed.profile || null);
-      setFinishedLicenseKey(completed.licenseKey);
-      setStep(3);
-      void refreshDownloadAccess(completed.profile || null);
-    } else {
-      setConnectedProfile(null);
-      setFinishedLicenseKey("");
-      setStep(1);
-    }
-
     void processDiscordReturn().finally(() => {
       cleanupDiscordAuthReturnUrl();
     });
-  }, [appId, processDiscordReturn, productSlug, refreshDownloadAccess]);
+  }, [appId, processDiscordReturn, productSlug]);
 
   useEffect(() => {
     playingOutroRef.current = playingOutro;
@@ -331,6 +312,15 @@ export function LoaderRedeemModal({
   useEffect(() => {
     closeRequestRef.current = handleCloseRequest;
   }, [handleCloseRequest]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const pending = loadPendingRedeem(productSlug, appId);
+    if (!pending?.licenseKey) {
+      resetModalState();
+    }
+  }, [open, productSlug, appId, resetModalState]);
 
   useEffect(() => {
     if (!open) return undefined;
