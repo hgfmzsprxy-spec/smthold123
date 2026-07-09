@@ -2193,6 +2193,13 @@ function isLoaderProductInactive(displayMeta) {
   return status === "Maintenance" || status === "Detected";
 }
 
+function getLoaderProductStatusClass(status) {
+  const normalized = String(status || "").trim().toLowerCase();
+  if (normalized === "maintenance") return "is-maintenance";
+  if (normalized === "detected") return "is-detected";
+  return "is-undetected";
+}
+
 function resolveLoaderProductBadge({ result, completed, displayMeta }) {
   const hasStoredKey = Boolean(completed?.licenseKey);
   const hasLinkedLicense = Boolean(result?.license);
@@ -4133,11 +4140,13 @@ function RulesContent() {
   );
 }
 
-function LoaderCard({ item, displayMeta, subscriptionBadge = null }) {
+function LoaderCard({ item, displayMeta, metaReady = true, subscriptionBadge = null }) {
   const previewCount = item.featurePreviewCount || 3;
   const visibleModules = item.modules.slice(0, previewCount);
   const hiddenModulesCount = Math.max(0, item.modules.length - visibleModules.length);
-  const lastUpdate = displayMeta?.lastUpdate || formatLoaderAppDate(item.updated);
+  const displayStatus = displayMeta?.status || "-";
+  const displayLastUpdate = displayMeta?.lastUpdate || "-";
+  const displayVersion = displayMeta?.version || "-";
 
   return (
     <Link className="loader-card" href={loaderHref(item)}>
@@ -4168,9 +4177,48 @@ function LoaderCard({ item, displayMeta, subscriptionBadge = null }) {
             ))}
             {hiddenModulesCount > 0 ? <strong>+ {hiddenModulesCount} more</strong> : null}
           </div>
-          <div className="loader-card-update">
-            <CalendarDays size={14} />
-            <span>Last Update: {lastUpdate}</span>
+          <div className="loader-card-meta">
+            <div>
+              {!metaReady ? (
+                <>
+                  <SkeletonBlock className="skeleton-meta-label" />
+                  <SkeletonBlock className="skeleton-meta-value" />
+                </>
+              ) : (
+                <>
+                  <small>STATUS</small>
+                  <strong className={`loader-product-status ${getLoaderProductStatusClass(displayStatus)}`}>
+                    {displayStatus}
+                  </strong>
+                </>
+              )}
+            </div>
+            <div>
+              {!metaReady ? (
+                <>
+                  <SkeletonBlock className="skeleton-meta-label" />
+                  <SkeletonBlock className="skeleton-meta-value" />
+                </>
+              ) : (
+                <>
+                  <small>LAST UPDATE</small>
+                  <strong>{displayLastUpdate}</strong>
+                </>
+              )}
+            </div>
+            <div>
+              {!metaReady ? (
+                <>
+                  <SkeletonBlock className="skeleton-meta-label" />
+                  <SkeletonBlock className="skeleton-meta-value" />
+                </>
+              ) : (
+                <>
+                  <small>VERSION</small>
+                  <strong>{displayVersion}</strong>
+                </>
+              )}
+            </div>
           </div>
         </div>
         <div className="loader-card-action">
@@ -4184,7 +4232,8 @@ function LoaderCard({ item, displayMeta, subscriptionBadge = null }) {
 
 function LoaderContent() {
   const { user, ready: authReady } = useAuthUser();
-  const [displayMetaBySlug, setDisplayMetaBySlug] = useState(() => getStaticLoaderDisplayMetaMap(loaderProducts));
+  const [displayMetaBySlug, setDisplayMetaBySlug] = useState(() => getInitialLoaderDisplayMetaMap(loaderProducts));
+  const [metaReady, setMetaReady] = useState(false);
   const displayMetaRef = useRef(displayMetaBySlug);
   const [productBadges, setProductBadges] = useState(() =>
     Object.fromEntries(loaderProducts.map((item) => [item.slug, "inactive"])),
@@ -4267,14 +4316,24 @@ function LoaderContent() {
   useEffect(() => {
     let cancelled = false;
 
+    setMetaReady(false);
     setDisplayMetaBySlug(getInitialLoaderDisplayMetaMap(loaderProducts));
 
-    void refreshLoaderDisplayMetaMap(loaderProducts).then((nextMeta) => {
-      if (!cancelled) setDisplayMetaBySlug(nextMeta);
-    });
+    const refreshMeta = () =>
+      refreshLoaderDisplayMetaMap(loaderProducts).then((nextMeta) => {
+        if (cancelled) return;
+        setDisplayMetaBySlug(nextMeta);
+        setMetaReady(true);
+      });
+
+    void refreshMeta();
+    const timerId = window.setInterval(() => {
+      void refreshMeta();
+    }, 30000);
 
     return () => {
       cancelled = true;
+      window.clearInterval(timerId);
     };
   }, []);
 
@@ -4291,6 +4350,7 @@ function LoaderContent() {
             <LoaderCard
               item={item}
               displayMeta={displayMetaBySlug[item.slug]}
+              metaReady={metaReady}
               subscriptionBadge={productBadges[item.slug] || "inactive"}
               key={item.slug}
             />
@@ -4409,16 +4469,9 @@ function LoaderDetailContent({ slug }) {
   const launchActionReady =
     loaderMetaReady && appFreezeReady && authReady && redeemBootstrapReady && subscriptionRefreshReady;
   const isSubscriptionFrozen = hasRedeemedKey && isLaunchFrozen;
-  const displayVersion = loaderDisplayMeta?.version || product.version;
-  const displayLastUpdate = loaderDisplayMeta?.lastUpdate || formatLoaderAppDate(product.updated);
-  const displayStatus = loaderDisplayMeta?.status || "Undetected";
-
-  function getProductStatusClass(status) {
-    const normalized = String(status || "").trim().toLowerCase();
-    if (normalized === "maintenance") return "is-maintenance";
-    if (normalized === "detected") return "is-detected";
-    return "is-undetected";
-  }
+  const displayVersion = loaderDisplayMeta?.version || "-";
+  const displayLastUpdate = loaderDisplayMeta?.lastUpdate || "-";
+  const displayStatus = loaderDisplayMeta?.status || "-";
 
   useEffect(() => {
     setPreviewIndex(null);
@@ -4441,14 +4494,21 @@ function LoaderDetailContent({ slug }) {
 
     let cancelled = false;
     setLoaderMetaReady(false);
-    void fetchLoaderDisplayMeta(supabase, appId, product).then((meta) => {
+    void fetchLoaderDisplayMeta(supabase, appId).then((meta) => {
       if (cancelled) return;
       setLoaderDisplayMeta(meta);
       setLoaderMetaReady(true);
     });
 
+    const timerId = window.setInterval(() => {
+      void fetchLoaderDisplayMeta(supabase, appId).then((meta) => {
+        if (!cancelled) setLoaderDisplayMeta(meta);
+      });
+    }, 30000);
+
     return () => {
       cancelled = true;
+      window.clearInterval(timerId);
     };
   }, [appId, slug]);
 
@@ -4908,7 +4968,7 @@ function LoaderDetailContent({ slug }) {
                       ) : (
                         <>
                           <small>STATUS</small>
-                          <strong className={`loader-product-status ${getProductStatusClass(displayStatus)}`}>
+                          <strong className={`loader-product-status ${getLoaderProductStatusClass(displayStatus)}`}>
                             {displayStatus}
                           </strong>
                         </>
