@@ -1431,19 +1431,15 @@ export default function AdminPage() {
     }
 
     const nextVersion = editForm.version.trim() || "1.0.0";
-    const nextStatus = editForm.status;
     const payload = {
       name: editForm.name.trim(),
       description: editForm.description.trim() || null,
       version: nextVersion,
-      status: nextStatus,
+      status: editForm.status,
       webhook: editForm.webhook.trim() || null,
     };
 
-    if (
-      nextVersion !== String(activeEditApp.version || "1.0.0").trim() ||
-      nextStatus !== formatApplicationProductStatus(activeEditApp.status)
-    ) {
+    if (nextVersion !== String(activeEditApp.version || "1.0.0").trim()) {
       payload.download_updated_at = new Date().toISOString();
     }
 
@@ -1470,16 +1466,12 @@ export default function AdminPage() {
 
     try {
       const nextVersion = packageForm.version.trim() || null;
-      const nextStatus = packageForm.status;
       const payload = {
         version: nextVersion,
-        status: nextStatus,
+        status: packageForm.status,
       };
 
-      if (
-        (nextVersion && nextVersion !== String(activePackageApp.version || "").trim()) ||
-        nextStatus !== formatApplicationProductStatus(activePackageApp.status)
-      ) {
+      if (nextVersion && nextVersion !== String(activePackageApp.version || "").trim()) {
         payload.download_updated_at = new Date().toISOString();
       }
 
