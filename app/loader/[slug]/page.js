@@ -1,11 +1,11 @@
+"use client";
+
+import { useParams } from "next/navigation";
 import { LoaderDetailPage } from "../../components/Site";
 
-export const metadata = {
-  title: "Loader Details | unbanhwid.com",
-};
+export default function Page() {
+  const params = useParams();
+  const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug;
 
-export default async function Page({ params }) {
-  const resolvedParams = await params;
-
-  return <LoaderDetailPage slug={resolvedParams?.slug} />;
+  return <LoaderDetailPage slug={slug} />;
 }

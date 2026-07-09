@@ -538,8 +538,7 @@ export function LoaderRedeemModal({
                 </button>
                 <div className="redeem-info-copy">
                   <p>
-                    On the website, you DO NOT ACTIVATE THE LICENSE, you only gain access. The expiration time will not
-                    begin until the key is activated in the Loader.
+                    On the website, you only link to the license. The expiration time will start from the moment the cheat is first injected.  
                   </p>
                   <p>You can continue without any worries!</p>
                 </div>

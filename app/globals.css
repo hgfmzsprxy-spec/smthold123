@@ -4447,10 +4447,50 @@ img {
   }
 }
 
-.nav-auth-placeholder {
-  width: 180px;
-  height: 50px;
+.nav-auth-slot {
   flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  margin-right: -48px;
+  position: relative;
+}
+
+.nav-auth-pane {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.nav-auth-pane-profile {
+  display: none;
+}
+
+html[data-nav-auth="1"] .nav-auth-pane-login {
+  display: none;
+}
+
+html[data-nav-auth="1"] .nav-auth-pane-profile {
+  display: flex;
+}
+
+.nav-auth-slot .nav-auth-pane-profile .nav-user {
+  width: 100%;
+  max-width: 240px;
+}
+
+.nav-auth-loading,
+.nav-auth-slot .nav-shop {
+  min-width: 118px;
+}
+
+.nav-auth-loading {
+  pointer-events: none;
+  cursor: default;
+}
+
+@media (min-width: 1378px) {
+  .nav-auth-slot {
+    margin-right: 0;
+  }
 }
 
 .nav-user-wrap {
@@ -6833,6 +6873,7 @@ img {
     flex-direction: row-reverse;
   }
 
+  .nav-auth-slot,
   .nav-shop-wrap,
   .nav-cart-wrap,
   .nav-shop,
@@ -7067,6 +7108,10 @@ img {
   .container {
     padding-left: 24px;
     padding-right: 24px;
+  }
+
+  .nav-auth-slot {
+    margin-right: -24px;
   }
 
   .hero-visual {

@@ -93,6 +93,9 @@ import {
   validateKomerzaCoupon,
 } from "../../lib/komerza";
 import { useAuthUser, useIsClient } from "../../lib/use-auth-user";
+import { useNavAuthBootstrap } from "./NavAuthBootstrap";
+import { saveNavAuthCache } from "../../lib/nav-auth-cache";
+import { useNavAuthCache } from "../../lib/use-nav-auth-cache";
 
 const navItems = [
   { href: "/", label: "Home", key: "home", icon: House },
@@ -609,23 +612,49 @@ function Navbar({ active }) {
   const [open, setOpen] = useState(false);
   const [cartItems] = useCartItems();
   const cartCount = cartTotalQuantity(cartItems);
-  const { user } = useAuthUser();
-  const isClient = useIsClient();
+  const { user, ready: authReady } = useAuthUser();
+  const navAuthCache = useNavAuthCache();
+  const serverNavAuth = useNavAuthBootstrap();
+
+  const profileAvatar =
+    user?.user_metadata?.avatar_url || navAuthCache?.avatarUrl || serverNavAuth?.avatarUrl || "";
+  const profileName =
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
+    user?.email ||
+    navAuthCache?.username ||
+    serverNavAuth?.username ||
+    "";
+  const showProfile = Boolean(user || navAuthCache || (!authReady && serverNavAuth));
+  const showLogout = showProfile;
+
+  useLayoutEffect(() => {
+    if (showProfile) {
+      document.documentElement.setAttribute("data-nav-auth", "1");
+
+      if (profileName) {
+        document.documentElement.setAttribute("data-nav-auth-name", profileName);
+      } else {
+        document.documentElement.removeAttribute("data-nav-auth-name");
+      }
+
+      if (profileAvatar) {
+        document.documentElement.setAttribute("data-nav-auth-avatar", profileAvatar);
+      } else {
+        document.documentElement.removeAttribute("data-nav-auth-avatar");
+      }
+
+      return;
+    }
+
+    document.documentElement.removeAttribute("data-nav-auth");
+    document.documentElement.removeAttribute("data-nav-auth-name");
+    document.documentElement.removeAttribute("data-nav-auth-avatar");
+  }, [profileAvatar, profileName, showProfile]);
 
   const handleLogout = async () => {
+    saveNavAuthCache(null);
     await supabase.auth.signOut();
-  };
-
-  const getDiscordAvatar = () => {
-    if (!user) return null;
-    const avatar = user.user_metadata?.avatar_url;
-    if (avatar) return avatar;
-    return null;
-  };
-
-  const getDiscordUsername = () => {
-    if (!user) return null;
-    return user.user_metadata?.full_name || user.user_metadata?.name || user.email;
   };
 
   return (
@@ -664,38 +693,48 @@ function Navbar({ active }) {
                 {cartCount > 0 ? <span>{cartCount}</span> : null}
               </Link>
             </li>
-            {!isClient ? (
-              <li className="nav-auth-placeholder" aria-hidden="true" />
-            ) : user ? (
-              <li className="nav-user-wrap">
+            <li className="nav-auth-slot" suppressHydrationWarning>
+              <div className="nav-auth-pane nav-auth-pane-login">
+                {!showProfile ? (
+                  !authReady ? (
+                    <span className="button button-secondary nav-shop nav-auth-loading" aria-hidden="true">
+                      Login
+                      <LogIn size={16} strokeWidth={2.4} />
+                    </span>
+                  ) : (
+                    <Link
+                      className={`button button-secondary nav-shop ${active === "login" ? "active" : ""}`}
+                      href="/login"
+                    >
+                      Login
+                      <LogIn size={16} strokeWidth={2.4} />
+                    </Link>
+                  )
+                ) : null}
+              </div>
+              <div className="nav-auth-pane nav-auth-pane-profile">
                 <div className="nav-user">
-                  {getDiscordAvatar() ? (
-                    <img 
-                      src={getDiscordAvatar()} 
-                      alt="User Avatar" 
-                      className="nav-user-avatar" 
+                  {profileAvatar ? (
+                    <img
+                      src={profileAvatar}
+                      alt="User Avatar"
+                      className="nav-user-avatar"
+                      loading="eager"
+                      decoding="async"
+                      fetchPriority="high"
                     />
                   ) : (
                     <div className="nav-user-avatar-placeholder" />
                   )}
-                  <span className="nav-user-name">{getDiscordUsername()}</span>
-                  <button 
-                    className="nav-logout"
-                    onClick={handleLogout}
-                    title="Logout"
-                  >
-                    <X size={16} />
-                  </button>
+                  <span className="nav-user-name">{profileName || "\u00A0"}</span>
+                  {showLogout ? (
+                    <button className="nav-logout" onClick={handleLogout} title="Logout" type="button">
+                      <X size={16} />
+                    </button>
+                  ) : null}
                 </div>
-              </li>
-            ) : (
-              <li className="nav-shop-wrap">
-                <Link className={`button button-secondary nav-shop ${active === "login" ? "active" : ""}`} href="/login">
-                  Login
-                  <LogIn size={16} strokeWidth={2.4} />
-                </Link>
-              </li>
-            )}
+              </div>
+            </li>
           </ul>
         </div>
       </div>
@@ -2078,7 +2117,7 @@ const loaderProducts = [
     version: "v2.5.1",
     updated: "24.06.2026",
     compatibility: "Windows 10/11",
-    description: "ultra undetected description!",
+    description: "Private cheat with WDF technology, perfect for long competitive games and tournaments.",
     note: "Use the latest game build and disable overlays before launch for the cleanest session.",
     subscription: "Redeem your active license to unlock the current Fortnite Private loader build and sync access instantly.",
     steps: [
@@ -2097,7 +2136,7 @@ const loaderProducts = [
     version: "v1.8.4",
     updated: "26.06.2026",
     compatibility: "Windows 10/11",
-    description: "Arc Raiders loader page with module selection, build sync, and a clean pre-launch checklist.",
+    description: "External Cheat, remains undetected at all times, making it perfect for long-term casual gameplay.",
     note: "Always let the loader finish file verification before attaching to the running game process.",
     subscription: "Redeem your Arc Raiders key to activate the loader subscription and pull the latest verified package.",
     steps: [
@@ -2116,7 +2155,7 @@ const loaderProducts = [
     version: "v3.1.0",
     updated: "28.06.2026",
     compatibility: "Windows 10/11",
-    description: "Dedicated spoofing loader with device profile swap, quick apply flow, and clean restart steps.",
+    description: "Definitely our flagship product with the latest Legit S.M.A.R.T Spoofing technology systems.",
     note: "Close launchers and anti-cheat related processes before applying a new spoof profile.",
     subscription: "Redeem your spoofer license to enable subscription access, fresh profiles, and the latest supported build.",
     steps: [
