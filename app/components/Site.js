@@ -93,9 +93,6 @@ import {
   validateKomerzaCoupon,
 } from "../../lib/komerza";
 import { useAuthUser, useIsClient } from "../../lib/use-auth-user";
-import { useNavAuthBootstrap } from "./NavAuthBootstrap";
-import { saveNavAuthCache } from "../../lib/nav-auth-cache";
-import { useNavAuthCache } from "../../lib/use-nav-auth-cache";
 
 const navItems = [
   { href: "/", label: "Home", key: "home", icon: House },
@@ -567,23 +564,6 @@ function PageChrome({ active, children }) {
   );
 }
 
-export function resolveSiteNavActive(pathname = "") {
-  const path = String(pathname || "");
-
-  if (path.startsWith("/loader")) return "loader";
-  if (path.startsWith("/reviews")) return "reviews";
-  if (path.startsWith("/terms") || path.startsWith("/pomoc")) return "terms";
-  if (path.startsWith("/login")) return "login";
-  if (path.startsWith("/cart")) return "cart";
-  if (path.startsWith("/product")) return "shop";
-
-  return "home";
-}
-
-export function SiteChrome({ active, children }) {
-  return <PageChrome active={active}>{children}</PageChrome>;
-}
-
 function HeroBackdrop() {
   return <div className="hero-backdrop" aria-hidden="true" />;
 }
@@ -629,49 +609,23 @@ function Navbar({ active }) {
   const [open, setOpen] = useState(false);
   const [cartItems] = useCartItems();
   const cartCount = cartTotalQuantity(cartItems);
-  const { user, ready: authReady } = useAuthUser();
-  const navAuthCache = useNavAuthCache();
-  const serverNavAuth = useNavAuthBootstrap();
-
-  const profileAvatar =
-    user?.user_metadata?.avatar_url || navAuthCache?.avatarUrl || serverNavAuth?.avatarUrl || "";
-  const profileName =
-    user?.user_metadata?.full_name ||
-    user?.user_metadata?.name ||
-    user?.email ||
-    navAuthCache?.username ||
-    serverNavAuth?.username ||
-    "";
-  const showProfile = Boolean(user || navAuthCache || (!authReady && serverNavAuth));
-  const showLogout = showProfile;
-
-  useLayoutEffect(() => {
-    if (showProfile) {
-      document.documentElement.setAttribute("data-nav-auth", "1");
-
-      if (profileName) {
-        document.documentElement.setAttribute("data-nav-auth-name", profileName);
-      } else {
-        document.documentElement.removeAttribute("data-nav-auth-name");
-      }
-
-      if (profileAvatar) {
-        document.documentElement.setAttribute("data-nav-auth-avatar", profileAvatar);
-      } else {
-        document.documentElement.removeAttribute("data-nav-auth-avatar");
-      }
-
-      return;
-    }
-
-    document.documentElement.removeAttribute("data-nav-auth");
-    document.documentElement.removeAttribute("data-nav-auth-name");
-    document.documentElement.removeAttribute("data-nav-auth-avatar");
-  }, [profileAvatar, profileName, showProfile]);
+  const { user } = useAuthUser();
+  const isClient = useIsClient();
 
   const handleLogout = async () => {
-    saveNavAuthCache(null);
     await supabase.auth.signOut();
+  };
+
+  const getDiscordAvatar = () => {
+    if (!user) return null;
+    const avatar = user.user_metadata?.avatar_url;
+    if (avatar) return avatar;
+    return null;
+  };
+
+  const getDiscordUsername = () => {
+    if (!user) return null;
+    return user.user_metadata?.full_name || user.user_metadata?.name || user.email;
   };
 
   return (
@@ -697,7 +651,7 @@ function Navbar({ active }) {
 
               return (
                 <li key={item.key}>
-                  <Link className={`nav-item ${active === item.key ? "active" : ""}`} href={item.href} prefetch>
+                  <Link className={`nav-item ${active === item.key ? "active" : ""}`} href={item.href}>
                     <Icon className="nav-icon" size={16} strokeWidth={2.2} />
                     <span>{item.label}</span>
                   </Link>
@@ -705,53 +659,43 @@ function Navbar({ active }) {
               );
             })}
             <li className="nav-cart-wrap">
-              <Link className={`nav-cart ${active === "cart" ? "active" : ""}`} href="/cart" prefetch aria-label={`Cart with ${cartCount} products`}>
+              <Link className={`nav-cart ${active === "cart" ? "active" : ""}`} href="/cart" aria-label={`Cart with ${cartCount} products`}>
                 <CartBasketIcon size={24} />
                 {cartCount > 0 ? <span>{cartCount}</span> : null}
               </Link>
             </li>
-            <li className="nav-auth-slot" suppressHydrationWarning>
-              <div className="nav-auth-pane nav-auth-pane-login">
-                {!showProfile ? (
-                  !authReady ? (
-                    <span className="button button-secondary nav-shop nav-auth-loading" aria-hidden="true">
-                      Login
-                      <LogIn size={16} strokeWidth={2.4} />
-                    </span>
-                  ) : (
-                    <Link
-                      className={`button button-secondary nav-shop ${active === "login" ? "active" : ""}`}
-                      href="/login"
-                    >
-                      Login
-                      <LogIn size={16} strokeWidth={2.4} />
-                    </Link>
-                  )
-                ) : null}
-              </div>
-              <div className="nav-auth-pane nav-auth-pane-profile">
+            {!isClient ? (
+              <li className="nav-auth-placeholder" aria-hidden="true" />
+            ) : user ? (
+              <li className="nav-user-wrap">
                 <div className="nav-user">
-                  {profileAvatar ? (
-                    <img
-                      src={profileAvatar}
-                      alt="User Avatar"
-                      className="nav-user-avatar"
-                      loading="eager"
-                      decoding="async"
-                      fetchPriority="high"
+                  {getDiscordAvatar() ? (
+                    <img 
+                      src={getDiscordAvatar()} 
+                      alt="User Avatar" 
+                      className="nav-user-avatar" 
                     />
                   ) : (
                     <div className="nav-user-avatar-placeholder" />
                   )}
-                  <span className="nav-user-name">{profileName || "\u00A0"}</span>
-                  {showLogout ? (
-                    <button className="nav-logout" onClick={handleLogout} title="Logout" type="button">
-                      <X size={16} />
-                    </button>
-                  ) : null}
+                  <span className="nav-user-name">{getDiscordUsername()}</span>
+                  <button 
+                    className="nav-logout"
+                    onClick={handleLogout}
+                    title="Logout"
+                  >
+                    <X size={16} />
+                  </button>
                 </div>
-              </div>
-            </li>
+              </li>
+            ) : (
+              <li className="nav-shop-wrap">
+                <Link className={`button button-secondary nav-shop ${active === "login" ? "active" : ""}`} href="/login">
+                  Login
+                  <LogIn size={16} strokeWidth={2.4} />
+                </Link>
+              </li>
+            )}
           </ul>
         </div>
       </div>
@@ -5688,7 +5632,7 @@ export function HomePage({ reviewCount = 0, averageRating = null }) {
   const [selectedGame, setSelectedGame] = useState(null);
 
   return (
-    <>
+    <PageChrome active="home">
       <HomeHero />
       <HeroStats reviewCount={reviewCount} averageRating={averageRating} />
       <ModesSection selectedGame={selectedGame} setSelectedGame={setSelectedGame} />
@@ -5696,7 +5640,7 @@ export function HomePage({ reviewCount = 0, averageRating = null }) {
       {selectedGame ? null : <WhyChooseUsSection />}
       {selectedGame ? null : <BeforeAfterSection />}
       <PurchasesSection />
-    </>
+    </PageChrome>
   );
 }
 
@@ -5720,28 +5664,28 @@ export function ReviewsPage({ reviews: initialReviews = [] }) {
     );
 
   return (
-    <>
+    <PageChrome active="reviews">
       <SimpleHeader title={reviewsTitle} linkText="See reviews" />
       <ReviewsContent reviews={initialReviews} onReviewsMetaChange={handleReviewsMetaChange} />
-    </>
+    </PageChrome>
   );
 }
 
 export function RulesPage() {
   return (
-    <>
+    <PageChrome active="terms">
       <SimpleHeader title="Terms & Conditions" linkText="read" />
       <RulesContent />
-    </>
+    </PageChrome>
   );
 }
 
 export function LoaderPage() {
   return (
-    <>
+    <PageChrome active="loader">
       <SimpleHeader title="Remote Loader" subtitle="Choose product, redeem the license and start dominating lobbies!" linkText="Select product" />
       <LoaderContent />
-    </>
+    </PageChrome>
   );
 }
 
@@ -5749,39 +5693,47 @@ export function LoaderDetailPage({ slug }) {
   const product = getLoaderProduct(slug);
 
   return (
-    <>
+    <PageChrome active="loader">
       <SimpleHeader
         title={`${product.name} Loader`}
         subtitle="Dedicated product loader page with remote setup and launch flow."
         linkText="Launch"
       />
       <LoaderDetailContent slug={slug} />
-    </>
+    </PageChrome>
   );
 }
 
 export function LoginPage() {
   return (
-    <>
+    <PageChrome active="login">
       <SimpleHeader className="simple-header--login" title="Login" subtitle="Access your unbanhwid.com account." />
       <LoginContent />
-    </>
+    </PageChrome>
   );
 }
 
 export function CartPage() {
-  return <CartContent />;
+  return (
+    <PageChrome active="cart">
+      <CartContent />
+    </PageChrome>
+  );
 }
 
 export function ShopPage() {
-  return <ShopContent />;
+  return (
+    <PageChrome active="shop">
+      <ShopContent />
+    </PageChrome>
+  );
 }
 
 export function ProductDetailPage({ slug }) {
   return (
-    <>
+    <PageChrome active="shop">
       <ProductCheckout slug={slug} />
       <PurchasesSection />
-    </>
+    </PageChrome>
   );
 }
