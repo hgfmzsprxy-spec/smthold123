@@ -4,9 +4,9 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { runAccessChecks, setAccessCookie } from "../../lib/site-access";
 
-const DEVTOOLS_SIZE_THRESHOLD = 200;
-const DEVTOOLS_POLL_MS = 500;
-const DEVTOOLS_CONFIRM_COUNT = 4;
+const DEVTOOLS_SIZE_THRESHOLD = 160;
+const DEVTOOLS_POLL_MS = 400;
+const DEVTOOLS_CONFIRM_COUNT = 2;
 const ZOOM_GRACE_MS = 3500;
 const LAYOUT_GRACE_MS = 2500;
 const PREVIOUS_URL_KEY = "site-protection-previous-url";
@@ -28,10 +28,24 @@ function isVisualZoomActive() {
   return Math.abs((window.visualViewport.scale || 1) - 1) > 0.02;
 }
 
+function hasLargeViewportGap(gaps) {
+  if (gaps.width >= DEVTOOLS_SIZE_THRESHOLD && gaps.width > gaps.height + 60) {
+    return true;
+  }
+
+  if (gaps.height >= DEVTOOLS_SIZE_THRESHOLD + 60 && gaps.height > gaps.width + 60) {
+    return true;
+  }
+
+  return false;
+}
+
 function looksLikeBrowserZoom(baselineGaps) {
   if (isVisualZoomActive()) return true;
 
   const gaps = getViewportGaps();
+  if (hasLargeViewportGap(gaps)) return false;
+
   const widthDelta = gaps.width - baselineGaps.width;
   const heightDelta = gaps.height - baselineGaps.height;
 
@@ -47,15 +61,15 @@ function isDevToolsDockOpen(baselineGaps) {
   const widthDelta = gaps.width - baselineGaps.width;
   const heightDelta = gaps.height - baselineGaps.height;
 
-  if (widthDelta >= DEVTOOLS_SIZE_THRESHOLD && widthDelta > heightDelta + 80) {
+  if (widthDelta >= DEVTOOLS_SIZE_THRESHOLD && widthDelta > heightDelta + 60) {
     return true;
   }
 
-  if (heightDelta >= DEVTOOLS_SIZE_THRESHOLD + 80 && heightDelta > widthDelta + 80) {
+  if (heightDelta >= DEVTOOLS_SIZE_THRESHOLD + 60 && heightDelta > widthDelta + 60) {
     return true;
   }
 
-  return false;
+  return hasLargeViewportGap(gaps);
 }
 
 function isProtectionEnabled() {
@@ -89,6 +103,18 @@ const SCRAPER_HOST_PATTERN =
 function isFormField(target) {
   if (!(target instanceof Element)) return false;
   return Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
+}
+
+function isBlockedDevToolsShortcut(event) {
+  const key = event.key.toUpperCase();
+  const ctrlOrMeta = event.ctrlKey || event.metaKey;
+  const shift = event.shiftKey;
+
+  if (key === "F12") return true;
+  if (ctrlOrMeta && shift && (key === "I" || key === "J" || key === "C")) return true;
+  if (event.keyCode === 123) return true;
+
+  return false;
 }
 
 function isBlockedShortcut(event) {
@@ -249,15 +275,21 @@ export default function SiteProtection() {
       baselineGaps = getViewportGaps();
     }
 
+    function scheduleDevToolsProbe(delayMs = 0) {
+      window.setTimeout(() => {
+        pollDevTools();
+      }, delayMs);
+    }
+
     function pollDevTools() {
       if (devToolsTriggered || !canReliablyDetectDevTools()) return;
 
-      if (document.hidden || !document.hasFocus()) {
+      if (document.hidden) {
         devToolsPositiveCount = 0;
         return;
       }
 
-      if (isGraceActive()) {
+      if (isGraceActive() && !isDevToolsOpen(baselineGaps)) {
         devToolsPositiveCount = 0;
         return;
       }
@@ -282,11 +314,22 @@ export default function SiteProtection() {
     }
 
     function handleResize() {
+      if (isDevToolsDockOpen(baselineGaps)) {
+        scheduleDevToolsProbe(100);
+        scheduleDevToolsProbe(500);
+        return;
+      }
+
       markLayoutGrace();
 
-      if (looksLikeBrowserZoom(baselineGaps) || !isDevToolsDockOpen(baselineGaps)) {
+      if (looksLikeBrowserZoom(baselineGaps)) {
         syncLayoutBaseline();
       }
+    }
+
+    function handleWindowBlur() {
+      scheduleDevToolsProbe(250);
+      scheduleDevToolsProbe(700);
     }
 
     function handleVisualViewportChange() {
@@ -349,6 +392,11 @@ export default function SiteProtection() {
     function handleKeyDown(event) {
       handleZoomShortcut(event);
 
+      if (isBlockedDevToolsShortcut(event)) {
+        scheduleDevToolsProbe(500);
+        scheduleDevToolsProbe(1200);
+      }
+
       if (isBlockedShortcut(event)) {
         event.preventDefault();
         event.stopPropagation();
@@ -361,8 +409,7 @@ export default function SiteProtection() {
         return;
       }
 
-      markLayoutGrace();
-      pollDevTools();
+      scheduleDevToolsProbe(150);
     }
 
     let pollId;
@@ -372,11 +419,13 @@ export default function SiteProtection() {
     if (devToolsPollingEnabled) {
       pollId = window.setInterval(pollDevTools, DEVTOOLS_POLL_MS);
       window.addEventListener("resize", handleResize);
+      window.addEventListener("blur", handleWindowBlur);
       window.addEventListener("orientationchange", handleOrientationChange);
       window.addEventListener("wheel", handleZoomWheel, { passive: true });
       document.addEventListener("visibilitychange", handleVisibilityLeak);
       visualViewport?.addEventListener("resize", handleVisualViewportChange);
       visualViewport?.addEventListener("scroll", handleVisualViewportChange);
+      scheduleDevToolsProbe(300);
     }
 
     document.addEventListener("contextmenu", handleContextMenu);
@@ -392,6 +441,7 @@ export default function SiteProtection() {
       if (pollId) window.clearInterval(pollId);
       if (devToolsPollingEnabled) {
         window.removeEventListener("resize", handleResize);
+        window.removeEventListener("blur", handleWindowBlur);
         window.removeEventListener("orientationchange", handleOrientationChange);
         window.removeEventListener("wheel", handleZoomWheel);
         document.removeEventListener("visibilitychange", handleVisibilityLeak);
