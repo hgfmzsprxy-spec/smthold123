@@ -7,6 +7,7 @@ import {
   ArrowRight,
   BadgePercent,
   CalendarDays,
+  Camera,
   Check,
   ChevronDown,
   ChevronLeft,
@@ -27,7 +28,11 @@ import {
   Lock,
   LogIn,
   LogOut,
+  MapPin,
+  MapPinOff,
+  Maximize2,
   Menu,
+  Minimize2,
   Minus,
   Monitor,
   ScrollText,
@@ -38,8 +43,11 @@ import {
   Snowflake,
   Plus,
   Play,
+  Pause,
   RefreshCw,
+  Rocket,
   Loader2,
+  Images,
   Info,
   Search,
   Star,
@@ -47,6 +55,8 @@ import {
   TicketPercent,
   Trash2,
   Trophy,
+  Volume2,
+  VolumeX,
   X,
   Zap,
 } from "lucide-react";
@@ -108,11 +118,11 @@ const homeGameProducts = [
   { name: "Rainbow Six Lite", price: "9.99 USD", oldPrice: "14.99 USD", tags: ["# New"] },
   { name: "Rainbow Six Premium", price: "14.99 USD", oldPrice: "24.99 USD", tags: ["# Premium"] },
   {
-    slug: "hwid-spoofer",
+    slug: "permanent-spoofer",
     name: "HWID Spoofer",
     price: "14.99 USD",
     oldPrice: "24.99 USD",
-    image: "/images/spoofer_hwid.png",
+    image: "/images/perm-spoofer.png",
     tags: ["# Best"],
   },
 ];
@@ -555,6 +565,9 @@ function PageChrome({ active, children }) {
 
   return (
     <div className="site-shell reveal-enabled">
+      <div className="site-announce-bar" role="status">
+        WE ARE STARTING SOON...
+      </div>
       <HeroBackdrop />
       <Navbar active={active} />
       {children}
@@ -1051,12 +1064,28 @@ const bestSellerProducts = [
     tags: ["# UNDETECTED"],
   },
   {
-    slug: "hwid-spoofer",
-    name: "HWID Spoofer",
+    slug: "apex-legends",
+    name: "Apex Legends",
+    price: "4.99 USD",
+    oldPrice: "9.99 USD",
+    image: "/images/apex-legends.png",
+    tags: ["# UNDETECTED"],
+  },
+  {
+    slug: "permanent-spoofer",
+    name: "Permanent Spoofer",
     price: "14.99 USD",
     oldPrice: "24.99 USD",
-    image: "/images/spoofer_hwid.png",
+    image: "/images/perm-spoofer.png",
     tags: ["# BEST SELLER"],
+  },
+  {
+    slug: "temporary-spoofer",
+    name: "Temporary Spoofer",
+    price: "4.99 USD",
+    oldPrice: "9.99 USD",
+    image: "/images/temp-spoofer.png",
+    tags: ["# NEW"],
   },
 ];
 
@@ -1121,7 +1150,9 @@ const RECENT_PURCHASE_MAX_INTERVAL_MS = 300 * 60 * 1000;
 const recentPurchaseProducts = [
   { slug: "fortnite-private", name: "Fortnite Private", image: "/images/fortnite.png" },
   { slug: "arc-raiders", name: "Arc Raiders", image: "/images/arc_raiders.png" },
-  { slug: "hwid-spoofer", name: "HWID Spoofer", image: "/images/spoofer_hwid.png" },
+  { slug: "apex-legends", name: "Apex Legends", image: "/images/apex-legends.png" },
+  { slug: "permanent-spoofer", name: "Permanent Spoofer", image: "/images/perm-spoofer.png" },
+  { slug: "temporary-spoofer", name: "Temporary Spoofer", image: "/images/temp-spoofer.png" },
 ];
 
 const recentPurchaseCountries = [
@@ -1462,6 +1493,296 @@ const hwidSpooferRequirements = [
   { label: "Spoofer Type", value: "Permanent", icon: Fingerprint },
   { label: "Disk Spoofing", value: "Yes", icon: HardDrive },
   { label: "TPM Spoofing", value: "Yes", icon: KeyRound },
+];
+
+const temporarySpooferRequirements = [
+  { label: "Operating System", value: "Windows 10 & 11", icon: Monitor },
+  { label: "Motherboards", value: "All Supported", icon: Cpu },
+  { label: "Tournament Ready", value: "Yes", icon: Trophy },
+  { label: "Spoofer Type", value: "Temporary", icon: Fingerprint },
+  { label: "Disk Spoofing", value: "Yes", icon: HardDrive },
+  { label: "TPM Spoofing", value: "Yes", icon: KeyRound },
+];
+
+const temporarySpooferFeatures = [
+  {
+    title: "Spoof List",
+    groups: [
+      {
+        title: "Hardware Identifiers",
+        items: [
+          "Network Adapters",
+          "Registry Values",
+          "Monitor Serials",
+          "GPU Serials",
+          "RAM Serials",
+          "TPM Serials",
+          "NIC & MAC Address",
+          "Baseboard Serials",
+          "Storage Drive Serials (DISKS)",
+        ],
+      },
+    ],
+  },
+  {
+    title: "Supported Anti-Cheats",
+    groups: [
+      {
+        title: "FULL LIST OF ANTI-CHEATS",
+        items: [
+          "Easy Anti-Cheat",
+          "BattleEye",
+          "Ricochet",
+          "NetEase",
+          "FiveM",
+          "Phanuel",
+          "XignCode3",
+          "EA Javelin",
+          "UAC",
+          "Ace",
+        ],
+      },
+    ],
+  },
+  {
+    title: "Cleaner Support",
+    groups: [
+      {
+        title: "Supported Games",
+        items: [
+          "Rust",
+          "FiveM",
+          "Valorant",
+          "Apex Legends",
+          "Escape From Tarkov",
+          "Rainbow Six Siege",
+          "Fortnite [ Official Tournaments ]",
+          "and other...",
+        ],
+      },
+    ],
+  },
+];
+
+const apexLegendsRequirements = [
+  { label: "Operating System", value: "Windows 10 & 11", icon: Monitor },
+  { label: "Processors", value: "AMD & Intel", icon: Cpu },
+  { label: "Anti-Cheat", value: "Easy Anti-Cheat", icon: ShieldCheck },
+  { label: "Game Mode", value: "Borderless & Windowed", icon: Gamepad2 },
+  { label: "Spoofer Included", value: "No", icon: ShieldCheck },
+  { label: "Platform", value: "Steam & EA App", icon: Layers },
+];
+
+const apexLegendsFeatures = [
+  {
+    title: "Aimbot Settings",
+    groups: [
+      {
+        title: "Aimbot Settings",
+        items: [
+          "Enable Aimbot",
+          "FOV",
+          "Smooth",
+          "Recoil Reduction",
+          "Sway Reduction",
+          "Bone Selection [Head/Chest/Neck/Closest]",
+          "Target Priority [Distance/Closest to Crosshair]",
+        ],
+      },
+      {
+        title: "Aimbot Filters",
+        items: [
+          "Ignore Knocked",
+          "Visible Check",
+          "Show FOV Circle",
+          "Fill Fov",
+          "Target Line",
+          "Team Filter [Enemies/Allies/Everyone]",
+        ],
+      },
+    ],
+  },
+  {
+    title: "Visuals",
+    groups: [
+      {
+        title: "ESP Settings",
+        items: [
+          "Box",
+          "Skeleton",
+          "Snaplines",
+          "Name",
+          "Weapon",
+          "Dots",
+          "View Line",
+          "Head Circle",
+          "Healthbar",
+          "Shieldbar",
+          "Team Color",
+          "Offscreen Arrows",
+        ],
+      },
+      {
+        title: "ESP Customization",
+        items: [
+          "Box Outline",
+          "Skeleton Outline",
+          "Box Thickness",
+          "Skeleton Thickness",
+          "Text Outline",
+          "Weapon Display [Image/Text]", 
+          "Box Type [2D Box/Corner Box]",
+          "Fill Box",
+        ],
+      },
+      {
+        title: "ESP Checks",
+        items: [
+          "Team Check",
+          "Ignore Bots",
+          "Visible Check",
+          "ESP Render Distance (m)",
+        ],
+      },
+      {
+        title: "Infobars Display",
+        items: [
+          "Custom Healthbar Color",
+          "Custom Shieldbar Color",
+          "Healthbars Outlines",
+          "Health Display [Bars/Text]",
+        ],
+      },
+      {
+        title: "Glow",
+        items: [
+          "Enable",
+          "Player Glow",
+          "Knocked Check",
+          "Body Style [Black/Wireframe/Light/Bright/etc.]",
+          "Outline Style [None/Light/Solid/Gold/Soft+Color]",
+          "Border Thickness",
+          "Outlines Color",
+          "Item Glow [Inside/Outline Style]",
+          "Item Glow Thickness",
+          "Viewmodel Glow [Style]",
+        ],
+      },
+    ],
+  },
+  {
+    title: "Radar",
+    groups: [
+      {
+        title: "Main Settings",
+        items: [
+          "Enable Radar",
+          "Show Distance",
+          "Visible Check",
+          "Shape [Square/Circle]",
+          "Range (m)",
+          "Curve",
+        ],
+      },
+      {
+        title: "Radar Position",
+        items: ["Position X", "Position Y", "Radar Size"],
+      },
+      {
+        title: "ALGS Map",
+        items: ["Enable ALGS Map"],
+      },
+    ],
+  },
+  {
+    title: "Skinchanger",
+    groups: [
+      {
+        title: "Main Settings",
+        items: [
+          "Enable Skin Changer",
+          "Weapon Filter",
+          "Show Holding Weapon",
+          "Ability to set skin id for every weapon",
+        ],
+      },
+    ],
+  },
+  {
+    title: "World ESP",
+    groups: [
+      {
+        title: "Main Settings",
+        items: ["Show Item Names", "Show Distance", "Outlines"],
+      },
+      {
+        title: "World ESP Filter",
+        items: [
+          "Weapons",
+          "Ammo",
+          "Healing",
+          "Attachments",
+          "Gear",
+          "Granades",
+          "Hop-Ups",
+          "Chests",
+          "Special",
+        ],
+      },
+      {
+        title: "Category Settings",
+        items: [
+          "Enable/Disable",
+          "Render Distance (m)",
+          "Show Heirloom",
+          "Show Legendary",
+          "Show Epic",
+          "Show Rare",
+          "Show Common",
+          "Enable/Disable All",
+        ],
+      },
+      {
+        title: "Items",
+        items: ["Option to select any item from each category."],
+      },
+    ],
+  },
+  {
+    title: "Settings & Other",
+    groups: [
+      {
+        title: "Miscellaneous",
+        items: ["Show Spectators", "Show FPS", "V-Sync", "Show stats overlay", "Stats Close range (m)"],
+      },
+      {
+        title: "Exploits",
+        items: ["BHop", "BHop Delay (ms)", "Rapid Fire", "Rapid Fire Delay (ms)"],
+      },
+      {
+        title: "Crosshair",
+        items: [
+          "Enabled",
+          "Outlines",
+          "Center Dot",
+          "Outlines",
+          "Thickness",
+          "Outline Thickness",
+          "Length",
+          "Gap",
+        ],
+      },
+      {
+        title: "Configs",
+        items: [
+          "Save/Load Config",
+          "Delete Config",
+          "Custom name config",
+          "Up to 5 Different configs",
+        ],
+      },
+    ],
+  },
 ];
 
 const hwidSpooferPlanComparisonRows = [
@@ -1981,13 +2302,13 @@ const checkoutProducts = [
     ],
   },
   {
-    slug: "hwid-spoofer",
-    name: "HWID Spoofer",
-    shortName: "Spoofer",
+    slug: "permanent-spoofer",
+    name: "Permanent Spoofer",
+    shortName: "Permanent",
     price: "14.99 USD",
-    image: "/images/spoofer_hwid.png",
+    image: "/images/perm-spoofer.png",
     description:
-      "A dedicated HWID spoofer with fast setup, stable protection, and instant delivery after purchase.",
+      "A permanent HWID spoofer with fast setup, stable protection, and instant delivery after purchase.",
     variants: [
       { label: "One-Time License", price: "14.99 USD" },
       { label: "Lifetime License", price: "29.99 USD" },
@@ -1999,6 +2320,28 @@ const checkoutProducts = [
     ],
     requirements: hwidSpooferRequirements,
     features: hwidSpooferFeatures,
+  },
+  {
+    slug: "temporary-spoofer",
+    name: "Temporary Spoofer",
+    shortName: "Temporary",
+    price: "4.99 USD",
+    image: "/images/temp-spoofer.png",
+    description:
+      "A temporary HWID spoofer for quick sessions, fast setup, and instant delivery after purchase.",
+    variants: [
+      { label: "1 Day License", price: "4.99 USD" },
+      { label: "7 Days License", price: "19.99 USD" },
+      { label: "30 Days License", price: "49.99 USD" },
+      { label: "90 Days License", price: "99.99 USD" },
+    ],
+    secondaryImages: [
+      { src: "/images/secondary-images/temp1.png", alt: "Temporary Spoofer | Spoofer" },
+      { src: "/images/secondary-images/temp2.png", alt: "Temporary Spoofer | Cleaner" },
+      { src: "/images/secondary-images/temp3.png", alt: "Temporary Spoofer | Spoofing Completed" },
+    ],
+    requirements: temporarySpooferRequirements,
+    features: temporarySpooferFeatures,
   },
   {
     slug: "arc-raiders",
@@ -2019,6 +2362,33 @@ const checkoutProducts = [
       { src: "/images/secondary-images/arc_aimbot.png", alt: "Arc Raiders Aimbot" },
       { src: "/images/secondary-images/arc_esp.png", alt: "Arc Raiders ESP" },
       { src: "/images/secondary-images/arc_world_esp.png", alt: "Arc Raiders World ESP", lightboxOnly: true },
+    ],
+  },
+  {
+    slug: "apex-legends",
+    name: "Apex Legends",
+    shortName: "Apex Legends",
+    price: "4.99 USD",
+    image: "/images/apex-legends.png",
+    description:
+      "A stable Apex Legends product with fast setup, instant access, and the unbanhwid.com product panel.",
+    variants: [
+      { label: "1 Day License", price: "4.99 USD" },
+      { label: "7 Days License", price: "19.99 USD" },
+      { label: "30 Days License", price: "49.99 USD" },
+      { label: "Lifetime License", price: "99.99 USD" },
+    ],
+    requirements: apexLegendsRequirements,
+    features: apexLegendsFeatures,
+    secondaryImages: [
+      { src: "/images/secondary-images/apex1.png", alt: "Apex Legends Menu" },
+      { src: "/images/secondary-images/apex2.png", alt: "Apex Legends Aimbot" },
+      { src: "/images/secondary-images/apex3.png", alt: "Apex Legends Visuals" },
+      { src: "/images/secondary-images/apex4.png", alt: "Apex Legends Settings", lightboxOnly: true },
+      { src: "/images/secondary-images/apex5.png", alt: "Apex Legends ESP", lightboxOnly: true },
+      { src: "/images/secondary-images/apex6.png", alt: "Apex Legends Radar", lightboxOnly: true },
+      { src: "/images/secondary-images/apex7.png", alt: "Apex Legends Skinchanger", lightboxOnly: true },
+      { src: "/images/secondary-images/apex8.png", alt: "Apex Legends Misc", lightboxOnly: true },
     ],
   },
   {
@@ -2109,9 +2479,28 @@ const loaderProducts = [
     modules: ["Aimbot", "Visuals", "Radar", "Triggerbot", "Realtime Status", "Config Presets"],
   },
   {
-    slug: "hwid-spoofer",
-    name: "HWID Spoofer",
-    image: "/images/spoofer_hwid.png",
+    slug: "apex-legends",
+    name: "Apex Legends",
+    image: "/images/apex-legends.png",
+    featurePreviewCount: 3,
+    version: "v1.2.0",
+    updated: "15.07.2026",
+    compatibility: "Windows 10/11",
+    description: "Stable Apex Legends build with aimbot, visuals, radar, skinchanger, and world ESP in one panel.",
+    note: "Launch Apex in borderless or windowed mode and stay in the lobby before injecting.",
+    subscription: "Redeem your Apex Legends key to unlock the loader subscription and sync the latest package.",
+    steps: [
+      "Open the unbanhwid.com panel and select the Apex Legends license.",
+      "Let the loader verify and sync the current build.",
+      "Start Apex Legends, stay in the lobby, then return to the loader.",
+      "Press Launch and wait for the in-game ready confirmation.",
+    ],
+    modules: ["Aimbot", "Visuals", "Radar", "Skinchanger", "World ESP", "Configs", "Spectators", "V-Sync"],
+  },
+  {
+    slug: "permanent-spoofer",
+    name: "Permanent Spoofer",
+    image: "/images/perm-spoofer.png",
     featurePreviewCount: 2,
     version: "v3.1.0",
     updated: "28.06.2026",
@@ -2125,7 +2514,26 @@ const loaderProducts = [
       "Click Apply Spoof and wait until the hardware profile switch is complete.",
       "Restart the machine or selected services, then launch your game from a fresh session.",
     ],
-    modules: ["Hypervisor", "Driver spoofing", "Serial spoofing", "MAC address", "Disk spoofing", "TPM spoofing", "SMBIOS", "Network adapter"],
+    modules: ["TPM Spoofing", "Disk spoofing", "Serial spoofing", "MAC address", "Disk spoofing", "TPM spoofing", "SMBIOS", "Network adapter"],
+  },
+  {
+    slug: "temporary-spoofer",
+    name: "Temporary Spoofer",
+    image: "/images/temp-spoofer.png",
+    featurePreviewCount: 2,
+    version: "v1.4.2",
+    updated: "15.07.2026",
+    compatibility: "Windows 10/11",
+    description: "Temporary HWID spoofer that supports all motherboards as well as games and anti-cheats.",
+    note: "Close anti-cheat related processes before applying a temporary spoof profile.",
+    subscription: "Redeem your Temporary Spoofer key to unlock loader access and pull the latest supported build.",
+    steps: [
+      "Open the unbanhwid.com temporary spoofer loader and choose your profile.",
+      "Run the environment scan and confirm all required services are ready.",
+      "Click Apply Spoof and wait until the temporary profile is active.",
+      "Launch your game from a fresh session for the current spoof window.",
+    ],
+    modules: ["Hypervisor", "TPM 2.0", "DISKS", "Disk spoofing", "MAC address", "Cleaner support", "GPU serials", "RAM serials"],
   },
 ];
 
@@ -2171,10 +2579,60 @@ const fortniteLoaderFeatures = [
   },
 ];
 
+const apexLegendsLoaderFeatures = [
+  {
+    title: "Information",
+    items: [
+      "Windows 10 & 11",
+      "Processors: AMD & Intel",
+      "Anti-cheat: Easy Anti-Cheat",
+      "Spoofer Included: No",
+      "Platform: Steam & EA App",
+    ],
+  },
+  {
+    title: "Aimbot",
+    items: ["Enable Aimbot", "FOV", "Smooth", "Recoil Reduction", "Bone Selection"],
+  },
+  {
+    title: "Visuals",
+    items: ["Box", "Skeleton", "Snaplines", "Healthbar", "Shieldbar"],
+  },
+];
+
+const temporarySpooferLoaderFeatures = [
+  {
+    title: "Information",
+    items: [
+      "Windows 10 & 11",
+      "Motherboards: All Supported",
+      "Tournament Ready: Yes",
+      "Spoofer Type: Temporary",
+      "Disk & TPM Spoofing: Yes",
+    ],
+  },
+  {
+    title: "Spoof List",
+    items: [
+      "Network Adapters",
+      "Registry Values",
+      "Monitor / GPU / RAM Serials",
+      "TPM Serials",
+      "Storage Drive Serials (DISKS)",
+    ],
+  },
+  {
+    title: "Cleaner Support",
+    items: ["Rust", "FiveM", "Valorant", "Apex Legends", "Escape From Tarkov"],
+  },
+];
+
 const loaderFeatureSectionsBySlug = {
-  "hwid-spoofer": () => hwidSpooferFeatures.slice(0, 2),
+  "permanent-spoofer": () => hwidSpooferFeatures.slice(0, 2),
+  "temporary-spoofer": () => temporarySpooferLoaderFeatures,
   "arc-raiders": () => arcRaidersLoaderFeatures,
   "fortnite-private": () => fortniteLoaderFeatures,
+  "apex-legends": () => apexLegendsLoaderFeatures,
 };
 
 function productSlug(name = "") {
@@ -2191,6 +2649,13 @@ function loaderHref(product) {
 function isLoaderProductInactive(displayMeta) {
   const status = String(displayMeta?.status || "").trim();
   return status === "Maintenance" || status === "Detected";
+}
+
+function getLoaderProductStatusClass(status) {
+  const normalized = String(status || "").trim().toLowerCase();
+  if (normalized === "maintenance") return "is-maintenance";
+  if (normalized === "detected") return "is-detected";
+  return "is-undetected";
 }
 
 function resolveLoaderProductBadge({ result, completed, displayMeta }) {
@@ -2489,11 +2954,11 @@ function BeforeAfterSection() {
           </div>
 
           <div className="before-after-actions" data-reveal>
-            <Link className="button button-secondary before-after-action-primary" href="/product/hwid-spoofer">
+            <Link className="button button-secondary before-after-action-primary" href="/product/permanent-spoofer">
               <ShoppingCart size={18} />
               Purchase, UNBAN NOW!
             </Link>
-            <Link className="button button-primary-soft before-after-action-secondary" href="/product/hwid-spoofer#product-features">
+            <Link className="button button-primary-soft before-after-action-secondary" href="/product/permanent-spoofer#product-features">
               <ScrollText size={18} />
               Check my compatibility
             </Link>
@@ -2700,10 +3165,20 @@ function ProductImageLightbox({ images, index, onIndexChange, onClose }) {
         >
           <ChevronLeft size={24} strokeWidth={2.2} />
         </button>
+
         <figure className="product-image-lightbox-figure">
-          <ProductImageMagnifier src={image.src} alt={image.alt} />
+          <div className="product-image-lightbox-stage">
+            <ProductImageMagnifier src={image.src} alt={image.alt} />
+            <div className="product-secondary-more product-image-lightbox-counter" aria-live="polite">
+              <Images size={12} strokeWidth={2.4} />
+              <span>
+                {index + 1}/{images.length}
+              </span>
+            </div>
+          </div>
           <figcaption>{image.alt}</figcaption>
         </figure>
+
         <button
           type="button"
           className="product-image-lightbox-arrow product-image-lightbox-arrow-next"
@@ -2712,6 +3187,22 @@ function ProductImageLightbox({ images, index, onIndexChange, onClose }) {
         >
           <ChevronRight size={24} strokeWidth={2.2} />
         </button>
+
+        <div className="product-image-lightbox-thumbs" role="tablist" aria-label="Image previews">
+          {images.map((thumb, thumbIndex) => (
+            <button
+              type="button"
+              key={thumb.src}
+              role="tab"
+              aria-selected={thumbIndex === index}
+              className={`product-image-lightbox-thumb${thumbIndex === index ? " is-active" : ""}`}
+              onClick={() => onIndexChange(thumbIndex)}
+              aria-label={thumb.alt || `Image ${thumbIndex + 1}`}
+            >
+              <img src={thumb.src} alt="" />
+            </button>
+          ))}
+        </div>
       </div>
     </div>,
     document.body,
@@ -3250,13 +3741,490 @@ function HwidSpooferCompatibilityChecker() {
   );
 }
 
+const apexShowcaseChapters = [
+  { time: 1, label: "Aimbot" },
+  { time: 13, label: "Visuals" },
+  { time: 40, label: "Glow" },
+  { time: 93, label: "Radar" },
+  { time: 99, label: "Skinchanger" },
+  { time: 121, label: "World ESP" },
+  { time: 138, label: "Misc" },
+  { time: 171, label: "Configs" },
+  { time: 177, label: "Game" },
+];
+
+const loaderGuideChapters = [
+  { time: 2, label: "Login" },
+  { time: 14, label: "Redeem License" },
+  { time: 35, label: "Download Loader" },
+  { time: 50, label: "Launch & Active" },
+];
+
+const productShowcaseBySlug = {
+  "apex-legends": {
+    streamableId: "wvgyc8",
+    chapters: apexShowcaseChapters,
+  },
+  "fortnite-private": {
+    streamableId: "4l66yt",
+    chapters: [],
+  },
+};
+
+function formatShowcaseTime(seconds) {
+  const total = Math.max(0, Math.floor(Number(seconds) || 0));
+  const mins = Math.floor(total / 60);
+  const secs = total % 60;
+  return `${mins}:${String(secs).padStart(2, "0")}`;
+}
+
+function ProductShowcaseVideo({ src = "", streamableId = "", chapters = [], id, className = "", poster }) {
+  const playerRef = useRef(null);
+  const videoRef = useRef(null);
+  const seekRef = useRef(null);
+  const [resolvedSrc, setResolvedSrc] = useState(src || "");
+  const [mediaStatus, setMediaStatus] = useState(src ? "ready" : streamableId ? "loading" : "error");
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [hoverChapter, setHoverChapter] = useState(null);
+  const [volume, setVolume] = useState(0.8);
+  const [muted, setMuted] = useState(false);
+  const [volumeOpen, setVolumeOpen] = useState(false);
+  const [markersVisible, setMarkersVisible] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [centerAction, setCenterAction] = useState(null);
+  const lastVolumeRef = useRef(0.8);
+  const volumeCloseTimerRef = useRef(null);
+  const centerActionTimerRef = useRef(null);
+  const videoClickTimerRef = useRef(null);
+
+  const chapterFallbackDuration = chapters.length
+    ? Math.max(...chapters.map((chapter) => Number(chapter.time) || 0)) + 20
+    : 0;
+  const effectiveDuration = Number.isFinite(duration) && duration > 0 ? duration : chapterFallbackDuration;
+  const progress = effectiveDuration > 0 ? Math.min(100, (currentTime / effectiveDuration) * 100) : 0;
+  const displayVolume = muted ? 0 : volume;
+  const canPlay = mediaStatus === "ready" && Boolean(resolvedSrc);
+
+  function syncDuration(video) {
+    const next = Number(video?.duration);
+    if (Number.isFinite(next) && next > 0) {
+      setDuration(next);
+    }
+  }
+
+  useEffect(() => {
+    if (!streamableId) {
+      setResolvedSrc(src || "");
+      setMediaStatus(src ? "ready" : "error");
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    async function resolveStreamable() {
+      try {
+        const response = await fetch(`/api/streamable/${encodeURIComponent(streamableId)}`, {
+          cache: "no-store",
+        });
+        const body = await response.json();
+        if (cancelled) return;
+
+        if (body?.url) {
+          setResolvedSrc(body.url);
+          setMediaStatus("ready");
+          return;
+        }
+
+        setMediaStatus(body?.status === 0 || body?.status === 1 ? "processing" : "error");
+      } catch {
+        if (!cancelled) setMediaStatus("error");
+      }
+    }
+
+    setMediaStatus("loading");
+    void resolveStreamable();
+    const timerId = window.setInterval(() => {
+      void resolveStreamable();
+    }, 12000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timerId);
+    };
+  }, [src, streamableId]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.volume = Math.min(1, Math.max(0, volume));
+    video.muted = muted || volume <= 0;
+  }, [muted, volume]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !resolvedSrc) return undefined;
+
+    const onMeta = () => syncDuration(video);
+    video.addEventListener("loadedmetadata", onMeta);
+    video.addEventListener("durationchange", onMeta);
+    video.addEventListener("loadeddata", onMeta);
+    syncDuration(video);
+
+    return () => {
+      video.removeEventListener("loadedmetadata", onMeta);
+      video.removeEventListener("durationchange", onMeta);
+      video.removeEventListener("loadeddata", onMeta);
+    };
+  }, [resolvedSrc]);
+
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 720px)").matches) {
+      setMarkersVisible(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (volumeCloseTimerRef.current) window.clearTimeout(volumeCloseTimerRef.current);
+      if (centerActionTimerRef.current) window.clearTimeout(centerActionTimerRef.current);
+      if (videoClickTimerRef.current) window.clearTimeout(videoClickTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    function syncFullscreen() {
+      const active = document.fullscreenElement || document.webkitFullscreenElement || null;
+      setIsFullscreen(Boolean(playerRef.current && active === playerRef.current));
+    }
+
+    document.addEventListener("fullscreenchange", syncFullscreen);
+    document.addEventListener("webkitfullscreenchange", syncFullscreen);
+    return () => {
+      document.removeEventListener("fullscreenchange", syncFullscreen);
+      document.removeEventListener("webkitfullscreenchange", syncFullscreen);
+    };
+  }, []);
+
+  function openVolumePicker() {
+    if (volumeCloseTimerRef.current) {
+      window.clearTimeout(volumeCloseTimerRef.current);
+      volumeCloseTimerRef.current = null;
+    }
+    setVolumeOpen(true);
+  }
+
+  function scheduleCloseVolumePicker() {
+    if (volumeCloseTimerRef.current) window.clearTimeout(volumeCloseTimerRef.current);
+    volumeCloseTimerRef.current = window.setTimeout(() => {
+      setVolumeOpen(false);
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && active.closest?.(".product-showcase-volume")) {
+        active.blur();
+      }
+      volumeCloseTimerRef.current = null;
+    }, 80);
+  }
+
+  function seekTo(time) {
+    const video = videoRef.current;
+    if (!video) return;
+    const max = effectiveDuration || time;
+    const next = Math.max(0, Math.min(max, time));
+    video.currentTime = next;
+    setCurrentTime(next);
+  }
+
+  function flashCenterAction(kind) {
+    if (centerActionTimerRef.current) {
+      window.clearTimeout(centerActionTimerRef.current);
+      centerActionTimerRef.current = null;
+    }
+    setCenterAction({ kind, id: Date.now() });
+    centerActionTimerRef.current = window.setTimeout(() => {
+      setCenterAction(null);
+      centerActionTimerRef.current = null;
+    }, 560);
+  }
+
+  function togglePlay() {
+    const video = videoRef.current;
+    if (!video || !canPlay) return;
+    if (video.paused) {
+      flashCenterAction("play");
+      void video.play();
+    } else {
+      flashCenterAction("pause");
+      video.pause();
+    }
+  }
+
+  function handleVideoClick() {
+    if (!canPlay) return;
+    if (videoClickTimerRef.current) {
+      window.clearTimeout(videoClickTimerRef.current);
+      videoClickTimerRef.current = null;
+      return;
+    }
+
+    videoClickTimerRef.current = window.setTimeout(() => {
+      videoClickTimerRef.current = null;
+      togglePlay();
+    }, 220);
+  }
+
+  function handleVideoDoubleClick() {
+    if (videoClickTimerRef.current) {
+      window.clearTimeout(videoClickTimerRef.current);
+      videoClickTimerRef.current = null;
+    }
+    void toggleFullscreen({ flash: true });
+  }
+
+  function setVolumeLevel(nextVolume) {
+    const clamped = Math.min(1, Math.max(0, nextVolume));
+    setVolume(clamped);
+    if (clamped > 0) {
+      lastVolumeRef.current = clamped;
+      setMuted(false);
+    } else {
+      setMuted(true);
+    }
+  }
+
+  function toggleMute() {
+    if (muted || volume <= 0) {
+      const restored = lastVolumeRef.current > 0 ? lastVolumeRef.current : 0.8;
+      setVolume(restored);
+      setMuted(false);
+      return;
+    }
+    lastVolumeRef.current = volume > 0 ? volume : lastVolumeRef.current;
+    setMuted(true);
+  }
+
+  async function toggleFullscreen({ flash = true } = {}) {
+    const player = playerRef.current;
+    if (!player) return;
+
+    try {
+      const active = document.fullscreenElement || document.webkitFullscreenElement || null;
+      const isActive = Boolean(player && active === player);
+
+      if (isActive) {
+        if (flash) flashCenterAction("minimize");
+        if (document.exitFullscreen) await document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        return;
+      }
+
+      if (flash) flashCenterAction("maximize");
+      if (player.requestFullscreen) await player.requestFullscreen();
+      else if (player.webkitRequestFullscreen) player.webkitRequestFullscreen();
+    } catch {
+      // Ignore fullscreen denial / unsupported environments.
+    }
+  }
+
+  function handleSeekClick(event) {
+    if (!seekRef.current || effectiveDuration <= 0) return;
+    if (event.target.closest(".product-showcase-marker")) return;
+    const rect = seekRef.current.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+    seekTo(ratio * effectiveDuration);
+  }
+
+  const statusMessage =
+    mediaStatus === "loading"
+      ? "Loading showcase…"
+      : mediaStatus === "processing"
+        ? "Showcase is still processing. Check back shortly."
+        : mediaStatus === "error"
+          ? "Showcase video is unavailable right now."
+          : "";
+
+  return (
+    <div
+      ref={playerRef}
+      className={`loader-guide-video product-showcase-player${className ? ` ${className}` : ""}${isFullscreen ? " is-fullscreen" : ""}${canPlay ? "" : " is-pending"}`}
+      id={id || undefined}
+    >
+      {canPlay ? (
+        <video
+          ref={videoRef}
+          className="loader-guide-video-player"
+          src={resolvedSrc}
+          poster={poster || undefined}
+          playsInline
+          preload="auto"
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          onEnded={() => setPlaying(false)}
+          onLoadedMetadata={(event) => {
+            syncDuration(event.currentTarget);
+            setCurrentTime(event.currentTarget.currentTime || 0);
+            event.currentTarget.volume = volume;
+            event.currentTarget.muted = muted;
+          }}
+          onDurationChange={(event) => syncDuration(event.currentTarget)}
+          onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime || 0)}
+          onClick={handleVideoClick}
+          onDoubleClick={handleVideoDoubleClick}
+        />
+      ) : (
+        <div className="product-showcase-pending" role="status">
+          <span>{statusMessage}</span>
+        </div>
+      )}
+      {centerAction ? (
+        <div className="product-showcase-center-action" key={centerAction.id} aria-hidden="true">
+          <div className={`product-showcase-center-action-bubble is-${centerAction.kind}`}>
+            {centerAction.kind === "play" ? (
+              <Play size={34} strokeWidth={2.4} fill="currentColor" />
+            ) : centerAction.kind === "pause" ? (
+              <Pause size={34} strokeWidth={2.4} fill="currentColor" />
+            ) : centerAction.kind === "minimize" ? (
+              <Minimize2 size={30} strokeWidth={2.4} />
+            ) : (
+              <Maximize2 size={30} strokeWidth={2.4} />
+            )}
+          </div>
+        </div>
+      ) : null}
+      {canPlay ? (
+      <div className="product-showcase-controls">
+        <button className="product-showcase-play" type="button" onClick={togglePlay} aria-label={playing ? "Pause" : "Play"}>
+          {playing ? <span className="product-showcase-pause-icon" aria-hidden="true" /> : <Play size={16} strokeWidth={2.6} fill="currentColor" />}
+        </button>
+        <div
+          className="product-showcase-seek"
+          ref={seekRef}
+          onClick={handleSeekClick}
+          role="slider"
+          aria-label="Video progress"
+          aria-valuemin={0}
+          aria-valuemax={Math.round(effectiveDuration)}
+          aria-valuenow={Math.round(currentTime)}
+          tabIndex={0}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowRight") seekTo(currentTime + 5);
+            if (event.key === "ArrowLeft") seekTo(currentTime - 5);
+          }}
+        >
+          <div className="product-showcase-seek-track" />
+          <div className="product-showcase-seek-fill" style={{ width: `${progress}%` }} />
+          <div className="product-showcase-time">
+            {formatShowcaseTime(currentTime)} / {formatShowcaseTime(effectiveDuration)}
+          </div>
+          {effectiveDuration > 0
+            ? chapters.map((chapter, index) => {
+                const nextTime = index < chapters.length - 1 ? chapters[index + 1].time : effectiveDuration + 1;
+                const left = Math.min(98.5, Math.max(1.2, (chapter.time / effectiveDuration) * 100));
+                const isActive = currentTime >= chapter.time && currentTime < nextTime;
+                const isHovered = hoverChapter === chapter.time;
+                return (
+                  <button
+                    key={`${chapter.time}-${chapter.label}`}
+                    type="button"
+                    className={`product-showcase-marker${isActive ? " is-active" : ""}${isHovered ? " is-hovered" : ""}${index % 2 === 1 ? " is-offset" : ""}${markersVisible ? "" : " is-concealed"}`}
+                    style={{
+                      left: `${left}%`,
+                      transitionDelay: markersVisible
+                        ? `${index * 28}ms`
+                        : `${(chapters.length - 1 - index) * 24}ms`,
+                    }}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (!markersVisible) return;
+                      seekTo(chapter.time);
+                      const video = videoRef.current;
+                      if (video?.paused) void video.play();
+                    }}
+                    onMouseEnter={() => {
+                      if (markersVisible) setHoverChapter(chapter.time);
+                    }}
+                    onMouseLeave={() => setHoverChapter(null)}
+                    tabIndex={markersVisible ? 0 : -1}
+                    aria-hidden={!markersVisible}
+                    aria-label={`${formatShowcaseTime(chapter.time)} ${chapter.label}`}
+                  >
+                    <span className="product-showcase-marker-dot" aria-hidden="true" />
+                    <span className="product-showcase-marker-stem" aria-hidden="true" />
+                    <span className="product-showcase-marker-label">
+                      <em>{formatShowcaseTime(chapter.time)}</em>
+                      {chapter.label}
+                    </span>
+                  </button>
+                );
+              })
+            : null}
+        </div>
+        {chapters.length ? (
+          <button
+            className={`product-showcase-markers-toggle${markersVisible ? "" : " is-hidden"}`}
+            type="button"
+            onClick={() => setMarkersVisible((value) => !value)}
+            aria-pressed={markersVisible}
+            aria-label={markersVisible ? "Hide markers" : "Show markers"}
+            title={markersVisible ? "Hide markers" : "Show markers"}
+          >
+            {markersVisible ? <MapPin size={16} strokeWidth={2.3} /> : <MapPinOff size={16} strokeWidth={2.3} />}
+          </button>
+        ) : null}
+        <div
+          className={`product-showcase-volume${volumeOpen ? " is-open" : ""}`}
+          onMouseEnter={openVolumePicker}
+          onMouseLeave={scheduleCloseVolumePicker}
+        >
+          <button
+            className="product-showcase-volume-toggle"
+            type="button"
+            onClick={toggleMute}
+            aria-label={displayVolume <= 0 ? "Unmute" : "Mute"}
+          >
+            {displayVolume <= 0 ? <VolumeX size={16} strokeWidth={2.3} /> : <Volume2 size={16} strokeWidth={2.3} />}
+          </button>
+          <label className="product-showcase-volume-slider">
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={displayVolume}
+              onChange={(event) => setVolumeLevel(Number(event.target.value))}
+              onFocus={openVolumePicker}
+              aria-label="Volume"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(displayVolume * 100)}
+              tabIndex={volumeOpen ? 0 : -1}
+            />
+          </label>
+        </div>
+        <button
+          className="product-showcase-fullscreen"
+          type="button"
+          onClick={() => void toggleFullscreen()}
+          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+        >
+          {isFullscreen ? <Minimize2 size={16} strokeWidth={2.3} /> : <Maximize2 size={16} strokeWidth={2.3} />}
+        </button>
+      </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ProductCheckout({ slug }) {
   const product = getCheckoutProduct(slug);
   const previewImages = product.secondaryImages || [];
-  const thumbnailImages = useMemo(
-    () => previewImages.filter((image) => !image.lightboxOnly),
-    [previewImages],
-  );
+  const thumbnailImages = useMemo(() => {
+    const visible = previewImages.filter((image) => !image.lightboxOnly);
+    return visible.slice(0, 3);
+  }, [previewImages]);
+  const morePreviewCount = Math.max(0, previewImages.length - thumbnailImages.length);
   const [selectedVariant, setSelectedVariant] = useState(product.variants[0]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [previewIndex, setPreviewIndex] = useState(null);
@@ -3270,6 +4238,24 @@ function ProductCheckout({ slug }) {
     setPreviewIndex(null);
     setCheckoutOpen(false);
   }, [product.slug]);
+
+  const showcaseConfig = productShowcaseBySlug[product.slug] || null;
+
+  useEffect(() => {
+    if (!showcaseConfig) return undefined;
+
+    function scrollToShowcase() {
+      const hash = window.location.hash.replace(/^#/, "");
+      if (hash !== "showcase") return;
+      window.requestAnimationFrame(() => {
+        document.getElementById("showcase")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+
+    scrollToShowcase();
+    window.addEventListener("hashchange", scrollToShowcase);
+    return () => window.removeEventListener("hashchange", scrollToShowcase);
+  }, [product.slug, showcaseConfig]);
 
   function showNotice(message) {
     setNotice(message);
@@ -3331,20 +4317,32 @@ function ProductCheckout({ slug }) {
               </div>
               {thumbnailImages.length ? (
                 <div className="product-secondary-images">
-                  {thumbnailImages.map((image, index) => (
-                    <button
-                      type="button"
-                      key={image.src}
-                      className={activeImageIndex === index ? "active" : ""}
-                      onClick={() => {
-                        setActiveImageIndex(index);
-                        setPreviewIndex(getLightboxIndexFromThumbnail(index));
-                      }}
-                      aria-label={image.alt}
-                    >
-                      <img src={image.src} alt={image.alt} />
-                    </button>
-                  ))}
+                  {thumbnailImages.map((image, index) => {
+                    const isLastVisible = index === thumbnailImages.length - 1 && morePreviewCount > 0;
+
+                    return (
+                      <button
+                        type="button"
+                        key={image.src}
+                        className={activeImageIndex === index ? "active" : ""}
+                        onClick={() => {
+                          setActiveImageIndex(index);
+                          setPreviewIndex(getLightboxIndexFromThumbnail(index));
+                        }}
+                        aria-label={
+                          isLastVisible ? `${image.alt}. ${morePreviewCount} more images` : image.alt
+                        }
+                      >
+                        <img src={image.src} alt={image.alt} />
+                        {isLastVisible ? (
+                          <span className="product-secondary-more" aria-hidden="true">
+                            <Images size={12} strokeWidth={2.4} />
+                            <span>+{morePreviewCount}</span>
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
                 </div>
               ) : null}
               {previewImages.length ? (
@@ -3361,9 +4359,21 @@ function ProductCheckout({ slug }) {
                   onClose={() => setPreviewIndex(null)}
                 />
               ) : null}
-              <button className="product-showcase-button" type="button" onClick={() => showNotice("Showcase preview will be available soon.")}>
+              <button
+                className="product-showcase-button"
+                type="button"
+                onClick={() => {
+                  const target = document.getElementById("showcase");
+                  if (target) {
+                    history.replaceState(null, "", "#showcase");
+                    target.scrollIntoView({ behavior: "smooth", block: "start" });
+                    return;
+                  }
+                  showNotice("Showcase preview will be available soon.");
+                }}
+              >
                 <Monitor size={17} />
-                Show Showcase
+                Watch Showcase
               </button>
             </div>
 
@@ -3406,7 +4416,7 @@ function ProductCheckout({ slug }) {
                 </strong>
               </div>
               <ProductPaymentMethods />
-              {product.slug === "hwid-spoofer" ? (
+              {product.slug === "permanent-spoofer" ? (
                 <>
                   <div className="loader-note product-spoofer-announcement" data-reveal>
                     <p>
@@ -3455,7 +4465,7 @@ function ProductCheckout({ slug }) {
                 );
               })}
             </div>
-            {product.slug === "hwid-spoofer" ? <HwidSpooferPlanComparison /> : null}
+            {product.slug === "permanent-spoofer" ? <HwidSpooferPlanComparison /> : null}
           </div>
         </div>
       </section>
@@ -3496,13 +4506,22 @@ function ProductCheckout({ slug }) {
                 )}
               </article>
             ))}
-            {product.slug === "hwid-spoofer" ? (
+            {product.slug === "permanent-spoofer" ? (
               <>
                 <HwidSpooferCompatibilityChecker />
                 <HwidSpooferModuleInfoCards />
               </>
             ) : null}
           </div>
+          {showcaseConfig ? (
+            <ProductShowcaseVideo
+              id="showcase"
+              className="product-features-video"
+              src={showcaseConfig.src || ""}
+              streamableId={showcaseConfig.streamableId || ""}
+              chapters={showcaseConfig.chapters || []}
+            />
+          ) : null}
         </div>
       </section>
     </main>
@@ -4137,7 +5156,8 @@ function LoaderCard({ item, displayMeta, subscriptionBadge = null }) {
   const previewCount = item.featurePreviewCount || 3;
   const visibleModules = item.modules.slice(0, previewCount);
   const hiddenModulesCount = Math.max(0, item.modules.length - visibleModules.length);
-  const lastUpdate = displayMeta?.lastUpdate || formatLoaderAppDate(item.updated);
+  const status = displayMeta?.status || "Undetected";
+  const lastUpdate = displayMeta?.lastUpdate || item.updated || "-";
 
   return (
     <Link className="loader-card" href={loaderHref(item)}>
@@ -4172,10 +5192,24 @@ function LoaderCard({ item, displayMeta, subscriptionBadge = null }) {
             <CalendarDays size={14} />
             <span>Last Update: {lastUpdate}</span>
           </div>
+          <div className="loader-card-status">
+            <ShieldCheck size={14} />
+            <span>
+              Current Status:{" "}
+              <strong className={`loader-product-status ${getLoaderProductStatusClass(status)}`}>{status}</strong>
+            </span>
+          </div>
         </div>
-        <div className="loader-card-action">
-          <span>View Details</span>
-          <ArrowRight size={18} />
+        <div className="checkout-pay-button loader-card-action">
+          <span className="checkout-pay-points" aria-hidden="true">
+            {Array.from({ length: 10 }, (_, index) => (
+              <i className="checkout-pay-point" key={index} />
+            ))}
+          </span>
+          <span className="checkout-pay-inner">
+            <ArrowRight className="checkout-pay-icon" size={18} strokeWidth={2.5} aria-hidden="true" />
+            View Details
+          </span>
         </div>
       </div>
     </Link>
@@ -4267,24 +5301,56 @@ function LoaderContent() {
   useEffect(() => {
     let cancelled = false;
 
-    setDisplayMetaBySlug(getInitialLoaderDisplayMetaMap(loaderProducts));
-
-    void refreshLoaderDisplayMetaMap(loaderProducts).then((nextMeta) => {
+    async function loadMeta() {
+      const nextMeta = await refreshLoaderDisplayMetaMap(loaderProducts);
       if (!cancelled) setDisplayMetaBySlug(nextMeta);
-    });
+    }
+
+    setDisplayMetaBySlug(getInitialLoaderDisplayMetaMap(loaderProducts));
+    void loadMeta();
+
+    const timerId = window.setInterval(() => {
+      void loadMeta();
+    }, 12000);
 
     return () => {
       cancelled = true;
+      window.clearInterval(timerId);
     };
+  }, []);
+
+  useEffect(() => {
+    function scrollToHashTarget() {
+      const hash = window.location.hash.replace(/^#/, "");
+      if (hash !== "instruction") return;
+      window.requestAnimationFrame(() => {
+        document.getElementById("instruction")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+
+    scrollToHashTarget();
+    window.addEventListener("hashchange", scrollToHashTarget);
+    return () => window.removeEventListener("hashchange", scrollToHashTarget);
   }, []);
 
   return (
     <section className="section loader-section fade-up" data-scroll-target>
       <div className="container">
         <div className="loader-intro">
-          <div className="loader-note">
-            Remote Control • WebView Loader
-          </div>
+          <button
+            className="loader-note loader-guide-cta"
+            type="button"
+            onClick={() => {
+              history.replaceState(null, "", "#instruction");
+              document.getElementById("instruction")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          >
+            <span>How Does it works? — Watch the video.</span>
+            <span className="loader-guide-cta-icons" aria-hidden="true">
+              <Camera size={16} strokeWidth={2.2} />
+              <CircleArrowDown size={16} strokeWidth={2.2} />
+            </span>
+          </button>
         </div>
         <div className="loader-grid">
           {loaderProducts.map((item) => (
@@ -4296,16 +5362,12 @@ function LoaderContent() {
             />
           ))}
         </div>
-        <div className="loader-guide-video">
-          <video
-            className="loader-guide-video-player"
-            src="/images/video/guide.mp4"
-            poster="/images/video/thumbnail.png"
-            controls
-            playsInline
-            preload="metadata"
-          />
-        </div>
+        <ProductShowcaseVideo
+          id="instruction"
+          src="/images/video/guide.mp4"
+          poster="/images/video/thumbnail.png"
+          chapters={loaderGuideChapters}
+        />
       </div>
     </section>
   );
@@ -4353,6 +5415,18 @@ function SiteToastCard({ variant = "success", title, subtitle, icon: Icon, class
   );
 }
 
+function AnimatedLaunchLetters({ text }) {
+  return (
+    <p className="loader-launch-letters">
+      {Array.from(text).map((char, index) => (
+        <span key={`${text}-${index}-${char}`} style={{ "--i": index }}>
+          {char === " " ? "\u00A0" : char}
+        </span>
+      ))}
+    </p>
+  );
+}
+
 function LoaderLaunchToast({ item, onClose }) {
   if (!item) return null;
 
@@ -4385,6 +5459,7 @@ function LoaderDetailContent({ slug }) {
   const [subscriptionMode, setSubscriptionMode] = useState("empty");
   const [subscriptionMetrics, setSubscriptionMetrics] = useState(null);
   const [launchBusy, setLaunchBusy] = useState(false);
+  const [launchAnim, setLaunchAnim] = useState("idle");
   const [launchToast, setLaunchToast] = useState(null);
   const [appFrozen, setAppFrozen] = useState(false);
   const [appFreezeReady, setAppFreezeReady] = useState(false);
@@ -4414,10 +5489,7 @@ function LoaderDetailContent({ slug }) {
   const displayStatus = loaderDisplayMeta?.status || "Undetected";
 
   function getProductStatusClass(status) {
-    const normalized = String(status || "").trim().toLowerCase();
-    if (normalized === "maintenance") return "is-maintenance";
-    if (normalized === "detected") return "is-detected";
-    return "is-undetected";
+    return getLoaderProductStatusClass(status);
   }
 
   useEffect(() => {
@@ -4441,7 +5513,7 @@ function LoaderDetailContent({ slug }) {
 
     let cancelled = false;
     setLoaderMetaReady(false);
-    void fetchLoaderDisplayMeta(supabase, appId, product).then((meta) => {
+    void fetchLoaderDisplayMeta(supabase, appId, product, { preferApi: true }).then((meta) => {
       if (cancelled) return;
       setLoaderDisplayMeta(meta);
       setLoaderMetaReady(true);
@@ -4803,13 +5875,31 @@ function LoaderDetailContent({ slug }) {
     }
 
     setLaunchBusy(true);
-    const result = await triggerLocalLoaderLaunch(redeemState.licenseKey);
+    setLaunchAnim("launching");
+    const startedAt = Date.now();
+    const resultPromise = triggerLocalLoaderLaunch(redeemState.licenseKey);
+
+    const remainingTakeoffMs = Math.max(0, 850 - (Date.now() - startedAt));
+    if (remainingTakeoffMs) {
+      await new Promise((resolve) => {
+        window.setTimeout(resolve, remainingTakeoffMs);
+      });
+    }
+
+    setLaunchAnim("busy");
+    const result = await resultPromise;
     setLaunchBusy(false);
     setLaunchToast(result);
     if (result.ok) {
+      setLaunchAnim("launched");
+      window.setTimeout(() => {
+        setLaunchAnim("idle");
+      }, 3200);
       window.setTimeout(() => void refreshSubscription(), 400);
       window.setTimeout(() => void refreshSubscription(), 1600);
       window.setTimeout(() => void refreshSubscription(), 3200);
+    } else {
+      setLaunchAnim("idle");
     }
   }, [hasRedeemedKey, isLaunchBanned, isLaunchFrozen, launchBusy, redeemState?.licenseKey, refreshSubscription]);
 
@@ -4832,10 +5922,10 @@ function LoaderDetailContent({ slug }) {
     ];
 
   const loaderFeaturesSection = (
-    <div className={`loader-features-below-hero${slug === "hwid-spoofer" ? " loader-features-below-hero--stacked" : ""}`}>
+    <div className={`loader-features-below-hero${slug === "permanent-spoofer" ? " loader-features-below-hero--stacked" : ""}`}>
       <div
         className={
-          slug === "hwid-spoofer"
+          slug === "permanent-spoofer"
             ? "loader-feature-grid loader-feature-grid--stacked"
             : "product-feature-grid loader-feature-grid"
         }
@@ -4965,17 +6055,23 @@ function LoaderDetailContent({ slug }) {
                   ) : (
                     <>
                       <button
-                        className="button loader-launch-button"
+                        className={`button loader-launch-button${
+                          hasRedeemedKey && !isLaunchBanned && !isLaunchFrozen
+                            ? ` loader-launch-button--animated is-${launchAnim}`
+                            : ""
+                        }`}
                         type="button"
-                        disabled={launchBusy || isLaunchBanned || isLaunchFrozen}
+                        disabled={
+                          launchBusy ||
+                          isLaunchBanned ||
+                          isLaunchFrozen ||
+                          launchAnim === "launched" ||
+                          launchAnim === "busy" ||
+                          launchAnim === "launching"
+                        }
                         onClick={() => void handleLaunchClick()}
                       >
-                        {launchBusy ? (
-                          <>
-                            <Loader2 size={18} className="loader-launch-spinner" />
-                            LAUNCHING...
-                          </>
-                        ) : isLaunchBanned ? (
+                        {isLaunchBanned ? (
                           <>
                             <ShieldX size={18} />
                             BANNED
@@ -4985,10 +6081,38 @@ function LoaderDetailContent({ slug }) {
                             <Snowflake size={18} />
                             FROZEN
                           </>
+                        ) : !hasRedeemedKey ? (
+                          <>
+                            <TicketPercent size={18} />
+                            Redeem License
+                          </>
                         ) : (
                           <>
-                            {hasRedeemedKey ? <Play size={18} /> : <TicketPercent size={18} />}
-                            {hasRedeemedKey ? "Launch" : "Redeem License"}
+                            <span
+                              className="loader-launch-state loader-launch-state--default"
+                              aria-hidden={launchAnim !== "idle" && launchAnim !== "launching"}
+                            >
+                              <span className="loader-launch-icon">
+                                <Rocket size={18} strokeWidth={2.2} />
+                              </span>
+                              <AnimatedLaunchLetters text="Launch" />
+                            </span>
+                            <span
+                              className="loader-launch-state loader-launch-state--busy"
+                              aria-hidden={launchAnim !== "busy"}
+                            >
+                              <Loader2 size={18} className="loader-launch-spinner" />
+                              <AnimatedLaunchLetters text="Launching..." />
+                            </span>
+                            <span
+                              className="loader-launch-state loader-launch-state--sent"
+                              aria-hidden={launchAnim !== "launched"}
+                            >
+                              <span className="loader-launch-icon loader-launch-icon--check">
+                                <Check size={18} strokeWidth={2.6} />
+                              </span>
+                              <AnimatedLaunchLetters text="Launched" />
+                            </span>
                           </>
                         )}
                       </button>
@@ -5683,7 +6807,7 @@ export function RulesPage() {
 export function LoaderPage() {
   return (
     <PageChrome active="loader">
-      <SimpleHeader title="Remote Loader" subtitle="Choose product, redeem the license and start dominating lobbies!" linkText="Select product" />
+      <SimpleHeader title="Remote Loader" subtitle="Choose product, redeem the license and start dominating lobbies!" linkText="select product" />
       <LoaderContent />
     </PageChrome>
   );

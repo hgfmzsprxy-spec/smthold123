@@ -2,6 +2,10 @@ import { queryApplicationMetaByAppId } from "../../../lib/loader-application-met
 
 export const dynamic = "force-dynamic";
 
+function hasServiceRoleKey() {
+  return Boolean(String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim());
+}
+
 export async function GET(request) {
   const params = new URL(request.url).searchParams;
   const appIdsParam = params.get("appIds")?.trim();
@@ -15,10 +19,20 @@ export async function GET(request) {
     const entries = await Promise.all(
       appIds.map(async (appId) => [appId, await queryApplicationMetaByAppId(appId)]),
     );
+    const apps = Object.fromEntries(entries);
+    const anyLoaded = Object.values(apps).some(Boolean);
 
-    return Response.json({
-      apps: Object.fromEntries(entries),
-    });
+    if (!anyLoaded && !hasServiceRoleKey()) {
+      return Response.json(
+        {
+          error: "Application metadata requires SUPABASE_SERVICE_ROLE_KEY (guest reads are blocked by RLS).",
+          apps,
+        },
+        { status: 503 },
+      );
+    }
+
+    return Response.json({ apps });
   }
 
   const appId = params.get("appId")?.trim();
@@ -28,6 +42,15 @@ export async function GET(request) {
 
   const app = await queryApplicationMetaByAppId(appId);
   if (!app) {
+    if (!hasServiceRoleKey()) {
+      return Response.json(
+        {
+          error: "Application metadata requires SUPABASE_SERVICE_ROLE_KEY (guest reads are blocked by RLS).",
+        },
+        { status: 503 },
+      );
+    }
+
     return Response.json({ error: "Application metadata could not be loaded." }, { status: 404 });
   }
 

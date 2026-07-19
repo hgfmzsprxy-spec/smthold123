@@ -22,7 +22,7 @@ export function LoaderCardSkeleton({ featurePreviewCount = 3 }) {
             ))}
             <SkeletonBlock className="skeleton-loader-feature-chip skeleton-loader-feature-chip--more" />
           </div>
-          <div className="loader-card-update">
+          <div className="loader-card-update loader-card-status">
             <SkeletonBlock className="skeleton-loader-update" />
           </div>
         </div>

@@ -4,7 +4,9 @@ import { ChevronLeft, Info, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { lockBodyScroll } from "../../lib/body-scroll-lock";
+import { runAccessChecks } from "../../lib/site-access";
 import { supabase } from "../../lib/supabase";
+import { CloudflareTurnstileWidget } from "./CloudflareTurnstileWidget";
 import {
   REDEEM_STEP_LABELS,
   REDEEM_STEP_SCALES,
@@ -27,6 +29,7 @@ import {
   validateLicense,
 } from "../../lib/loader-redeem";
 
+const REDEEM_VERIFY_MS = 1800;
 function RedeemThankyouStage({ playing }) {
   return (
     <div className={`redeem-thankyou-stage${playing ? " is-playing" : ""}`} aria-hidden={!playing}>
@@ -94,6 +97,7 @@ export function LoaderRedeemModal({
   const [message, setMessage] = useState({ text: "", tone: "" });
   const [discordMessage, setDiscordMessage] = useState({ text: "", tone: "" });
   const [finishMessage, setFinishMessage] = useState({ text: "", tone: "" });
+  const [cfStatus, setCfStatus] = useState("idle");
   const [connectedProfile, setConnectedProfile] = useState(null);
   const [finishedLicenseKey, setFinishedLicenseKey] = useState("");
   const [downloadUrl, setDownloadUrl] = useState("");
@@ -103,6 +107,7 @@ export function LoaderRedeemModal({
   const outroTimerRef = useRef(null);
   const downloadUrlRef = useRef("");
   const licenseInputRef = useRef(null);
+  const cfVerifyTimeoutRef = useRef(null);
   const closeRequestRef = useRef(() => {});
   const playingOutroRef = useRef(false);
   const onCompletedRef = useRef(onCompleted);
@@ -143,6 +148,11 @@ export function LoaderRedeemModal({
     setVerifyBusy(false);
     setDiscordBusy(false);
     setPlayingOutro(false);
+    setCfStatus("idle");
+    if (cfVerifyTimeoutRef.current) {
+      window.clearTimeout(cfVerifyTimeoutRef.current);
+      cfVerifyTimeoutRef.current = null;
+    }
     setMessageState(setMessage, "");
     setMessageState(setDiscordMessage, "");
     setMessageState(setFinishMessage, "");
@@ -351,6 +361,23 @@ export function LoaderRedeemModal({
     [],
   );
 
+  function startCloudflareVerify() {
+    if (cfStatus !== "idle" || verifyBusy) return;
+
+    setMessageState(setMessage, "");
+    setCfStatus("verifying");
+
+    cfVerifyTimeoutRef.current = window.setTimeout(() => {
+      if (!runAccessChecks()) {
+        setCfStatus("idle");
+        setMessageState(setMessage, "Verification failed. Please try again.", "error");
+        return;
+      }
+
+      setCfStatus("success");
+    }, REDEEM_VERIFY_MS);
+  }
+
   async function handleVerifyLicense() {
     const licenseKey = licenseInput.trim();
     setMessageState(setMessage, "");
@@ -359,6 +386,10 @@ export function LoaderRedeemModal({
 
     if (!licenseKey) {
       setMessageState(setMessage, "Enter your license key first.", "error");
+      return;
+    }
+    if (cfStatus !== "success") {
+      setMessageState(setMessage, "Please complete the Cloudflare verification.", "error");
       return;
     }
     if (!appId) {
@@ -510,11 +541,17 @@ export function LoaderRedeemModal({
                   </button>
                 </div>
               </div>
+              <CloudflareTurnstileWidget
+                status={cfStatus}
+                onStart={startCloudflareVerify}
+                disabled={verifyBusy}
+                className="checkout-turnstile redeem-turnstile"
+              />
               <div className="redeem-actions">
                 <button
                   className="redeem-button redeem-button-primary"
                   type="button"
-                  disabled={verifyBusy}
+                  disabled={verifyBusy || cfStatus !== "success"}
                   onClick={() => void handleVerifyLicense()}
                 >
                   {verifyBusy ? "Verifying…" : "Verify License"}
