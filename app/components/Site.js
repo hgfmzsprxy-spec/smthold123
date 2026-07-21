@@ -1064,6 +1064,14 @@ const bestSellerProducts = [
     tags: ["# UNDETECTED"],
   },
   {
+    slug: "call-of-duty",
+    name: "Call of Duty",
+    price: "4.99 USD",
+    oldPrice: "9.99 USD",
+    image: "/images/cod.png",
+    tags: ["# UNDETECTED"],
+  },
+  {
     slug: "apex-legends",
     name: "Apex Legends",
     price: "4.99 USD",
@@ -1150,6 +1158,7 @@ const RECENT_PURCHASE_MAX_INTERVAL_MS = 300 * 60 * 1000;
 const recentPurchaseProducts = [
   { slug: "fortnite-private", name: "Fortnite Private", image: "/images/fortnite.png" },
   { slug: "arc-raiders", name: "Arc Raiders", image: "/images/arc_raiders.png" },
+  { slug: "call-of-duty", name: "Call of Duty", image: "/images/cod.png" },
   { slug: "apex-legends", name: "Apex Legends", image: "/images/apex-legends.png" },
   { slug: "permanent-spoofer", name: "Permanent Spoofer", image: "/images/perm-spoofer.png" },
   { slug: "temporary-spoofer", name: "Temporary Spoofer", image: "/images/temp-spoofer.png" },
@@ -1785,6 +1794,195 @@ const apexLegendsFeatures = [
   },
 ];
 
+const callOfDutyRequirements = [
+  { label: "Operating System", value: "Windows 10 & 11", icon: Monitor },
+  { label: "Processors", value: "AMD & Intel", icon: Cpu },
+  { label: "Anti-Cheat", value: "Ricochet", icon: ShieldCheck },
+  { label: "Game Mode", value: "Borderless & Windowed", icon: Gamepad2 },
+  { label: "Spoofer Included", value: "No", icon: ShieldCheck },
+  { label: "Platform", value: "Steam & Battle.net", icon: Layers },
+];
+
+const callOfDutyFeatures = [
+  {
+    title: "Aimbot",
+    groups: [
+      {
+        title: "Aimbot",
+        items: [
+          "Enable Aimbot",
+          "Humanized Aim",
+          "Visible Check",
+          "Ignore Downed",
+          "Stick to Target",
+          "Show FOV",
+          "Fill FOV",
+          "Fill Strength (slider)",
+          "Show Target Line (visible/invisible)",
+          "Target Bone [Head/Neck/Chest/Pelvis/Closest]",
+          "Aim Priority [Distance/Closest/Both]",
+          "Aim Key",
+        ],
+      },
+      {
+        title: "Humanization",
+        items: [
+          "Overshoot (slider)",
+          "Micro Movement (slider)",
+          "Dynamic Smoothing (slider)",
+          "Miss Factor (slider)",
+        ],
+      },
+      {
+        title: "Tuning",
+        items: ["Smoothing (slider)", "FOV (slider)", "Max Distance (slider)"],
+      },
+      {
+        title: "Prediction",
+        items: [
+          "Enable Prediction",
+          "Prediction Dot (visible/invisible)",
+          "Prediction Mode [Simple/Ballistic]",
+          "Gravity Scale (slider)",
+          "Dynamic Prediction",
+          "Prediction Time (slider)",
+        ],
+      },
+    ],
+  },
+  {
+    title: "Visuals",
+    groups: [
+      {
+        title: "Main Configurations",
+        items: [
+          "Render Enabled",
+          "Box (visible/invisible)",
+          "Name (visible/invisible)",
+          "Distance (visible/invisible)",
+          "Healthbar (visible/invisible)",
+          "Skeleton (visible/invisible)",
+          "Platform (visible/invisible)",
+          "Device (visible/invisible)",
+          "Weapon (visible/invisible)",
+          "Rank (visible/invisible)",
+          "Level (visible/invisible)",
+          "Kills (visible/invisible)",
+          "Scoreboard (visible/invisible)",
+          "Snaplines (visible/invisible)",
+          "Offscreen Arrows (visible/invisible)",
+        ],
+      },
+      {
+        title: "ESP Filters",
+        items: ["Visible Only", "Show Dead"],
+      },
+      {
+        title: "ESP Style",
+        items: [
+          "Box Outline",
+          "Skeleton Outline",
+          "Text Outline",
+          "Font Size (slider)",
+          "Fill Box",
+          "Box Thickness (slider)",
+          "Skeleton Thickness (slider)",
+          "Box Width (slider)",
+          "Box Type [Default 2D/Cornered 2D]",
+          "Max Distance (slider)",
+        ],
+      },
+      {
+        title: "Awareness",
+        items: ["Noticed Alert", "Alert Duration (slider)"],
+      },
+      {
+        title: "Team Visuals",
+        items: [
+          "Show Teammates",
+          "Identification Arrow",
+          "Show on Radar",
+          "Line Target",
+          "Offscreen Arrow",
+        ],
+      },
+    ],
+  },
+  {
+    title: "Radar",
+    groups: [
+      {
+        title: "Radar Configuration",
+        items: ["Enabled", "Show Distance", "Visible Check", "Shape [Square/Circle]"],
+      },
+      {
+        title: "Radar Sliders",
+        items: ["Range (m)", "Size", "Curve"],
+      },
+      {
+        title: "Radar Position",
+        items: ["Position X", "Position Y"],
+      },
+    ],
+  },
+  {
+    title: "Lobby Data",
+    groups: [
+      {
+        title: "Lobby Data",
+        items: [
+          "Show Lobby Data",
+          "Player Search",
+          "Player Table [Actions/Name/Platform/Kills/Level]",
+          "Custom Smooth per Player",
+          "Custom Colors per Player",
+        ],
+      },
+    ],
+  },
+  {
+    title: "Misc",
+    groups: [
+      {
+        title: "General Settings",
+        items: [
+          "Show FPS",
+          "V-Sync",
+          "Custom Framerate",
+          "Maximum Overlay Framerate (slider)",
+          "Show Stats Overlay",
+          "Close Range (slider)",
+          "Debug Informations",
+          "Performance Mode",
+          "Menu Key",
+        ],
+      },
+      {
+        title: "Crosshair Customization",
+        items: [
+          "Enabled",
+          "Outlines",
+          "Center Dot",
+          "Thickness (slider)",
+          "Outline Thickness (slider)",
+          "Length (slider)",
+          "Gap (slider)",
+        ],
+      },
+      {
+        title: "Configs",
+        items: [
+          "Save Config",
+          "Load Config",
+          "Delete Config",
+          "Custom Config Name",
+          "Config List",
+        ],
+      },
+    ],
+  },
+];
+
 const hwidSpooferPlanComparisonRows = [
   { label: "1 User application access", oneTime: true, lifetime: true },
   { label: "Unlimited usage access", oneTime: false, lifetime: true },
@@ -2365,6 +2563,32 @@ const checkoutProducts = [
     ],
   },
   {
+    slug: "call-of-duty",
+    name: "Call of Duty",
+    shortName: "Call of Duty",
+    price: "4.99 USD",
+    image: "/images/cod.png",
+    description:
+      "A stable Call of Duty product with fast setup, instant access, and the unbanhwid.com product panel.",
+    variants: [
+      { label: "1 Day License", price: "4.99 USD" },
+      { label: "7 Days License", price: "19.99 USD" },
+      { label: "30 Days License", price: "49.99 USD" },
+      { label: "Lifetime License", price: "99.99 USD" },
+    ],
+    requirements: callOfDutyRequirements,
+    features: callOfDutyFeatures,
+    secondaryImages: [
+      { src: "/images/secondary-images/cod1.png", alt: "Menu | Aimbot" },
+      { src: "/images/secondary-images/cod2.png", alt: "Menu | Visuals" },
+      { src: "/images/secondary-images/cod3.png", alt: "Menu | Visuals" },
+      { src: "/images/secondary-images/cod4.png", alt: "Menu | Radar", lightboxOnly: true },
+      { src: "/images/secondary-images/cod5.png", alt: "Menu | Lobby Data", lightboxOnly: true },
+      { src: "/images/secondary-images/cod6.png", alt: "Menu | Misc", lightboxOnly: true },
+      { src: "/images/secondary-images/cod7.png", alt: "Menu | Configs", lightboxOnly: true },
+    ],
+  },
+  {
     slug: "apex-legends",
     name: "Apex Legends",
     shortName: "Apex Legends",
@@ -2477,6 +2701,25 @@ const loaderProducts = [
       "Inject the selected module pack and wait for the ready confirmation.",
     ],
     modules: ["Aimbot", "Visuals", "Radar", "Triggerbot", "Realtime Status", "Config Presets"],
+  },
+  {
+    slug: "call-of-duty",
+    name: "Call of Duty",
+    image: "/images/cod.png",
+    featurePreviewCount: 3,
+    version: "v1.0.0",
+    updated: "20.07.2026",
+    compatibility: "Windows 10/11",
+    description: "Stable Call of Duty build with humanized aimbot, full visuals, radar, and lobby data in one panel.",
+    note: "Launch Call of Duty in borderless or windowed mode and stay in the lobby before injecting.",
+    subscription: "Redeem your Call of Duty key to unlock the loader subscription and sync the latest package.",
+    steps: [
+      "Open the unbanhwid.com panel and select the Call of Duty license.",
+      "Let the loader verify and sync the current build.",
+      "Start Call of Duty, stay in the lobby, then return to the loader.",
+      "Press Launch and wait for the in-game ready confirmation.",
+    ],
+    modules: ["Aimbot", "Visuals", "Radar", "Lobby Data", "Crosshair", "Configs", "Prediction", "V-Sync"],
   },
   {
     slug: "apex-legends",
@@ -2600,6 +2843,31 @@ const apexLegendsLoaderFeatures = [
   },
 ];
 
+const callOfDutyLoaderFeatures = [
+  {
+    title: "Information",
+    items: [
+      "Windows 10 & 11",
+      "Processors: AMD & Intel",
+      "Anti-cheat: Ricochet",
+      "Spoofer Included: No",
+      "Platform: Steam & Battle.net",
+    ],
+  },
+  {
+    title: "Aimbot",
+    items: ["Enable Aimbot", "Humanized Aim", "FOV", "Smooth", "Bone Selection", "Prediction"],
+  },
+  {
+    title: "Visuals",
+    items: ["Box", "Skeleton", "Snaplines", "Healthbar", "Weapon", "Offscreen Arrows"],
+  },
+  {
+    title: "Other",
+    items: ["Radar", "Lobby Data", "Crosshair", "Configs"],
+  },
+];
+
 const temporarySpooferLoaderFeatures = [
   {
     title: "Information",
@@ -2631,6 +2899,7 @@ const loaderFeatureSectionsBySlug = {
   "permanent-spoofer": () => hwidSpooferFeatures.slice(0, 2),
   "temporary-spoofer": () => temporarySpooferLoaderFeatures,
   "arc-raiders": () => arcRaidersLoaderFeatures,
+  "call-of-duty": () => callOfDutyLoaderFeatures,
   "fortnite-private": () => fortniteLoaderFeatures,
   "apex-legends": () => apexLegendsLoaderFeatures,
 };

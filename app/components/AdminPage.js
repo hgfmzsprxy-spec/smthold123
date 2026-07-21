@@ -1443,6 +1443,10 @@ export default function AdminPage() {
       payload.download_updated_at = new Date().toISOString();
     }
 
+    if (editForm.status !== formatApplicationProductStatus(activeEditApp.status)) {
+      payload.download_updated_at = new Date().toISOString();
+    }
+
     patchApplicationLocal(activeEditApp.id, payload);
     setEditAppMessage({ text: "Saved", type: "success" });
     setEditModalOpen(false);
@@ -1472,6 +1476,10 @@ export default function AdminPage() {
       };
 
       if (nextVersion && nextVersion !== String(activePackageApp.version || "").trim()) {
+        payload.download_updated_at = new Date().toISOString();
+      }
+
+      if (packageForm.status !== formatApplicationProductStatus(activePackageApp.status)) {
         payload.download_updated_at = new Date().toISOString();
       }
 
@@ -1561,7 +1569,7 @@ export default function AdminPage() {
       const licensesToUnfreeze = appLicenses.filter((entry) => isFrozenLicense(entry));
       const restoreStatus = preFreezeStatusRef.current.get(app.id) || "Active";
       preFreezeStatusRef.current.delete(app.id);
-      const applicationPatch = { status: restoreStatus };
+      const applicationPatch = { status: restoreStatus, download_updated_at: new Date().toISOString() };
 
       patchApplicationLocal(app.id, applicationPatch);
 
@@ -1584,7 +1592,7 @@ export default function AdminPage() {
 
     const previousStatus = app.status || "Active";
     preFreezeStatusRef.current.set(app.id, previousStatus);
-    const applicationPatch = { status: "Maintenance" };
+    const applicationPatch = { status: "Maintenance", download_updated_at: new Date().toISOString() };
     const licensesToFreeze = appLicenses.filter((entry) => isFreezableLicense(entry));
 
     patchApplicationLocal(app.id, applicationPatch);
