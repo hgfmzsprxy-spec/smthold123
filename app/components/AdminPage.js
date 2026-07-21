@@ -407,7 +407,7 @@ function formatPackageSize(bytes) {
 
 function validatePackageFile(file) {
   if (!file) return "Select a package file first.";
-  if (!/\.(rar|exe)$/i.test(file.name || "")) return "Only .rar or .exe files are allowed.";
+  if (!/\.(zip|exe)$/i.test(file.name || "")) return "Only .zip or .exe files are allowed.";
   if (file.size > 15 * 1024 * 1024) return "File is too large. Maximum size is 15 MB.";
   return "";
 }
@@ -2426,7 +2426,7 @@ export default function AdminPage() {
                             ref={packageFileInputRef}
                             id="package-file"
                             type="file"
-                            accept=".rar,.exe"
+                            accept=".zip,.exe"
                             className={styles.uploadFileInput}
                             disabled={packageUploading || packageDeleting}
                             onChange={handlePackageFileInput}
@@ -2435,7 +2435,7 @@ export default function AdminPage() {
                             <Download size={22} />
                             <div>
                               <strong>Drop package here or click to upload</strong>
-                              <p>.rar or .exe up to 15 MB · upload starts immediately</p>
+                              <p>.zip or .exe up to 15 MB · upload starts immediately</p>
                             </div>
                             <button
                               className={styles.secondaryButton}
