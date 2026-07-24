@@ -67,7 +67,7 @@ export function middleware(request) {
   const isSearchBot = SEARCH_BOT_PATTERN.test(userAgent);
   const isVerified = request.cookies.get(VERIFY_COOKIE)?.value === "1";
 
-  if (pathname.startsWith("/api") || pathname.startsWith("/admin") || pathname === "/site-access") {
+  if (pathname.startsWith("/api") || pathname === "/site-access") {
     return applySecurityHeaders(NextResponse.next());
   }
 

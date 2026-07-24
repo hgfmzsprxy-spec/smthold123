@@ -2,27 +2,51 @@
 
 import Link from "next/link";
 import {
+  ArrowLeftRight,
   Ban,
+  Check,
   ChevronLeft,
   CircleCheck,
   Clock3,
+  ChevronDown,
   Download,
-  Eye,
-  EyeOff,
+  FileText,
+  Globe,
+  HelpCircle,
+  House,
   Info,
   KeyRound,
   Layers3,
   LogOut,
+  ArrowRight,
   Pencil,
   RefreshCw,
+  ScrollText,
   Search,
+  Settings,
   Snowflake,
+  Star,
+  Sun,
+  Moon,
   Trash2,
   X,
+  Zap,
+  Plus,
+  Package,
+  Users,
+  Wallet,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { SkeletonBlock } from "./Skeleton";
+import { CloudflareTurnstileWidget } from "./CloudflareTurnstileWidget";
 import { arrayBufferToBase64, triggerBase64FileDownload } from "../../lib/base64-file";
+import { isAllowedAdminUser } from "../../lib/admin-auth";
+import { DISCORD_INVITE_URL } from "../../lib/discord";
+import { LOGIN_GUEST_FAQ_ITEMS } from "../../lib/login-faq";
+import { extractDiscordProfile } from "../../lib/loader-redeem";
+import { runAccessChecks } from "../../lib/site-access";
+import { supabase } from "../../lib/supabase";
 import {
   buildBanLicensePatch,
   buildFreezeLicensePatch,
@@ -35,6 +59,17 @@ import {
 } from "../../lib/license-freeze";
 import { APPLICATION_PRODUCT_STATUSES, formatApplicationProductStatus, formatDisplayDateTime } from "../../lib/loader-redeem";
 import styles from "./AdminPage.module.css";
+
+const DISCORD_ICON_PATH =
+  "M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.08.12 18.1.143 18.115a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z";
+
+function DiscordIcon({ size = 13 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" clipRule="evenodd" d={DISCORD_ICON_PATH} />
+    </svg>
+  );
+}
 
 function parseEnv(text) {
   const env = {};
@@ -138,8 +173,36 @@ function getEnvFromProcess() {
 const MISSING_SUPABASE_MESSAGE =
   "Missing Supabase configuration. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment.";
 
-const ADMIN_AUTH_STEP_LABELS = ["Login", "Password"];
-const ADMIN_AUTH_STEP_SCALES = ["0.5", "1"];
+const ADMIN_PANEL_PATH = "/admin";
+
+function getAdminPanelRedirectUrl() {
+  if (typeof window === "undefined") return "";
+  return `${window.location.origin}${ADMIN_PANEL_PATH}`;
+}
+
+function cleanAdminPanelUrl() {
+  if (typeof window === "undefined") return;
+  let nextPath = ADMIN_PANEL_PATH;
+  try {
+    const allowed = [
+      "welcome",
+      "applications",
+      "licenses",
+      "transactions",
+      "changelogs",
+      "resellers",
+      "products",
+      "settings",
+    ];
+    const stored = window.localStorage.getItem("unbanhwid.admin-panel.view");
+    if (allowed.includes(stored) && stored !== "welcome") {
+      nextPath = `${ADMIN_PANEL_PATH}?view=${encodeURIComponent(stored)}`;
+    }
+  } catch {
+    // ignore
+  }
+  window.history.replaceState({}, "", nextPath);
+}
 
 async function fetchEnv() {
   const fromProcess = getEnvFromProcess();
@@ -207,6 +270,58 @@ function randomAlphaNum(length) {
 
 function sessionStorageKey() {
   return "admin_auth_state_v2";
+}
+
+const EMPTY_ADMIN_SESSION = {
+  email: "",
+  accessToken: "",
+  refreshToken: "",
+  expiresAt: 0,
+  discordUserId: "",
+  discordUsername: "",
+  discordAvatarUrl: "",
+};
+
+function readStoredAdminSession() {
+  if (typeof window === "undefined") return EMPTY_ADMIN_SESSION;
+  try {
+    const raw = window.localStorage.getItem(sessionStorageKey());
+    if (!raw) return EMPTY_ADMIN_SESSION;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.accessToken) return EMPTY_ADMIN_SESSION;
+    return {
+      email: parsed.email || "",
+      accessToken: parsed.accessToken || "",
+      refreshToken: parsed.refreshToken || "",
+      expiresAt: Number(parsed.expiresAt) || 0,
+      discordUserId: parsed.discordUserId || "",
+      discordUsername: parsed.discordUsername || "",
+      discordAvatarUrl: parsed.discordAvatarUrl || "",
+    };
+  } catch {
+    return EMPTY_ADMIN_SESSION;
+  }
+}
+
+function lastUsedAppStorageKey() {
+  return "admin_last_used_app_v1";
+}
+
+function readLastUsedAppId() {
+  try {
+    return localStorage.getItem(lastUsedAppStorageKey()) || "";
+  } catch {
+    return "";
+  }
+}
+
+function writeLastUsedAppId(appId) {
+  try {
+    if (appId) localStorage.setItem(lastUsedAppStorageKey(), appId);
+    else localStorage.removeItem(lastUsedAppStorageKey());
+  } catch {
+    // Ignore storage errors.
+  }
 }
 
 function formatDate(value) {
@@ -405,6 +520,87 @@ function formatPackageSize(bytes) {
   return `${(numeric / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+function getApplicationImageSrc(app, supabaseUrl = "") {
+  if (!app) return "";
+  if (app.image_url) return String(app.image_url);
+  const raw = app.image_data_base64 || "";
+  if (raw) {
+    const value = String(raw);
+    if (value.startsWith("data:") || value.startsWith("http://") || value.startsWith("https://") || value.startsWith("/")) {
+      return value;
+    }
+    const mime = app.image_file_type || app.image_mime_type || "image/png";
+    return `data:${mime};base64,${value}`;
+  }
+  const base = String(supabaseUrl || "").replace(/\/+$/, "");
+  if (!base || !app.id || app.image_missing) return "";
+  const bust = app.image_updated_at ? `?v=${encodeURIComponent(String(app.image_updated_at))}` : "";
+  return `${base}/storage/v1/object/public/application-images/${encodeURIComponent(app.id)}/main.webp${bust}`;
+}
+
+function AppImage({ app, supabaseUrl, className, placeholderClassName, placeholderIconSize = 14, alt = "" }) {
+  const [failed, setFailed] = useState(false);
+  const src = getApplicationImageSrc(app, supabaseUrl);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
+
+  if (!src || failed) {
+    return (
+      <span className={placeholderClassName} aria-hidden="true">
+        <Layers3 size={placeholderIconSize} />
+      </span>
+    );
+  }
+
+  return (
+    <img
+      className={className}
+      src={src}
+      alt={alt}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+function validateApplicationImageFile(file) {
+  if (!file) return "Select an image file first.";
+  if (!String(file.type || "").startsWith("image/")) return "Only image files are allowed.";
+  if (file.size > 8 * 1024 * 1024) return "Image must be smaller than 8 MB.";
+  return "";
+}
+
+async function prepareApplicationImageUpload(file) {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Could not read image."));
+      img.src = objectUrl;
+    });
+
+    const maxSize = 256;
+    const scale = Math.min(1, maxSize / Math.max(image.width || 1, image.height || 1));
+    const width = Math.max(1, Math.round((image.width || 1) * scale));
+    const height = Math.max(1, Math.round((image.height || 1) * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Could not process image.");
+    ctx.drawImage(image, 0, 0, width, height);
+
+    const mime = "image/webp";
+    const dataUrl = canvas.toDataURL(mime, 0.86);
+    const base64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
+    return { base64, mime, preview: dataUrl };
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 function validatePackageFile(file) {
   if (!file) return "Select a package file first.";
   if (!/\.(zip|exe)$/i.test(file.name || "")) return "Only .zip or .exe files are allowed.";
@@ -568,21 +764,349 @@ function licenseMatchesSearch(license, query) {
   return licenseKey.includes(normalized) || discordUser.includes(normalized);
 }
 
-export default function AdminPage() {
-  const allowedAdminEmail = useMemo(() => "admin@admin.com", []);
+const DURATION_UNIT_OPTIONS = [
+  { value: "minutes", label: "Minutes" },
+  { value: "days", label: "Days" },
+  { value: "weeks", label: "Weeks" },
+  { value: "months", label: "Months" },
+  { value: "unlimited", label: "Unlimited" },
+];
 
+const VARIANT_DURATION_UNIT_OPTIONS = [
+  { value: "minutes", label: "Minutes" },
+  { value: "hours", label: "Hours" },
+  { value: "days", label: "Days" },
+  { value: "weeks", label: "Weeks" },
+  { value: "months", label: "Months" },
+  { value: "unlimited", label: "Unlimited" },
+];
+
+const RESELLER_ROLE_OPTIONS = [
+  { value: "panel_access", label: "Panel Access (−100%)" },
+  { value: "reseller", label: "Reseller" },
+];
+
+const APP_STATUS_OPTIONS = [
+  { value: "Active", label: "Active" },
+  { value: "Paused", label: "Paused" },
+  { value: "Maintenance", label: "Maintenance" },
+];
+
+function AdminSelect({ options = [], value, onChange, placeholder = "Select", emptyLabel = "No options", disabled = false }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+  const selected = options.find((option) => String(option.value) === String(value)) || null;
+  const label = selected ? selected.label : placeholder;
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    function onPointerDown(event) {
+      if (rootRef.current && !rootRef.current.contains(event.target)) setOpen(false);
+    }
+
+    function onKeyDown(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div className={`${styles.customSelect}${disabled ? ` ${styles.customSelectDisabled}` : ""}`} ref={rootRef}>
+      <button
+        type="button"
+        className={`${styles.customSelectTrigger}${open ? ` ${styles.customSelectTriggerOpen}` : ""}`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) setOpen((prev) => !prev);
+        }}
+      >
+        <span className={styles.customSelectValue}>{options.length ? label : emptyLabel}</span>
+        <ChevronDown size={15} className={styles.customSelectChevron} aria-hidden="true" />
+      </button>
+      {open && !disabled ? (
+        <div className={styles.customSelectMenu} role="listbox">
+          {!options.length ? (
+            <div className={styles.customSelectEmpty}>{emptyLabel}</div>
+          ) : (
+            options.map((option) => {
+              const active = String(option.value) === String(value);
+              return (
+                <button
+                  key={String(option.value)}
+                  type="button"
+                  role="option"
+                  aria-selected={active}
+                  className={`${styles.customSelectOption}${active ? ` ${styles.customSelectOptionActive}` : ""}`}
+                  onClick={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                  }}
+                >
+                  <span className={styles.customSelectOptionName}>{option.label}</span>
+                  {option.meta ? <span className={styles.customSelectOptionMeta}>{option.meta}</span> : null}
+                </button>
+              );
+            })
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function AdminAppSelect({ applications, value, onChange, placeholder = "Select application", emptyLabel = "No applications" }) {
+  const options = applications.map((app) => ({
+    value: app.id,
+    label: app.name || app.app_id || app.id,
+    meta: `v${app.version || "1.0.0"}`,
+  }));
+
+  return (
+    <AdminSelect
+      options={options}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      emptyLabel={emptyLabel}
+    />
+  );
+}
+
+const RESPONSE_HISTORY_LIMIT = 60;
+
+function ResponseChart({ history, theme = "dark" }) {
+  const width = 600;
+  const height = 150;
+  const pad = { l: 38, r: 14, t: 12, b: 22 };
+  const isLight = theme === "light";
+  const gridStroke = isLight ? "rgba(15,18,22,0.08)" : "rgba(255,255,255,0.06)";
+  const labelFill = isLight ? "#6a7380" : "#7c7c7c";
+  const metaFill = isLight ? "#3a424c" : "#bdbdbd";
+  const pointFill = "#ffffff";
+
+  if (history.length < 2) {
+    return <div className={styles.responseChartEmpty}>Collecting response samples…</div>;
+  }
+
+  const values = history.map((h) => h.ms);
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const yMax = Math.max(max, 50);
+  const yMin = 0;
+  const innerW = width - pad.l - pad.r;
+  const innerH = height - pad.t - pad.b;
+  const xStep = innerW / Math.max(history.length - 1, 1);
+  const y = (v) => pad.t + innerH - ((v - yMin) / (yMax - yMin)) * innerH;
+  const x = (i) => pad.l + i * xStep;
+  const linePath = history.map((h, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(h.ms).toFixed(1)}`).join(" ");
+  const areaPath = `${linePath} L${x(history.length - 1).toFixed(1)},${(pad.t + innerH).toFixed(1)} L${x(0).toFixed(1)},${(pad.t + innerH).toFixed(1)} Z`;
+  const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+  const gridLevels = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(yMin + f * (yMax - yMin)));
+  const last = history[history.length - 1];
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className={styles.responseChart} role="img" aria-label="Response time chart">
+      {gridLevels.map((g, i) => (
+        <g key={i}>
+          <line x1={pad.l} x2={width - pad.r} y1={y(g)} y2={y(g)} stroke={gridStroke} strokeWidth="1" />
+          <text x={pad.l - 6} y={y(g) + 3} textAnchor="end" fontSize="9" fill={labelFill}>
+            {g}ms
+          </text>
+        </g>
+      ))}
+      <path d={areaPath} fill="rgba(163,46,59,0.18)" />
+      <path d={linePath} fill="none" stroke="#a32e3b" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={x(history.length - 1)} cy={y(last.ms)} r="3" fill={pointFill} stroke="#a32e3b" strokeWidth="1.5" />
+      <text x={width - pad.r} y={height - 6} textAnchor="end" fontSize="9" fill={labelFill}>
+        now
+      </text>
+      <text x={pad.l} y={height - 6} textAnchor="start" fontSize="9" fill={labelFill}>
+        -{history.length}s
+      </text>
+      <text x={width - pad.r} y={pad.t + 8} textAnchor="end" fontSize="9" fill={metaFill}>
+        cur {last.ms}ms · avg {avg}ms · min {min}ms · max {max}ms
+      </text>
+    </svg>
+  );
+}
+
+function AdminResponseMonitor({ configUrl, signedIn, theme = "dark" }) {
+  const [responseMs, setResponseMs] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!signedIn) return;
+    let cancelled = false;
+    let timer = null;
+
+    async function ping() {
+      const base = configUrl || (typeof window !== "undefined" ? window.location.origin : "");
+      if (!base) return;
+      const target = `${base.replace(/\/+$/, "")}/rest/v1/?t=${Date.now()}`;
+      const start = performance.now();
+      try {
+        await fetch(target, { method: "GET", cache: "no-store", mode: "no-cors" });
+      } catch {
+        // ignore — round-trip still measured for opaque/no-cors
+      }
+      if (cancelled) return;
+      const ms = Math.round(performance.now() - start);
+      setResponseMs(ms);
+      setHistory((h) => [...h, { t: Date.now(), ms }].slice(-RESPONSE_HISTORY_LIMIT));
+    }
+
+    ping();
+    timer = setInterval(ping, 1000);
+    return () => {
+      cancelled = true;
+      if (timer) clearInterval(timer);
+    };
+  }, [signedIn, configUrl]);
+
+  if (!signedIn) return null;
+
+  return (
+    <>
+      <button
+        type="button"
+        className={`${styles.adminTopbarLink} ${styles.adminTopbarBtnReset}`}
+        onClick={() => setOpen(true)}
+        title="Backend response monitor"
+      >
+        <Info size={13} /> Response: {responseMs == null ? "—" : `${responseMs}ms`}
+      </button>
+
+      {open
+        ? createPortal(
+            <div
+              className={`${styles.adminModal}${theme === "light" ? ` ${styles.themeLight}` : ""}`}
+              onClick={() => setOpen(false)}
+            >
+              <div className={`redeem-panel ${styles.adminResponsePanel}`} onClick={(event) => event.stopPropagation()}>
+                <div className="redeem-panel-header">
+                  <div>
+                    <div className="redeem-panel-kicker">Backend monitor</div>
+                    <h3>Response time</h3>
+                  </div>
+                  <button type="button" className="redeem-close" aria-label="Close" onClick={() => setOpen(false)}>
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="redeem-panel-body">
+                  <div className={styles.responseStatsRow}>
+                    <div className={styles.responseStat}>
+                      <span className={styles.responseStatLabel}>Current</span>
+                      <strong className={styles.responseStatValue}>{responseMs == null ? "—" : `${responseMs}ms`}</strong>
+                    </div>
+                    <div className={styles.responseStat}>
+                      <span className={styles.responseStatLabel}>Average</span>
+                      <strong className={styles.responseStatValue}>
+                        {history.length ? `${Math.round(history.reduce((a, h) => a + h.ms, 0) / history.length)}ms` : "—"}
+                      </strong>
+                    </div>
+                    <div className={styles.responseStat}>
+                      <span className={styles.responseStatLabel}>Samples</span>
+                      <strong className={styles.responseStatValue}>{history.length}</strong>
+                    </div>
+                  </div>
+
+                  <div className={styles.responseChartWrap}>
+                    <ResponseChart history={history} theme={theme} />
+                  </div>
+
+                  <p className={styles.responseFootnote}>
+                    Response time is measured every second against the backend REST endpoint.
+                  </p>
+                </div>
+              </div>
+            </div>,
+            typeof document !== "undefined" ? document.body : null
+          )
+        : null}
+    </>
+  );
+}
+
+export default function AdminPage() {
   const [config, setConfig] = useState({ url: "", anonKey: "" });
   const [configHint, setConfigHint] = useState("Connecting to database...");
-  const [session, setSession] = useState({ email: "", accessToken: "", refreshToken: "", expiresAt: 0 });
-  const [passwordVisible, setPasswordVisible] = useState(false);
-  const [authStep, setAuthStep] = useState(1);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [session, setSession] = useState(EMPTY_ADMIN_SESSION);
   const [authBusy, setAuthBusy] = useState("");
   const [authMessage, setAuthMessage] = useState({ text: "", type: "" });
+  const [oauthReturnPending, setOauthReturnPending] = useState(false);
+  const [accessChecking, setAccessChecking] = useState(true);
 
   const [dashboardBusy, setDashboardBusy] = useState(false);
   const [dashboardInitialized, setDashboardInitialized] = useState(false);
+  const [adminView, setAdminViewState] = useState(() => {
+    if (typeof window === "undefined") return "welcome";
+    try {
+      const allowed = [
+        "welcome",
+        "applications",
+        "licenses",
+        "transactions",
+        "changelogs",
+        "resellers",
+        "products",
+        "settings",
+      ];
+      const fromUrl = new URLSearchParams(window.location.search).get("view");
+      if (allowed.includes(fromUrl)) return fromUrl;
+      const stored = window.localStorage.getItem("unbanhwid.admin-panel.view");
+      if (allowed.includes(stored)) return stored;
+    } catch {
+      // ignore
+    }
+    return "welcome";
+  });
+  const [adminTheme, setAdminTheme] = useState("dark");
+  const [loginTermsAccepted, setLoginTermsAccepted] = useState(false);
+  const [loginRememberMe, setLoginRememberMe] = useState(true);
+  const [loginCfStatus, setLoginCfStatus] = useState("idle");
+  const [loginFaqOpenIndex, setLoginFaqOpenIndex] = useState(0);
+  const loginCfTimeoutRef = useRef(null);
+
+  function setAdminView(nextView) {
+    const allowed = [
+      "welcome",
+      "applications",
+      "licenses",
+      "transactions",
+      "changelogs",
+      "resellers",
+      "products",
+      "settings",
+    ];
+    const viewName = allowed.includes(nextView) ? nextView : "welcome";
+    setAdminViewState(viewName);
+    try {
+      window.localStorage.setItem("unbanhwid.admin-panel.view", viewName);
+    } catch {
+      // ignore
+    }
+    try {
+      const url = new URL(window.location.href);
+      if (viewName === "welcome") url.searchParams.delete("view");
+      else url.searchParams.set("view", viewName);
+      if (!url.searchParams.has("code") && !url.searchParams.has("error")) {
+        window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+      }
+    } catch {
+      // ignore
+    }
+  }
   const [dashboardMessage, setDashboardMessage] = useState({ text: "", type: "" });
   const [metrics, setMetrics] = useState({ total: null, active: null, expired: null, banned: null });
   const [applications, setApplications] = useState([]);
@@ -618,6 +1142,106 @@ export default function AdminPage() {
     status: "Active",
     webhook: "",
   });
+  const [editImagePreview, setEditImagePreview] = useState("");
+  const [editImageBase64, setEditImageBase64] = useState(null);
+  const [editImageMime, setEditImageMime] = useState("");
+  const [editImageDirty, setEditImageDirty] = useState(false);
+  const [editImageBusy, setEditImageBusy] = useState(false);
+  const editImageInputRef = useRef(null);
+  const [createImagePreview, setCreateImagePreview] = useState("");
+  const [createImageBase64, setCreateImageBase64] = useState(null);
+  const [createImageMime, setCreateImageMime] = useState("");
+  const [createImageBusy, setCreateImageBusy] = useState(false);
+  const createImageInputRef = useRef(null);
+  const [changelogEditorApp, setChangelogEditorApp] = useState(null);
+  const [changelogEntries, setChangelogEntries] = useState([]);
+  const [changelogBusy, setChangelogBusy] = useState(false);
+  const [changelogMessage, setChangelogMessage] = useState({ text: "", type: "" });
+  const [changelogFormOpen, setChangelogFormOpen] = useState(false);
+  const [changelogEditingId, setChangelogEditingId] = useState(null);
+  const [changelogTitle, setChangelogTitle] = useState("");
+  const [changelogDate, setChangelogDate] = useState("");
+  const [changelogNotes, setChangelogNotes] = useState([]);
+  const [changelogNoteDraft, setChangelogNoteDraft] = useState("");
+  const [changelogSummaries, setChangelogSummaries] = useState({});
+  const [resellers, setResellers] = useState([]);
+  const [resellerMetrics, setResellerMetrics] = useState({
+    total: 0,
+    active: 0,
+    totalBalance: 0,
+    totalSpent: 0,
+  });
+  const [resellersBusy, setResellersBusy] = useState(false);
+  const [resellersLoaded, setResellersLoaded] = useState(false);
+  const [transactions, setTransactions] = useState([]);
+  const [transactionsBusy, setTransactionsBusy] = useState(false);
+  const [transactionsMessage, setTransactionsMessage] = useState({ text: "", type: "" });
+  const [resellersSectionOpen, setResellersSectionOpen] = useState(false);
+  const [addResellerOpen, setAddResellerOpen] = useState(false);
+  const [addResellerEmail, setAddResellerEmail] = useState("");
+  const [addResellerAppIds, setAddResellerAppIds] = useState([]);
+  const [addResellerBalance, setAddResellerBalance] = useState("0");
+  const [addResellerRole, setAddResellerRole] = useState("reseller");
+  const [addResellerDiscount, setAddResellerDiscount] = useState("30");
+  const [addResellerMessage, setAddResellerMessage] = useState({ text: "", type: "" });
+  const [addResellerBusy, setAddResellerBusy] = useState(false);
+  const [editResellerOpen, setEditResellerOpen] = useState(false);
+  const [editReseller, setEditReseller] = useState(null);
+  const [editResellerAppIds, setEditResellerAppIds] = useState([]);
+  const [editResellerRole, setEditResellerRole] = useState("reseller");
+  const [editResellerDiscount, setEditResellerDiscount] = useState("30");
+  const [editBalanceAmount, setEditBalanceAmount] = useState("");
+  const [editResellerMessage, setEditResellerMessage] = useState({ text: "", type: "" });
+  const [editResellerBusy, setEditResellerBusy] = useState(false);
+  const [variantsDrawerOpen, setVariantsDrawerOpen] = useState(false);
+  const [variantsApp, setVariantsApp] = useState(null);
+  const [variantsList, setVariantsList] = useState([]);
+  const [variantsBusy, setVariantsBusy] = useState(false);
+  const [variantsMessage, setVariantsMessage] = useState({ text: "", type: "" });
+  const [variantEditingId, setVariantEditingId] = useState(null);
+  const [variantForm, setVariantForm] = useState({
+    label: "",
+    price: "",
+    durationValue: 1,
+    durationUnit: "days",
+  });
+  const [storeProducts, setStoreProducts] = useState([]);
+  const [storeProductsBusy, setStoreProductsBusy] = useState(false);
+  const [storeProductsLoaded, setStoreProductsLoaded] = useState(false);
+  const [storeProductFormOpen, setStoreProductFormOpen] = useState(false);
+  const [storeProductEditing, setStoreProductEditing] = useState(null);
+  const [storeProductForm, setStoreProductForm] = useState({
+    name: "",
+    description: "",
+    price: "",
+    productId: "",
+    variantId: "",
+    variantLabel: "One-Time",
+  });
+  const [storeProductMessage, setStoreProductMessage] = useState({ text: "", type: "" });
+  const [storeProductBusy, setStoreProductBusy] = useState(false);
+  const [couponsDrawerOpen, setCouponsDrawerOpen] = useState(false);
+  const [couponsProduct, setCouponsProduct] = useState(null);
+  const [couponsKind, setCouponsKind] = useState("store");
+  const [couponsText, setCouponsText] = useState("");
+  const [couponFormat, setCouponFormat] = useState("COUPON-****");
+  const [couponQuantity, setCouponQuantity] = useState(1);
+  const [couponsBusy, setCouponsBusy] = useState(false);
+  const [couponsMessage, setCouponsMessage] = useState({ text: "", type: "" });
+  const [depositVariants, setDepositVariants] = useState([]);
+  const [depositVariantsBusy, setDepositVariantsBusy] = useState(false);
+  const [depositVariantFormOpen, setDepositVariantFormOpen] = useState(false);
+  const [depositVariantEditing, setDepositVariantEditing] = useState(null);
+  const [depositVariantForm, setDepositVariantForm] = useState({
+    name: "",
+    payAmount: "",
+    bonusPercent: "0",
+    popular: false,
+    productId: "",
+    variantId: "",
+  });
+  const [depositVariantMessage, setDepositVariantMessage] = useState({ text: "", type: "" });
+  const [depositVariantBusy, setDepositVariantBusy] = useState(false);
   const [packageForm, setPackageForm] = useState({
     version: "1.0.0",
     status: "Active",
@@ -650,6 +1274,66 @@ export default function AdminPage() {
 
   const signedIn = Boolean(session.accessToken);
   const selectedApp = applications.find((entry) => entry.id === selectedAppId) || null;
+  const adminDisplayName = session.discordUsername || session.email || "Administrator";
+
+  useLayoutEffect(() => {
+    const stored = readStoredAdminSession();
+    if (stored.accessToken) setSession(stored);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let cancelled = false;
+
+    async function bootAdminLoginPrefs() {
+      try {
+        const stored = window.localStorage.getItem("unbanhwid.admin-panel.theme");
+        const remember = window.localStorage.getItem("unbanhwid.admin-panel.rememberMe") !== "0";
+        if (!cancelled) {
+          setAdminTheme(stored === "light" ? "light" : "dark");
+          setLoginRememberMe(remember);
+        }
+
+        if (!remember) {
+          let sessionActive = false;
+          try {
+            sessionActive = window.sessionStorage.getItem("unbanhwid.admin-panel.sessionActive") === "1";
+          } catch {
+            sessionActive = false;
+          }
+          if (!sessionActive) {
+            try {
+              await supabase.auth.signOut({ scope: "local" });
+            } catch {
+              // ignore
+            }
+            if (!cancelled) {
+              clearSession();
+            }
+          }
+        }
+      } catch {
+        if (!cancelled) setAdminTheme("dark");
+      }
+      if (!cancelled) setAdminView(adminView);
+    }
+
+    void bootAdminLoginPrefs();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handleAdminThemeToggle(nextLight) {
+    const nextTheme = nextLight ? "light" : "dark";
+    setAdminTheme(nextTheme);
+    try {
+      window.localStorage.setItem("unbanhwid.admin-panel.theme", nextTheme);
+    } catch {
+      // ignore
+    }
+  }
   const activeLicenseHwidDetails = useMemo(
     () => (activeLicenseInfo ? extractHwidDetails(activeLicenseInfo) : { processor: "", motherboard: "", gpu: "", ram: "" }),
     [activeLicenseInfo]
@@ -673,6 +1357,41 @@ export default function AdminPage() {
   useEffect(() => {
     let cancelled = false;
 
+    async function acceptAdminSession(supabaseSession, userOverride = null) {
+      if (!supabaseSession?.access_token) return false;
+      const user = userOverride || (await supabase.auth.getUser()).data?.user;
+      if (!user || !isAllowedAdminUser(user)) {
+        await supabase.auth.signOut({ scope: "local" });
+        return false;
+      }
+
+      const profile = extractDiscordProfile(user);
+      const nextSession = {
+        email: user.email || profile.username || "",
+        accessToken: supabaseSession.access_token,
+        refreshToken: supabaseSession.refresh_token || "",
+        expiresAt:
+          supabaseSession.expires_at ||
+          Math.floor(Date.now() / 1000) + (typeof supabaseSession.expires_in === "number" ? supabaseSession.expires_in : 3600),
+        discordUserId: profile.discordUserId || "",
+        discordUsername: profile.username || "",
+        discordAvatarUrl: profile.avatarUrl || "",
+      };
+
+      // Server-side confirm
+      const response = await fetch("/api/admin/session", {
+        headers: { Authorization: `Bearer ${nextSession.accessToken}` },
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        await supabase.auth.signOut({ scope: "local" });
+        return false;
+      }
+
+      persistSession(nextSession);
+      return true;
+    }
+
     async function init() {
       const env = await fetchEnv();
       if (cancelled) return;
@@ -682,28 +1401,94 @@ export default function AdminPage() {
       setConfigHint(nextConfig.url && nextConfig.anonKey ? "Connected to Database" : MISSING_SUPABASE_MESSAGE);
 
       try {
-        const raw = localStorage.getItem(sessionStorageKey());
-        if (!raw) return;
-        const parsed = JSON.parse(raw);
-        if (parsed?.accessToken && parsed?.refreshToken) {
-          setSession({
-            email: parsed.email || allowedAdminEmail,
-            accessToken: parsed.accessToken,
-            refreshToken: parsed.refreshToken,
-            expiresAt: parsed.expiresAt || 0,
-          });
-          setEmail(parsed.email || allowedAdminEmail);
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get("code");
+        const oauthError = params.get("error_description") || params.get("error");
+
+        if (oauthError) {
+          cleanAdminPanelUrl();
+          setAuthMessage({ text: String(oauthError), type: "error" });
+          setAccessChecking(false);
+          return;
         }
-      } catch {
-        // Ignore invalid state.
+
+        if (code) {
+          setOauthReturnPending(true);
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (cancelled) return;
+          cleanAdminPanelUrl();
+          if (error) {
+            setAuthMessage({ text: error.message || String(error), type: "error" });
+            setOauthReturnPending(false);
+            setAccessChecking(false);
+            return;
+          }
+          const ok = await acceptAdminSession(data?.session, data?.user || data?.session?.user);
+          if (!cancelled && !ok) {
+            setAuthMessage({
+              text: "This Discord account is not allowed to access the admin panel.",
+              type: "error",
+            });
+          }
+          setOauthReturnPending(false);
+          setAccessChecking(false);
+          return;
+        }
+
+        const { data } = await supabase.auth.getSession();
+        if (cancelled) return;
+        if (data?.session) {
+          const ok = await acceptAdminSession(data.session);
+          if (!cancelled && !ok) {
+            setAuthMessage({
+              text: "This Discord account is not allowed to access the admin panel.",
+              type: "error",
+            });
+          }
+          setAccessChecking(false);
+          return;
+        }
+
+        // Fallback to previous local session tokens if still valid
+        const raw = localStorage.getItem(sessionStorageKey());
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.accessToken) {
+            const response = await fetch("/api/admin/session", {
+              headers: { Authorization: `Bearer ${parsed.accessToken}` },
+              cache: "no-store",
+            });
+            if (response.ok) {
+              const result = await response.json().catch(() => ({}));
+              persistSession({
+                email: result.admin?.email || parsed.email || "",
+                accessToken: parsed.accessToken,
+                refreshToken: parsed.refreshToken || "",
+                expiresAt: parsed.expiresAt || 0,
+                discordUserId: result.admin?.discord_user_id || parsed.discordUserId || "",
+                discordUsername: result.admin?.discord_username || parsed.discordUsername || "",
+                discordAvatarUrl: result.admin?.discord_avatar_url || parsed.discordAvatarUrl || "",
+              });
+            } else {
+              localStorage.removeItem(sessionStorageKey());
+            }
+          }
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setAuthMessage({ text: error?.message || String(error), type: "error" });
+        }
+      } finally {
+        if (!cancelled) setAccessChecking(false);
       }
     }
 
-    init();
+    void init();
     return () => {
       cancelled = true;
     };
-  }, [allowedAdminEmail]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function persistSession(nextSession) {
     setSession(nextSession);
@@ -711,11 +1496,9 @@ export default function AdminPage() {
   }
 
   function clearSession() {
-    setSession({ email: "", accessToken: "", refreshToken: "", expiresAt: 0 });
-    setAuthStep(1);
-    setPassword("");
-    setPasswordVisible(false);
+    setSession({ ...EMPTY_ADMIN_SESSION });
     localStorage.removeItem(sessionStorageKey());
+    void supabase.auth.signOut({ scope: "local" });
     setApplications([]);
     setAllLicenses([]);
     setSelectedAppId("");
@@ -724,6 +1507,14 @@ export default function AdminPage() {
     setEditModalOpen(false);
     setPackageModalOpen(false);
     setLicenseDrawerOpen(false);
+    setChangelogEditorApp(null);
+    setChangelogEntries([]);
+    setChangelogFormOpen(false);
+    setResellers([]);
+    setResellersSectionOpen(false);
+    setAddResellerOpen(false);
+    setEditResellerOpen(false);
+    setEditReseller(null);
     setLicenseInfoOpen(false);
     setExtendModalOpen(false);
     setActiveEditApp(null);
@@ -734,6 +1525,7 @@ export default function AdminPage() {
     setMetrics({ total: null, active: null, expired: null, banned: null });
     setDashboardMessage({ text: "", type: "" });
     setDashboardInitialized(false);
+    setAuthMessage({ text: "", type: "" });
   }
 
   async function refreshAccessToken(force = false) {
@@ -775,6 +1567,22 @@ export default function AdminPage() {
     }
   }
 
+  function parseAdminRestPath(path) {
+    const raw = String(path || "");
+    const qIndex = raw.indexOf("?");
+    const table = (qIndex >= 0 ? raw.slice(0, qIndex) : raw).trim();
+    const query = qIndex >= 0 ? raw.slice(qIndex + 1) : "";
+    const params = new URLSearchParams(query);
+    const select = params.get("select") || "*";
+    const order = params.get("order") || "";
+    const filters = {};
+    params.forEach((value, key) => {
+      if (key === "select" || key === "order") return;
+      filters[key] = value;
+    });
+    return { table, select, order, filters };
+  }
+
   async function restRequest(path, options = {}, retry = true) {
     if (!session.accessToken) throw new Error("Sign in first.");
 
@@ -785,17 +1593,35 @@ export default function AdminPage() {
     }
 
     const accessToken = JSON.parse(localStorage.getItem(sessionStorageKey()) || "{}")?.accessToken || session.accessToken;
-    const headers = {
-      apikey: config.anonKey,
-      Authorization: `Bearer ${accessToken}`,
-      accept: "application/json",
-      ...(options.body ? { "content-type": "application/json" } : {}),
-      ...(options.headers || {}),
-    };
+    const method = String(options.method || "GET").toUpperCase();
+    const action =
+      method === "POST" ? "insert" : method === "PATCH" ? "update" : method === "DELETE" ? "delete" : "select";
+    const parsed = parseAdminRestPath(path);
+    const preferHeader = String(options.headers?.Prefer || options.headers?.prefer || "");
+    const prefer = /return=minimal/i.test(preferHeader) ? "minimal" : "representation";
 
-    const response = await fetch(`${config.url}/rest/v1/${path}`, {
-      ...options,
-      headers,
+    let dataPayload = null;
+    if (options.body != null) {
+      dataPayload = typeof options.body === "string" ? JSON.parse(options.body) : options.body;
+    }
+
+    const response = await fetch("/api/admin/data", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        accept: "application/json",
+      },
+      body: JSON.stringify({
+        table: parsed.table,
+        action,
+        select: parsed.select,
+        order: parsed.order,
+        filters: parsed.filters,
+        data: dataPayload,
+        prefer,
+      }),
+      cache: "no-store",
     });
 
     if (response.status === 401 && retry) {
@@ -803,14 +1629,12 @@ export default function AdminPage() {
       if (okay) return restRequest(path, options, false);
     }
 
+    const result = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const body = await readJsonResponse(response);
-      const errorText = extractErrorMessage(body.json) || extractErrorMessage(body.text) || `HTTP ${response.status}`;
-      throw new Error(errorText);
+      throw new Error(result.error || extractErrorMessage(result) || `HTTP ${response.status}`);
     }
 
-    if (response.status === 204) return null;
-    return response.json();
+    return result.data ?? null;
   }
 
   async function syncLicenseAppMetadata(app, payload) {
@@ -853,76 +1677,9 @@ export default function AdminPage() {
   }
 
   async function updateApplicationRecordWithProgress(app, payload, onProgress) {
-    if (!session.accessToken) throw new Error("Sign in first.");
-
-    const refreshed = await refreshAccessToken(false);
-    if (!refreshed && session.refreshToken) {
-      clearSession();
-      throw new Error("Session expired. Please sign in again.");
-    }
-
-    const accessToken = JSON.parse(localStorage.getItem(sessionStorageKey()) || "{}")?.accessToken || session.accessToken;
-    const body = JSON.stringify(payload);
-    const url = `${config.url}/rest/v1/applications?id=eq.${encodeURIComponent(app.id)}`;
-
-    const sendRequest = (retryOnUnauthorized = true) =>
-      new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("PATCH", url);
-        xhr.setRequestHeader("apikey", config.anonKey);
-        xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
-        xhr.setRequestHeader("accept", "application/json");
-        xhr.setRequestHeader("content-type", "application/json");
-        xhr.setRequestHeader("Prefer", "return=representation");
-
-        xhr.upload.onprogress = (event) => {
-          if (!onProgress || !event.lengthComputable) return;
-          onProgress(event.loaded / event.total);
-        };
-
-        xhr.onload = async () => {
-          if (xhr.status === 401 && retryOnUnauthorized) {
-            const okay = await refreshAccessToken(true);
-            if (okay) {
-              try {
-                resolve(await updateApplicationRecordWithProgress(app, payload, onProgress));
-              } catch (error) {
-                reject(error);
-              }
-              return;
-            }
-          }
-
-          if (xhr.status < 200 || xhr.status >= 300) {
-            let errorText = `HTTP ${xhr.status}`;
-            try {
-              const parsed = JSON.parse(xhr.responseText || "{}");
-              errorText = extractErrorMessage(parsed) || errorText;
-            } catch {
-              if (xhr.responseText) errorText = xhr.responseText;
-            }
-            reject(new Error(errorText));
-            return;
-          }
-
-          if (xhr.status === 204 || !xhr.responseText) {
-            resolve(null);
-            return;
-          }
-
-          try {
-            resolve(JSON.parse(xhr.responseText));
-          } catch {
-            resolve(null);
-          }
-        };
-
-        xhr.onerror = () => reject(new Error("Upload failed. Check your connection and try again."));
-        xhr.send(body);
-      });
-
-    const updated = await sendRequest();
-    void syncLicenseAppMetadata(app, payload);
+    if (onProgress) onProgress(0.35);
+    const updated = await updateApplicationRecord(app, payload);
+    if (onProgress) onProgress(1);
     return updated;
   }
 
@@ -953,12 +1710,47 @@ export default function AdminPage() {
     return { total, active, expired, banned };
   }
 
+  function collectResellerLicenseIds(resellersList) {
+    const ids = new Set();
+    (Array.isArray(resellersList) ? resellersList : []).forEach((reseller) => {
+      (Array.isArray(reseller?.generated_license_ids) ? reseller.generated_license_ids : []).forEach((id) => {
+        const value = String(id || "").trim();
+        if (value) ids.add(value);
+      });
+    });
+    return ids;
+  }
+
+  function isResellerOwnedLicense(license, resellerLicenseIds) {
+    if (!license) return false;
+    if (String(license.reseller_id || "").trim()) return true;
+    const id = String(license.id || "").trim();
+    return Boolean(id && resellerLicenseIds?.has(id));
+  }
+
+  function filterAdminOwnedLicenses(licensesSafe, resellersList) {
+    const resellerLicenseIds = collectResellerLicenseIds(resellersList);
+    return (Array.isArray(licensesSafe) ? licensesSafe : []).filter(
+      (license) => !isResellerOwnedLicense(license, resellerLicenseIds)
+    );
+  }
+
   function applyDashboardData(appsSafe, licensesSafe) {
     setApplications(appsSafe);
     setAllLicenses(licensesSafe);
-    setSelectedAppId((current) =>
-      current && appsSafe.some((entry) => entry.id === current) ? current : appsSafe[0]?.id || ""
-    );
+    setSelectedAppId((current) => {
+      if (current && appsSafe.some((entry) => entry.id === current)) {
+        writeLastUsedAppId(current);
+        return current;
+      }
+      const lastUsed = readLastUsedAppId();
+      if (lastUsed && appsSafe.some((entry) => entry.id === lastUsed)) {
+        return lastUsed;
+      }
+      const fallback = appsSafe[0]?.id || "";
+      writeLastUsedAppId(fallback);
+      return fallback;
+    });
     setMetrics(computeMetricsFromLicenses(licensesSafe));
   }
 
@@ -990,7 +1782,10 @@ export default function AdminPage() {
     if (!safeRows.length) return;
 
     setApplications((prev) => [...safeRows, ...prev]);
-    if (safeRows[0]?.id) setSelectedAppId(safeRows[0].id);
+    if (safeRows[0]?.id) {
+      setSelectedAppId(safeRows[0].id);
+      writeLastUsedAppId(safeRows[0].id);
+    }
   }
 
   function removeLicenseLocal(licenseId) {
@@ -1026,12 +1821,21 @@ export default function AdminPage() {
     }
 
     try {
-      const [apps, licenses] = await Promise.all([
+      const [apps, licenses, resellerResult] = await Promise.all([
         restRequest("applications?select=*&order=created_at.desc"),
         restRequest("licenses?select=*&order=created_at.desc"),
+        adminResellerRequest("GET").catch(() => ({ resellers: [] })),
       ]);
 
-      applyDashboardData(Array.isArray(apps) ? apps : [], Array.isArray(licenses) ? licenses : []);
+      const resellerList = Array.isArray(resellerResult?.resellers) ? resellerResult.resellers : [];
+      if (resellerList.length || resellerResult?.metrics) {
+        applyResellerPayload(resellerResult);
+      }
+
+      applyDashboardData(
+        Array.isArray(apps) ? apps : [],
+        filterAdminOwnedLicenses(Array.isArray(licenses) ? licenses : [], resellerList)
+      );
     } catch (error) {
       reportActionError(error);
     } finally {
@@ -1043,6 +1847,51 @@ export default function AdminPage() {
   function refreshDashboardSilently() {
     void loadDashboard({ silent: true });
   }
+
+  useEffect(() => {
+    if (adminView !== "changelogs") {
+      closeChangelogEditor();
+      return;
+    }
+    if (!changelogEditorApp) {
+      void loadChangelogSummaries(applications);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminView, applications, changelogEditorApp]);
+
+  async function loadTransactions() {
+    setTransactionsBusy(true);
+    setTransactionsMessage({ text: "", type: "" });
+    try {
+      const accessToken = getAdminAccessToken();
+      if (!accessToken) throw new Error("Not signed in.");
+      const response = await fetch("/api/admin/transactions?limit=500", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Failed to load transactions.");
+      setTransactions(Array.isArray(result.transactions) ? result.transactions : []);
+    } catch (error) {
+      setTransactionsMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setTransactionsBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (adminView !== "transactions" || !signedIn) return;
+    void loadTransactions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminView, signedIn]);
+
+  useEffect(() => {
+    if ((adminView !== "resellers" && adminView !== "products") || !signedIn) return;
+    void loadResellers();
+    void loadStoreProducts();
+    if (adminView === "products") void loadDepositVariants();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminView, signedIn]);
 
   useEffect(() => {
     if (!signedIn || !config.url || !config.anonKey) return;
@@ -1096,10 +1945,12 @@ export default function AdminPage() {
     };
   }, []);
 
-  function selectApplication(appId) {
+  function selectApplication(appId, options = {}) {
     setSelectedAppId(appId);
+    writeLastUsedAppId(appId);
     setLicenseSearchQuery("");
     setGenerateMessage({ text: "", type: "" });
+    if (options.switchView !== false) setAdminView("licenses");
   }
 
   function openEditApplication(app) {
@@ -1111,8 +1962,1031 @@ export default function AdminPage() {
       status: formatApplicationProductStatus(app.status),
       webhook: app.webhook || "",
     });
+    setEditImagePreview(getApplicationImageSrc(app, config.url));
+    setEditImageBase64(null);
+    setEditImageMime(app.image_file_type || "");
+    setEditImageDirty(false);
+    setEditImageBusy(false);
     setEditAppMessage({ text: "", type: "" });
     setEditModalOpen(true);
+    if (editImageInputRef.current) editImageInputRef.current.value = "";
+  }
+
+  async function handleEditImagePick(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const validationError = validateApplicationImageFile(file);
+    if (validationError) {
+      setEditAppMessage({ text: validationError, type: "error" });
+      if (editImageInputRef.current) editImageInputRef.current.value = "";
+      return;
+    }
+
+    setEditImageBusy(true);
+    setEditAppMessage({ text: "", type: "" });
+    try {
+      const prepared = await prepareApplicationImageUpload(file);
+      setEditImagePreview(prepared.preview);
+      setEditImageBase64(prepared.base64);
+      setEditImageMime(prepared.mime);
+      setEditImageDirty(true);
+    } catch (error) {
+      setEditAppMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setEditImageBusy(false);
+      if (editImageInputRef.current) editImageInputRef.current.value = "";
+    }
+  }
+
+  function handleRemoveEditImage() {
+    setEditImagePreview("");
+    setEditImageBase64(null);
+    setEditImageMime("");
+    setEditImageDirty(true);
+    if (editImageInputRef.current) editImageInputRef.current.value = "";
+  }
+
+  function resetCreateImageState() {
+    setCreateImagePreview("");
+    setCreateImageBase64(null);
+    setCreateImageMime("");
+    setCreateImageBusy(false);
+    if (createImageInputRef.current) createImageInputRef.current.value = "";
+  }
+
+  async function handleCreateImagePick(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const validationError = validateApplicationImageFile(file);
+    if (validationError) {
+      setCreateAppMessage({ text: validationError, type: "error" });
+      if (createImageInputRef.current) createImageInputRef.current.value = "";
+      return;
+    }
+
+    setCreateImageBusy(true);
+    setCreateAppMessage({ text: "", type: "" });
+    try {
+      const prepared = await prepareApplicationImageUpload(file);
+      setCreateImagePreview(prepared.preview);
+      setCreateImageBase64(prepared.base64);
+      setCreateImageMime(prepared.mime);
+    } catch (error) {
+      setCreateAppMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setCreateImageBusy(false);
+      if (createImageInputRef.current) createImageInputRef.current.value = "";
+    }
+  }
+
+  function handleRemoveCreateImage() {
+    resetCreateImageState();
+  }
+
+  async function uploadApplicationImage(appId, base64, mime) {
+    const accessToken =
+      JSON.parse(localStorage.getItem(sessionStorageKey()) || "{}")?.accessToken || session.accessToken;
+    if (!accessToken) throw new Error("Not signed in.");
+
+    const response = await fetch("/api/admin/application-image", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        appId,
+        base64,
+        mime: mime || "image/webp",
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "Image upload failed.");
+    return {
+      image_url: result.url || "",
+      image_updated_at: result.image_updated_at || new Date().toISOString(),
+      image_missing: false,
+    };
+  }
+
+  function getAdminAccessToken() {
+    return JSON.parse(localStorage.getItem(sessionStorageKey()) || "{}")?.accessToken || session.accessToken || "";
+  }
+
+  function toChangelogDateInputValue(value) {
+    const date = value ? new Date(value) : new Date();
+    if (Number.isNaN(date.getTime())) {
+      const fallback = new Date();
+      const year = fallback.getFullYear();
+      const month = String(fallback.getMonth() + 1).padStart(2, "0");
+      const day = String(fallback.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function resetChangelogForm() {
+    setChangelogFormOpen(false);
+    setChangelogEditingId(null);
+    setChangelogTitle("");
+    setChangelogDate(toChangelogDateInputValue());
+    setChangelogNotes([]);
+    setChangelogNoteDraft("");
+  }
+
+  function closeChangelogEditor() {
+    setChangelogEditorApp(null);
+    setChangelogEntries([]);
+    setChangelogBusy(false);
+    setChangelogMessage({ text: "", type: "" });
+    resetChangelogForm();
+  }
+
+  function handleBackFromChangelogEditor() {
+    closeChangelogEditor();
+  }
+
+  async function adminChangelogRequest(method, body = null, query = "") {
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) throw new Error("Not signed in.");
+
+    const response = await fetch(`/api/admin/changelogs${query}`, {
+      method,
+      headers: {
+        ...(body ? { "Content-Type": "application/json" } : {}),
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "Changelog request failed.");
+    return result;
+  }
+
+  async function loadChangelogSummaries(apps = applications) {
+    const list = Array.isArray(apps) ? apps : [];
+    if (!list.length) {
+      setChangelogSummaries({});
+      return;
+    }
+
+    setChangelogSummaries({});
+    try {
+      const pairs = await Promise.all(
+        list.map(async (app) => {
+          try {
+            const result = await adminChangelogRequest(
+              "GET",
+              null,
+              `?applicationId=${encodeURIComponent(app.id)}`
+            );
+            const entries = Array.isArray(result.entries) ? result.entries : [];
+            return [
+              app.id,
+              {
+                total: entries.length,
+                latestTitle: entries[0]?.title || "-",
+              },
+            ];
+          } catch {
+            return [app.id, { total: 0, latestTitle: "-" }];
+          }
+        })
+      );
+      setChangelogSummaries(Object.fromEntries(pairs));
+    } catch {
+      // Keep empty summaries on unexpected failure so skeletons clear to zeros via catch pairs.
+    }
+  }
+
+  async function openChangelogEditor(app) {
+    setChangelogEditorApp(app);
+    setChangelogEntries([]);
+    setChangelogMessage({ text: "", type: "" });
+    resetChangelogForm();
+    setChangelogBusy(true);
+
+    try {
+      const result = await adminChangelogRequest(
+        "GET",
+        null,
+        `?applicationId=${encodeURIComponent(app.id)}`
+      );
+      setChangelogEntries(Array.isArray(result.entries) ? result.entries : []);
+    } catch (error) {
+      setChangelogMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setChangelogBusy(false);
+    }
+  }
+
+  function startCreateChangelog() {
+    setChangelogFormOpen(true);
+    setChangelogEditingId(null);
+    setChangelogTitle("");
+    setChangelogDate(toChangelogDateInputValue());
+    setChangelogNotes([]);
+    setChangelogNoteDraft("");
+    setChangelogMessage({ text: "", type: "" });
+  }
+
+  function startEditChangelog(entry) {
+    setChangelogFormOpen(true);
+    setChangelogEditingId(entry.id);
+    setChangelogTitle(entry.title || "");
+    setChangelogDate(toChangelogDateInputValue(entry.released_at));
+    setChangelogNotes(Array.isArray(entry.notes) ? [...entry.notes] : []);
+    setChangelogNoteDraft("");
+    setChangelogMessage({ text: "", type: "" });
+  }
+
+  function handleAddChangelogNoteLine() {
+    const line = changelogNoteDraft.trim();
+    if (!line) return;
+    setChangelogNotes((prev) => [...prev, line]);
+    setChangelogNoteDraft("");
+  }
+
+  function handleRemoveChangelogNoteLine(index) {
+    setChangelogNotes((prev) => prev.filter((_, entryIndex) => entryIndex !== index));
+  }
+
+  async function handleSaveChangelogEntry(event) {
+    event.preventDefault();
+    if (!changelogEditorApp?.id) return;
+
+    const title = changelogTitle.trim();
+    if (!title) {
+      setChangelogMessage({ text: "Title is required.", type: "error" });
+      return;
+    }
+    if (!changelogDate) {
+      setChangelogMessage({ text: "Date is required.", type: "error" });
+      return;
+    }
+    if (!changelogNotes.length) {
+      setChangelogMessage({ text: "Add at least one description line.", type: "error" });
+      return;
+    }
+
+    setChangelogBusy(true);
+    setChangelogMessage({ text: "", type: "" });
+
+    try {
+      const payload = {
+        applicationId: changelogEditorApp.id,
+        title,
+        notes: changelogNotes,
+        released_at: changelogDate,
+      };
+      const result = changelogEditingId
+        ? await adminChangelogRequest("PATCH", { ...payload, id: changelogEditingId })
+        : await adminChangelogRequest("POST", payload);
+
+      setChangelogEntries(Array.isArray(result.entries) ? result.entries : []);
+      resetChangelogForm();
+      setChangelogMessage({
+        text: changelogEditingId ? "Changelog updated." : "Changelog created.",
+        type: "success",
+      });
+    } catch (error) {
+      setChangelogMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setChangelogBusy(false);
+    }
+  }
+
+  async function handleDeleteChangelogEntry(entry) {
+    if (!changelogEditorApp?.id || !entry?.id) return;
+    if (!window.confirm(`Delete changelog "${entry.title}"?`)) return;
+
+    setChangelogBusy(true);
+    setChangelogMessage({ text: "", type: "" });
+    try {
+      const result = await adminChangelogRequest("DELETE", {
+        applicationId: changelogEditorApp.id,
+        id: entry.id,
+      });
+      setChangelogEntries(Array.isArray(result.entries) ? result.entries : []);
+      if (changelogEditingId === entry.id) resetChangelogForm();
+      setChangelogMessage({ text: "Changelog deleted.", type: "success" });
+    } catch (error) {
+      setChangelogMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setChangelogBusy(false);
+    }
+  }
+
+  async function adminResellerRequest(method, body = null) {
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) throw new Error("Not signed in.");
+
+    const response = await fetch("/api/admin/resellers", {
+      method,
+      headers: {
+        ...(body ? { "Content-Type": "application/json" } : {}),
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      cache: "no-store",
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "Reseller request failed.");
+    return result;
+  }
+
+  function applyResellerPayload(result) {
+    const incoming = Array.isArray(result.resellers) ? result.resellers : null;
+    if (incoming) {
+      setResellers(incoming);
+    } else if (result.reseller?.id) {
+      setResellers((current) => {
+        const next = [...current];
+        const index = next.findIndex((entry) => entry.id === result.reseller.id);
+        if (index >= 0) next[index] = { ...next[index], ...result.reseller };
+        else next.unshift(result.reseller);
+        return next;
+      });
+    }
+    if (result.metrics) {
+      setResellerMetrics({
+        total: Number(result.metrics?.total) || 0,
+        active: Number(result.metrics?.active) || 0,
+        totalBalance: Number(result.metrics?.totalBalance) || 0,
+        totalSpent: Number(result.metrics?.totalSpent) || 0,
+      });
+    }
+    setResellersLoaded(true);
+  }
+
+  async function loadResellers() {
+    setResellersBusy(true);
+    setDashboardMessage({ text: "", type: "" });
+    try {
+      const result = await adminResellerRequest("GET");
+      applyResellerPayload(result);
+      setResellersSectionOpen(true);
+    } catch (error) {
+      setDashboardMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setResellersBusy(false);
+    }
+  }
+
+  function openAddResellerDrawer() {
+    setAddResellerEmail("");
+    setAddResellerAppIds([]);
+    setAddResellerBalance("0");
+    setAddResellerRole("reseller");
+    setAddResellerDiscount("30");
+    setAddResellerMessage({ text: "", type: "" });
+    setAddResellerOpen(true);
+  }
+
+  function toggleResellerAppId(list, setList, appId) {
+    setList((current) =>
+      current.includes(appId) ? current.filter((id) => id !== appId) : [...current, appId]
+    );
+  }
+
+  function openEditResellerDrawer(reseller) {
+    const role = reseller?.role === "panel_access" ? "panel_access" : "reseller";
+    setEditReseller(reseller);
+    setEditResellerAppIds(Array.isArray(reseller?.application_access) ? [...reseller.application_access] : []);
+    setEditResellerRole(role);
+    setEditResellerDiscount(
+      role === "panel_access" ? "100" : String(Number(reseller?.discount_percent ?? 0))
+    );
+    setEditBalanceAmount("");
+    setEditResellerMessage({ text: "", type: "" });
+    setEditResellerOpen(true);
+  }
+
+  function emptyVariantForm() {
+    return {
+      label: "",
+      price: "",
+      durationValue: 1,
+      durationUnit: "days",
+    };
+  }
+
+  async function adminVariantsRequest(method, body = null, query = "") {
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) throw new Error("Not signed in.");
+    const response = await fetch(`/api/admin/application-variants${query}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        ...(body ? { "Content-Type": "application/json" } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      cache: "no-store",
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || `Request failed (${response.status})`);
+    return result;
+  }
+
+  async function openVariantsDrawer(app) {
+    if (!app?.id) return;
+    setVariantsApp(app);
+    setVariantsDrawerOpen(true);
+    setVariantEditingId(null);
+    setVariantForm(emptyVariantForm());
+    setVariantsMessage({ text: "", type: "" });
+    setVariantsBusy(true);
+    try {
+      const result = await adminVariantsRequest("GET", null, `?applicationId=${encodeURIComponent(app.id)}`);
+      setVariantsList(Array.isArray(result.variants) ? result.variants : []);
+    } catch (error) {
+      setVariantsList([]);
+      setVariantsMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setVariantsBusy(false);
+    }
+  }
+
+  function beginEditVariant(variant) {
+    setVariantEditingId(variant.id);
+    setVariantForm({
+      label: variant.label || "",
+      price: variant.price != null ? String(variant.price) : "",
+      durationValue: variant.durationUnit === "unlimited" ? 1 : Number(variant.durationValue || 1),
+      durationUnit: variant.durationUnit || "days",
+    });
+    setVariantsMessage({ text: "", type: "" });
+  }
+
+  async function handleSaveVariant(event) {
+    event.preventDefault();
+    if (!variantsApp?.id) return;
+
+    const label = variantForm.label.trim();
+    const price = Number(variantForm.price);
+    const durationUnit = String(variantForm.durationUnit || "days");
+    const durationValue = Number(variantForm.durationValue || 0);
+
+    if (!label) {
+      setVariantsMessage({ text: "Variant name is required.", type: "error" });
+      return;
+    }
+    if (!Number.isFinite(price) || price < 0) {
+      setVariantsMessage({ text: "Enter a valid price.", type: "error" });
+      return;
+    }
+    if (durationUnit !== "unlimited" && (!Number.isFinite(durationValue) || durationValue <= 0)) {
+      setVariantsMessage({ text: "Enter a valid duration length.", type: "error" });
+      return;
+    }
+
+    setVariantsBusy(true);
+    setVariantsMessage({ text: "", type: "" });
+    try {
+      const payload = {
+        applicationId: variantsApp.id,
+        label,
+        price,
+        durationUnit,
+        durationValue: durationUnit === "unlimited" ? null : durationValue,
+      };
+      const result = variantEditingId
+        ? await adminVariantsRequest("PATCH", { id: variantEditingId, ...payload })
+        : await adminVariantsRequest("POST", payload);
+      setVariantsList(Array.isArray(result.variants) ? result.variants : []);
+      setVariantEditingId(null);
+      setVariantForm(emptyVariantForm());
+      setVariantsMessage({
+        text: variantEditingId ? "Variant updated." : "Variant added.",
+        type: "success",
+      });
+    } catch (error) {
+      setVariantsMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setVariantsBusy(false);
+    }
+  }
+
+  async function handleDeleteVariant(variant) {
+    if (!variant?.id || !variantsApp?.id) return;
+    if (!window.confirm(`Delete variant "${variant.label}"?`)) return;
+    setVariantsBusy(true);
+    setVariantsMessage({ text: "", type: "" });
+    try {
+      const result = await adminVariantsRequest("DELETE", {
+        id: variant.id,
+        applicationId: variantsApp.id,
+      });
+      setVariantsList(Array.isArray(result.variants) ? result.variants : []);
+      if (variantEditingId === variant.id) {
+        setVariantEditingId(null);
+        setVariantForm(emptyVariantForm());
+      }
+      setVariantsMessage({ text: "Variant deleted.", type: "success" });
+    } catch (error) {
+      setVariantsMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setVariantsBusy(false);
+    }
+  }
+
+  async function handleAddReseller(event) {
+    event.preventDefault();
+    const email = addResellerEmail.trim().toLowerCase();
+    if (!email || !email.includes("@")) {
+      setAddResellerMessage({ text: "Enter the Discord-linked account email.", type: "error" });
+      return;
+    }
+    if (!addResellerAppIds.length) {
+      setAddResellerMessage({ text: "Select at least one application permission.", type: "error" });
+      return;
+    }
+
+    const startingBalance = Number(addResellerBalance);
+    if (!Number.isFinite(startingBalance) || startingBalance < 0) {
+      setAddResellerMessage({ text: "Starting balance must be a valid non-negative number.", type: "error" });
+      return;
+    }
+
+    const role = addResellerRole === "panel_access" ? "panel_access" : "reseller";
+    const discountPercent = role === "panel_access" ? 100 : Number(addResellerDiscount);
+    if (role === "reseller" && (!Number.isFinite(discountPercent) || discountPercent < 0 || discountPercent > 100)) {
+      setAddResellerMessage({ text: "Reseller discount must be between 0 and 100.", type: "error" });
+      return;
+    }
+
+    setAddResellerBusy(true);
+    setAddResellerMessage({ text: "", type: "" });
+    try {
+      const result = await adminResellerRequest("POST", {
+        email,
+        application_access: addResellerAppIds,
+        balance: startingBalance,
+        role,
+        discount_percent: discountPercent,
+      });
+      applyResellerPayload(result);
+      setResellersSectionOpen(true);
+      setAddResellerEmail("");
+      setAddResellerAppIds([]);
+      setAddResellerBalance("0");
+      setAddResellerRole("reseller");
+      setAddResellerDiscount("30");
+      setAddResellerMessage({
+        text: result.linked
+          ? "Reseller added and linked to an existing Discord account."
+          : "Reseller added. They can sign in on /resell-panel after Discord login.",
+        type: "success",
+      });
+      setAddResellerOpen(false);
+    } catch (error) {
+      setAddResellerMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setAddResellerBusy(false);
+    }
+  }
+
+  async function handleSaveResellerPermissions(event) {
+    event.preventDefault();
+    if (!editReseller?.id) return;
+    if (!editResellerAppIds.length) {
+      setEditResellerMessage({ text: "Select at least one application permission.", type: "error" });
+      return;
+    }
+
+    const role = editResellerRole === "panel_access" ? "panel_access" : "reseller";
+    const discountPercent = role === "panel_access" ? 100 : Number(editResellerDiscount);
+    if (role === "reseller" && (!Number.isFinite(discountPercent) || discountPercent < 0 || discountPercent > 100)) {
+      setEditResellerMessage({ text: "Reseller discount must be between 0 and 100.", type: "error" });
+      return;
+    }
+
+    setEditResellerBusy(true);
+    setEditResellerMessage({ text: "", type: "" });
+    try {
+      const result = await adminResellerRequest("PATCH", {
+        id: editReseller.id,
+        application_access: editResellerAppIds,
+        role,
+        discount_percent: discountPercent,
+      });
+      applyResellerPayload(result);
+      const updated = (result.resellers || []).find((entry) => entry.id === editReseller.id) || result.reseller;
+      if (updated) {
+        setEditReseller(updated);
+        setEditResellerAppIds(Array.isArray(updated.application_access) ? [...updated.application_access] : []);
+        setEditResellerRole(updated.role === "panel_access" ? "panel_access" : "reseller");
+        setEditResellerDiscount(
+          updated.role === "panel_access" ? "100" : String(updated.discount_percent ?? 0)
+        );
+      }
+      setEditResellerMessage({ text: "Reseller settings saved.", type: "success" });
+    } catch (error) {
+      setEditResellerMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setEditResellerBusy(false);
+    }
+  }
+
+  async function handleAdjustResellerBalance(direction) {
+    if (!editReseller?.id) return;
+    const amount = Number(editBalanceAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setEditResellerMessage({ text: "Enter a valid amount greater than 0.", type: "error" });
+      return;
+    }
+
+    const delta = direction === "subtract" ? -amount : amount;
+    setEditResellerBusy(true);
+    setEditResellerMessage({ text: "", type: "" });
+    try {
+      const result = await adminResellerRequest("PATCH", {
+        id: editReseller.id,
+        balanceDelta: delta,
+      });
+      applyResellerPayload(result);
+      const updated = (result.resellers || []).find((entry) => entry.id === editReseller.id) || result.reseller;
+      setEditReseller(updated || { ...editReseller, balance: (Number(editReseller.balance) || 0) + delta });
+      setEditBalanceAmount("");
+      setEditResellerMessage({
+        text: direction === "subtract" ? `Removed ${formatMoney(amount)} from balance.` : `Added ${formatMoney(amount)} to balance.`,
+        type: "success",
+      });
+    } catch (error) {
+      setEditResellerMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setEditResellerBusy(false);
+    }
+  }
+
+  async function adminStoreProductRequest(method, body = null) {
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) throw new Error("Not signed in.");
+
+    const response = await fetch("/api/admin/reseller-products", {
+      method,
+      headers: {
+        ...(body ? { "Content-Type": "application/json" } : {}),
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "Store product request failed.");
+    return result;
+  }
+
+  async function loadStoreProducts() {
+    setStoreProductsBusy(true);
+    try {
+      const result = await adminStoreProductRequest("GET");
+      setStoreProducts(Array.isArray(result.products) ? result.products : []);
+      setStoreProductsLoaded(true);
+    } catch (error) {
+      setDashboardMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setStoreProductsBusy(false);
+    }
+  }
+
+  function emptyStoreProductForm() {
+    return {
+      name: "",
+      description: "",
+      price: "",
+      productId: "",
+      variantId: "",
+      variantLabel: "One-Time",
+    };
+  }
+
+  function openAddStoreProductDrawer() {
+    setStoreProductEditing(null);
+    setStoreProductForm(emptyStoreProductForm());
+    setStoreProductMessage({ text: "", type: "" });
+    setStoreProductFormOpen(true);
+  }
+
+  function openEditStoreProductDrawer(product) {
+    setStoreProductEditing(product);
+    setStoreProductForm({
+      name: product?.name || "",
+      description: product?.description || "",
+      price: product?.price != null ? String(product.price) : "",
+      productId: product?.productId != null ? String(product.productId) : "",
+      variantId: product?.variantId != null ? String(product.variantId) : "",
+      variantLabel: product?.variantLabel || "One-Time",
+    });
+    setStoreProductMessage({ text: "", type: "" });
+    setStoreProductFormOpen(true);
+  }
+
+  async function handleSaveStoreProduct(event) {
+    event.preventDefault();
+    const name = storeProductForm.name.trim();
+    const description = storeProductForm.description.trim();
+    const price = Number(storeProductForm.price);
+    const productId = Number(storeProductForm.productId);
+    const variantId = Number(storeProductForm.variantId);
+    const variantLabel = storeProductForm.variantLabel.trim() || "One-Time";
+
+    if (!name) {
+      setStoreProductMessage({ text: "Product name is required.", type: "error" });
+      return;
+    }
+    if (!Number.isFinite(price) || price < 0) {
+      setStoreProductMessage({ text: "Enter a valid price.", type: "error" });
+      return;
+    }
+    if (!Number.isFinite(productId) || productId <= 0) {
+      setStoreProductMessage({ text: "Product ID is required.", type: "error" });
+      return;
+    }
+    if (!Number.isFinite(variantId) || variantId <= 0) {
+      setStoreProductMessage({ text: "Variant ID is required.", type: "error" });
+      return;
+    }
+
+    setStoreProductBusy(true);
+    setStoreProductMessage({ text: "", type: "" });
+    try {
+      const payload = {
+        name,
+        description,
+        price,
+        productId,
+        variantId,
+        variantLabel,
+      };
+      const result = storeProductEditing?.id
+        ? await adminStoreProductRequest("PATCH", { id: storeProductEditing.id, ...payload })
+        : await adminStoreProductRequest("POST", payload);
+      setStoreProducts(Array.isArray(result.products) ? result.products : []);
+      setStoreProductsLoaded(true);
+      setStoreProductFormOpen(false);
+      setStoreProductEditing(null);
+      setStoreProductForm(emptyStoreProductForm());
+      setDashboardMessage({
+        text: storeProductEditing?.id ? "Store product updated." : "Store product added.",
+        type: "success",
+      });
+    } catch (error) {
+      setStoreProductMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setStoreProductBusy(false);
+    }
+  }
+
+  async function handleDeleteStoreProduct(product) {
+    if (!product?.id) return;
+    if (!window.confirm(`Remove store product "${product.name}"?`)) return;
+
+    setStoreProductsBusy(true);
+    try {
+      const result = await adminStoreProductRequest("DELETE", { id: product.id });
+      setStoreProducts(Array.isArray(result.products) ? result.products : []);
+      setDashboardMessage({ text: "Store product removed.", type: "success" });
+    } catch (error) {
+      setDashboardMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setStoreProductsBusy(false);
+    }
+  }
+
+  function parseBulkCouponLines(text) {
+    const seen = new Set();
+    const codes = [];
+    String(text || "")
+      .split(/\r?\n/)
+      .forEach((line) => {
+        const code = String(line || "").trim();
+        if (!code) return;
+        const key = code.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        codes.push(code);
+      });
+    return codes;
+  }
+
+  function generateCouponFromFormatClient(format) {
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    const randomChar = () => alphabet[Math.floor(Math.random() * alphabet.length)];
+    const template = String(format || "").trim() || "COUPON-****";
+    if (!template.includes("*")) {
+      return `${template}${template.endsWith("-") ? "" : "-"}${randomChar()}${randomChar()}${randomChar()}${randomChar()}`;
+    }
+    return template.replace(/\*/g, () => randomChar());
+  }
+
+  async function openCouponsDrawer(product, kind = "store") {
+    if (!product?.id) return;
+    setCouponsProduct(product);
+    setCouponsKind(kind === "deposit" ? "deposit" : "store");
+    setCouponsDrawerOpen(true);
+    setCouponFormat(kind === "deposit" ? "DEPOSIT-****" : "COUPON-****");
+    setCouponQuantity(1);
+    setCouponsText("");
+    setCouponsMessage({ text: "", type: "" });
+    setCouponsBusy(true);
+    try {
+      const accessToken = getAdminAccessToken();
+      if (!accessToken) throw new Error("Not signed in.");
+      const endpoint =
+        kind === "deposit"
+          ? `/api/admin/deposit-variant-coupons?variantId=${encodeURIComponent(product.id)}`
+          : `/api/admin/reseller-product-coupons?productId=${encodeURIComponent(product.id)}`;
+      const response = await fetch(endpoint, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || `Failed to load coupons (${response.status})`);
+      setCouponsText(String(result.text || (Array.isArray(result.codes) ? result.codes.join("\n") : "")));
+    } catch (error) {
+      setCouponsMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setCouponsBusy(false);
+    }
+  }
+
+  function handleGenerateRandomCoupons() {
+    const quantity = Math.max(1, Math.min(500, Math.trunc(Number(couponQuantity) || 1)));
+    const existing = new Set(parseBulkCouponLines(couponsText).map((code) => code.toLowerCase()));
+    const generated = [];
+    let attempts = 0;
+    while (generated.length < quantity && attempts < quantity * 40) {
+      attempts += 1;
+      const code = generateCouponFromFormatClient(couponFormat);
+      const key = code.toLowerCase();
+      if (!code || existing.has(key)) continue;
+      existing.add(key);
+      generated.push(code);
+    }
+    if (!generated.length) {
+      setCouponsMessage({ text: "Could not generate unique coupons. Try another format.", type: "error" });
+      return;
+    }
+    const nextText = [...parseBulkCouponLines(couponsText), ...generated].join("\n");
+    setCouponsText(nextText);
+    setCouponsMessage({
+      text: `Generated ${generated.length} coupon(s). Remember to save.`,
+      type: "success",
+    });
+  }
+
+  async function handleSaveCoupons(event) {
+    event.preventDefault();
+    if (!couponsProduct?.id) return;
+    setCouponsBusy(true);
+    setCouponsMessage({ text: "", type: "" });
+    try {
+      const accessToken = getAdminAccessToken();
+      if (!accessToken) throw new Error("Not signed in.");
+      const codes = parseBulkCouponLines(couponsText);
+      const isDeposit = couponsKind === "deposit";
+      const response = await fetch(
+        isDeposit ? "/api/admin/deposit-variant-coupons" : "/api/admin/reseller-product-coupons",
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(
+            isDeposit
+              ? { variantId: couponsProduct.id, codes }
+              : { productId: couponsProduct.id, codes }
+          ),
+        }
+      );
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || `Failed to save coupons (${response.status})`);
+      setCouponsText(String(result.text || (Array.isArray(result.codes) ? result.codes.join("\n") : "")));
+      setCouponsMessage({
+        text: `Saved ${result.count ?? codes.length} coupon(s).`,
+        type: "success",
+      });
+    } catch (error) {
+      setCouponsMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setCouponsBusy(false);
+    }
+  }
+
+  async function adminDepositVariantRequest(method, body = null) {
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) throw new Error("Not signed in.");
+    const response = await fetch("/api/admin/deposit-variants", {
+      method,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        ...(body ? { "Content-Type": "application/json" } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      cache: "no-store",
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "Deposit variant request failed.");
+    return result;
+  }
+
+  async function loadDepositVariants() {
+    setDepositVariantsBusy(true);
+    try {
+      const result = await adminDepositVariantRequest("GET");
+      setDepositVariants(Array.isArray(result.variants) ? result.variants : []);
+    } catch (error) {
+      setDashboardMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setDepositVariantsBusy(false);
+    }
+  }
+
+  function openEditDepositVariantDrawer(variant) {
+    setDepositVariantEditing(variant || null);
+    setDepositVariantForm({
+      name: variant?.name || "",
+      payAmount: variant?.payAmount != null ? String(variant.payAmount) : "",
+      bonusPercent: variant?.bonusPercent != null ? String(variant.bonusPercent) : "0",
+      popular: Boolean(variant?.popular),
+      productId: variant?.productId ? String(variant.productId) : "",
+      variantId: variant?.variantId ? String(variant.variantId) : "",
+    });
+    setDepositVariantMessage({ text: "", type: "" });
+    setDepositVariantFormOpen(true);
+  }
+
+  async function handleSaveDepositVariant(event) {
+    event.preventDefault();
+    setDepositVariantBusy(true);
+    setDepositVariantMessage({ text: "", type: "" });
+    try {
+      const payload = {
+        name: depositVariantForm.name.trim(),
+        payAmount: Number(depositVariantForm.payAmount),
+        bonusPercent: Number(depositVariantForm.bonusPercent),
+        popular: Boolean(depositVariantForm.popular),
+        productId: Number(depositVariantForm.productId) || 0,
+        variantId: Number(depositVariantForm.variantId) || 0,
+      };
+      const result = depositVariantEditing?.id
+        ? await adminDepositVariantRequest("PATCH", { id: depositVariantEditing.id, ...payload })
+        : await adminDepositVariantRequest("POST", payload);
+      setDepositVariants(Array.isArray(result.variants) ? result.variants : []);
+      setDepositVariantMessage({
+        text: depositVariantEditing?.id ? "Deposit variant updated." : "Deposit variant added.",
+        type: "success",
+      });
+      setDepositVariantFormOpen(false);
+    } catch (error) {
+      setDepositVariantMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setDepositVariantBusy(false);
+    }
+  }
+
+  async function handleDeleteDepositVariant(variant) {
+    if (!variant?.id) return;
+    if (!window.confirm(`Remove deposit variant "${variant.name}"?`)) return;
+    setDepositVariantsBusy(true);
+    try {
+      const result = await adminDepositVariantRequest("DELETE", { id: variant.id });
+      setDepositVariants(Array.isArray(result.variants) ? result.variants : []);
+    } catch (error) {
+      setDashboardMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setDepositVariantsBusy(false);
+    }
+  }
+
+  async function handleDeleteReseller(reseller) {
+    if (!reseller?.id) return;
+    if (!window.confirm(`Remove reseller "${reseller.discord_username || reseller.email}"?`)) return;
+
+    setResellersBusy(true);
+    try {
+      const result = await adminResellerRequest("DELETE", { id: reseller.id });
+      applyResellerPayload(result);
+    } catch (error) {
+      setDashboardMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setResellersBusy(false);
+    }
+  }
+
+  function formatMoney(value) {
+    const amount = Number(value) || 0;
+    return `$${amount.toFixed(2)}`;
+  }
+
+  function getResellerUsername(reseller) {
+    return reseller?.discord_username || reseller?.email?.split("@")[0] || reseller?.email || "-";
   }
 
   function openPackageManager(app) {
@@ -1292,83 +3166,56 @@ export default function AdminPage() {
     }
   }
 
-  async function handleEmailStep(event) {
-    event.preventDefault();
-
-    const normalizedEmail = email.trim().toLowerCase();
-    if (!normalizedEmail) return;
-
-    if (normalizedEmail !== allowedAdminEmail.toLowerCase()) {
-      setAuthMessage({ text: "Access denied for this account.", type: "error" });
+  async function handleDiscordLogin() {
+    if (!loginTermsAccepted) {
+      setAuthMessage({ text: "Please accept the Terms of Service to continue.", type: "error" });
       return;
     }
-
-    setAuthMessage({ text: "", type: "" });
-    setAuthStep(2);
-  }
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-
-    const normalizedEmail = email.trim().toLowerCase();
-    if (normalizedEmail !== allowedAdminEmail.toLowerCase()) {
-      setAuthMessage({ text: "Access denied for this account.", type: "error" });
+    if (loginCfStatus !== "success") {
+      setAuthMessage({ text: "Please complete the Cloudflare verification.", type: "error" });
       return;
     }
-
-    if (!config.url || !config.anonKey) {
-      setAuthMessage({ text: MISSING_SUPABASE_MESSAGE, type: "error" });
-      return;
-    }
-
-    setAuthBusy("Signing in...");
-    setAuthMessage({ text: "", type: "" });
 
     try {
-      const response = await fetch(`${config.url}/auth/v1/token?grant_type=password`, {
-        method: "POST",
-        headers: {
-          apikey: config.anonKey,
-          "content-type": "application/json",
-          accept: "application/json",
-        },
-        body: JSON.stringify({
-          email: normalizedEmail,
-          password: password.trim(),
-        }),
-      });
-
-      const body = await readJsonResponse(response);
-      const errorText = extractErrorMessage(body.json) || extractErrorMessage(body.text);
-
-      if (!response.ok) {
-        setAuthMessage({ text: errorText || `Sign-in failed (HTTP ${response.status})`, type: "error" });
-        return;
+      window.localStorage.setItem("unbanhwid.admin-panel.rememberMe", loginRememberMe ? "1" : "0");
+      window.localStorage.setItem("unbanhwid.admin-panel.theme", adminTheme);
+      if (loginRememberMe) {
+        window.sessionStorage.removeItem("unbanhwid.admin-panel.sessionActive");
+      } else {
+        window.sessionStorage.setItem("unbanhwid.admin-panel.sessionActive", "1");
       }
-
-      const accessToken = body.json?.access_token;
-      const refreshToken = body.json?.refresh_token;
-      const expiresIn = body.json?.expires_in;
-
-      if (!accessToken || !refreshToken) {
-        setAuthMessage({ text: "Sign-in failed. Check Supabase Auth configuration.", type: "error" });
-        return;
-      }
-
-      persistSession({
-        email: normalizedEmail,
-        accessToken,
-        refreshToken,
-        expiresAt: Math.floor(Date.now() / 1000) + (typeof expiresIn === "number" ? expiresIn : 3600),
-      });
-
-      setAuthMessage({ text: "Signed in", type: "success" });
-      setPassword("");
-    } catch (error) {
-      setAuthMessage({ text: error?.message || String(error), type: "error" });
-    } finally {
-      setAuthBusy("");
+    } catch {
+      // ignore
     }
+
+    setAuthBusy("Connecting…");
+    setAuthMessage({ text: "", type: "" });
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "discord",
+      options: {
+        redirectTo: getAdminPanelRedirectUrl(),
+        skipBrowserRedirect: false,
+      },
+    });
+    if (error) {
+      setAuthBusy("");
+      setAuthMessage({ text: error.message || String(error), type: "error" });
+    }
+  }
+
+  function startAdminLoginCloudflareVerify() {
+    if (loginCfStatus !== "idle" || authBusy) return;
+    setAuthMessage({ text: "", type: "" });
+    setLoginCfStatus("verifying");
+    if (loginCfTimeoutRef.current) window.clearTimeout(loginCfTimeoutRef.current);
+    loginCfTimeoutRef.current = window.setTimeout(() => {
+      if (!runAccessChecks()) {
+        setLoginCfStatus("idle");
+        setAuthMessage({ text: "Verification failed. Please try again.", type: "error" });
+        return;
+      }
+      setLoginCfStatus("success");
+    }, 1800);
   }
 
   async function handleCreateApplication(event) {
@@ -1411,8 +3258,32 @@ export default function AdminPage() {
         });
       }
 
-      appendApplicationsLocal(Array.isArray(created) ? created : [created]);
+      const createdRows = (Array.isArray(created) ? created : [created]).filter(Boolean);
+      const createdApp = createdRows[0];
+      let imagePatch = {};
+
+      if (createImageBase64 && createdApp?.id) {
+        try {
+          setCreateImageBusy(true);
+          imagePatch = await uploadApplicationImage(createdApp.id, createImageBase64, createImageMime);
+        } catch (imageError) {
+          appendApplicationsLocal(createdRows);
+          setCreateAppMessage({
+            text: `Application created, but image upload failed: ${imageError?.message || imageError}`,
+            type: "error",
+          });
+          setCreateImageBusy(false);
+          return;
+        } finally {
+          setCreateImageBusy(false);
+        }
+      }
+
+      appendApplicationsLocal(
+        createdRows.map((row) => (row.id === createdApp?.id ? { ...row, ...imagePatch } : row))
+      );
       setAppForm({ name: "", description: "", version: "1.0.0", status: "Active", webhook: "" });
+      resetCreateImageState();
       setCreateAppMessage({ text: `Created application with APP-ID ${appId}`, type: "success" });
       setCreateModalOpen(false);
     } catch (error) {
@@ -1447,14 +3318,70 @@ export default function AdminPage() {
       payload.download_updated_at = new Date().toISOString();
     }
 
-    patchApplicationLocal(activeEditApp.id, payload);
-    setEditAppMessage({ text: "Saved", type: "success" });
-    setEditModalOpen(false);
+    let imagePatch = {};
+    if (editImageDirty) {
+      try {
+        setEditImageBusy(true);
+        const accessToken =
+          JSON.parse(localStorage.getItem(sessionStorageKey()) || "{}")?.accessToken || session.accessToken;
+        if (!accessToken) throw new Error("Not signed in.");
 
-    void updateApplicationRecord(activeEditApp, payload).catch((error) => {
+        if (editImageBase64) {
+          const response = await fetch("/api/admin/application-image", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              appId: activeEditApp.id,
+              base64: editImageBase64,
+              mime: editImageMime || "image/webp",
+            }),
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(result.error || "Image upload failed.");
+          imagePatch = {
+            image_url: result.url || "",
+            image_updated_at: result.image_updated_at || new Date().toISOString(),
+            image_missing: false,
+          };
+        } else {
+          const response = await fetch("/api/admin/application-image", {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({ appId: activeEditApp.id }),
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(result.error || "Image remove failed.");
+          imagePatch = {
+            image_url: "",
+            image_updated_at: "",
+            image_missing: true,
+          };
+        }
+      } catch (error) {
+        setEditAppMessage({ text: error?.message || String(error), type: "error" });
+        setEditImageBusy(false);
+        return;
+      } finally {
+        setEditImageBusy(false);
+      }
+    }
+
+    try {
+      await updateApplicationRecord(activeEditApp, payload);
+      patchApplicationLocal(activeEditApp.id, { ...payload, ...imagePatch });
+      setEditAppMessage({ text: "Saved", type: "success" });
+      setEditModalOpen(false);
+    } catch (error) {
+      setEditAppMessage({ text: error?.message || String(error), type: "error" });
       reportActionError(error);
       refreshDashboardSilently();
-    });
+    }
   }
 
   async function handleUploadPackage(event) {
@@ -1557,68 +3484,104 @@ export default function AdminPage() {
     }
   }
 
-  function handleToggleAppFreeze(app) {
+  async function handleToggleAppFreeze(app) {
     if (!app) return;
 
     const isFrozen = isApplicationFrozen(app);
     const appLicenses = allLicenses.filter(
       (entry) => entry.application_id === app.id || (app.app_id && entry.app_id === app.app_id)
     );
-
-    if (isFrozen) {
-      const licensesToUnfreeze = appLicenses.filter((entry) => isFrozenLicense(entry));
-      const restoreStatus = preFreezeStatusRef.current.get(app.id) || "Active";
-      preFreezeStatusRef.current.delete(app.id);
-      const applicationPatch = { status: restoreStatus, download_updated_at: new Date().toISOString() };
-
-      patchApplicationLocal(app.id, applicationPatch);
-
-      licensesToUnfreeze.forEach((license) => {
-        const patch = buildUnfreezeLicensePatch(license);
-        patchLicenseLocal(license.id, patch);
-        void updateLicenseRecord(license.id, patch).catch((error) => {
-          reportActionError(error);
-          refreshDashboardSilently();
-        });
-      });
-
-      void updateApplicationRecord(app, applicationPatch).catch((error) => {
-        patchApplicationLocal(app.id, { status: app.status || "Maintenance" });
-        reportActionError(error);
-        refreshDashboardSilently();
-      });
+    const previousStatus = app.status || "Active";
+    const restoreStatus = preFreezeStatusRef.current.get(app.id) || "Active";
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) {
+      reportActionError(new Error("Not signed in."));
       return;
     }
 
-    const previousStatus = app.status || "Active";
-    preFreezeStatusRef.current.set(app.id, previousStatus);
-    const applicationPatch = { status: "Maintenance", download_updated_at: new Date().toISOString() };
-    const licensesToFreeze = appLicenses.filter((entry) => isFreezableLicense(entry));
-
-    patchApplicationLocal(app.id, applicationPatch);
-
-    licensesToFreeze.forEach((license) => {
-      const patch = buildFreezeLicensePatch(license);
-      patchLicenseLocal(license.id, patch);
-      void updateLicenseRecord(license.id, patch).catch((error) => {
-        reportActionError(error);
-        refreshDashboardSilently();
+    // Optimistic UI for admin-owned licenses; server freezes ALL keys (incl. reseller).
+    if (isFrozen) {
+      const licensesToUnfreeze = appLicenses.filter((entry) => isFrozenLicense(entry));
+      const applicationPatch = { status: restoreStatus, download_updated_at: new Date().toISOString() };
+      patchApplicationLocal(app.id, applicationPatch);
+      licensesToUnfreeze.forEach((license) => {
+        patchLicenseLocal(license.id, buildUnfreezeLicensePatch(license));
       });
-    });
+    } else {
+      preFreezeStatusRef.current.set(app.id, previousStatus);
+      const applicationPatch = { status: "Maintenance", download_updated_at: new Date().toISOString() };
+      patchApplicationLocal(app.id, applicationPatch);
+      appLicenses.filter((entry) => isFreezableLicense(entry)).forEach((license) => {
+        patchLicenseLocal(license.id, buildFreezeLicensePatch(license));
+      });
+    }
 
-    void updateApplicationRecord(app, applicationPatch).catch((error) => {
-      preFreezeStatusRef.current.delete(app.id);
-      patchApplicationLocal(app.id, { status: previousStatus });
+    try {
+      const response = await fetch("/api/admin/application-freeze", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          applicationId: app.id,
+          action: isFrozen ? "unfreeze" : "freeze",
+          restoreStatus,
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Failed to toggle application freeze.");
+
+      if (isFrozen) {
+        preFreezeStatusRef.current.delete(app.id);
+      }
+
+      if (result.application) {
+        patchApplicationLocal(app.id, {
+          status: result.application.status,
+          download_updated_at: result.application.download_updated_at,
+        });
+      }
+
+      if (Array.isArray(result.licenses)) {
+        result.licenses.forEach((license) => {
+          if (!license?.id) return;
+          // Admin list only shows admin-owned keys; still patch if present.
+          patchLicenseLocal(license.id, {
+            status: license.status,
+            frozen_at: license.frozen_at ?? null,
+            frozen_remaining_ms: license.frozen_remaining_ms ?? null,
+            expires_at: license.expires_at ?? null,
+          });
+        });
+      }
+
+      setDashboardMessage({
+        text: isFrozen
+          ? `Unfroze application and restored time on ${Number(result.licenseCount) || 0} license(s).`
+          : `Froze application and paused time on ${Number(result.licenseCount) || 0} active license(s), including reseller keys.`,
+        type: "success",
+      });
+    } catch (error) {
+      if (isFrozen) {
+        patchApplicationLocal(app.id, { status: previousStatus });
+      } else {
+        preFreezeStatusRef.current.delete(app.id);
+        patchApplicationLocal(app.id, { status: previousStatus });
+      }
       reportActionError(error);
       refreshDashboardSilently();
-    });
+    }
   }
 
   function handleDeleteApplication(app) {
     if (!window.confirm(`Delete application "${app.name}"?`)) return;
 
     if (selectedAppId === app.id) {
-      setSelectedAppId("");
+      const nextApp = applications.find((entry) => entry.id !== app.id);
+      const nextId = nextApp?.id || "";
+      setSelectedAppId(nextId);
+      writeLastUsedAppId(nextId);
       setSelectedLicenses([]);
     }
 
@@ -1704,186 +3667,745 @@ export default function AdminPage() {
     }
 
     const licenseId = activeExtendLicense.id;
-    patchLicenseLocal(licenseId, payload);
-    setExtendMessage({ text: "Expire time updated.", type: "success" });
-    setExtendModalOpen(false);
-
-    void updateLicenseRecord(licenseId, payload).catch((error) => {
+    try {
+      await updateLicenseRecord(licenseId, payload);
+      patchLicenseLocal(licenseId, payload);
+      setExtendMessage({ text: "Expire time updated.", type: "success" });
+      setExtendModalOpen(false);
+    } catch (error) {
       setExtendMessage({ text: error?.message || String(error), type: "error" });
       refreshDashboardSilently();
-    });
+    }
   }
 
   return (
-    <main className={styles.page}>
-      {!signedIn ? (
-        <div className={styles.adminAuthStage}>
-          <div className="redeem-panel">
-            <div className="redeem-panel-header">
-              <div>
-                <div className="redeem-panel-kicker">Admin Panel</div>
-                <h3>Sign in</h3>
+    <main className={`${styles.page}${adminTheme === "light" ? ` ${styles.themeLight}` : ""}`}>
+      {!signedIn && (accessChecking || oauthReturnPending) ? (
+        <div className={styles.panelBootLoading} aria-busy="true" aria-label="Loading admin panel">
+          <div className={styles.panelLoadingSpinner} />
+        </div>
+      ) : !signedIn ? (
+        <div className={styles.loginGate}>
+          <header className={styles.loginGateHero}>
+            <img className={styles.loginGateLogo} src="/images/unbanhwid-logo.png" alt="unbanhwid.com" />
+            <h1 className={styles.loginGateBrand}>Admin Panel</h1>
+            <p className={styles.loginGateDesc}>
+              Management panel for applications, licenses, and delivery packages.
+            </p>
+          </header>
+
+          <div className={styles.loginGateLayout}>
+            <section className={styles.loginGateFaqCard}>
+              <div className={styles.loginGateFaqHead}>
+                <h2>FAQ</h2>
+                <p>Common questions about Discord login.</p>
               </div>
-              <Link href="/" className="redeem-close" aria-label="Back to site">
-                <X size={18} />
-              </Link>
-            </div>
-
-            <div className="redeem-panel-body">
-              <div className="redeem-progress" aria-label="Sign-in progress">
-                <div className="redeem-progress-meta">
-                  <span>Step {authStep} of 2</span>
-                  <span>{ADMIN_AUTH_STEP_LABELS[authStep - 1]}</span>
-                </div>
-                <div className="redeem-progress-track" aria-hidden="true">
-                  <div
-                    className="redeem-progress-fill"
-                    style={{ "--redeem-progress-scale": ADMIN_AUTH_STEP_SCALES[authStep - 1] }}
-                  />
-                </div>
-              </div>
-
-              <form
-                className="redeem-section"
-                onSubmit={(event) => {
-                  if (authStep === 1) void handleEmailStep(event);
-                  else void handleSubmit(event);
-                }}
-                autoComplete="on"
-              >
-                {authStep === 1 ? (
-                  <>
-                    <div className="redeem-field">
-                      <label htmlFor="auth-email">Email</label>
-                      <input
-                        id="auth-email"
-                        className="redeem-input"
-                        type="email"
-                        placeholder="admin@admin.com"
-                        autoComplete="email"
-                        required
-                        value={email}
-                        onChange={(event) => setEmail(event.target.value)}
-                        disabled={Boolean(authBusy)}
-                      />
-                    </div>
-
-                    <div className="redeem-actions">
-                      <button className="redeem-button redeem-button-primary" type="submit" disabled={Boolean(authBusy)}>
-                        Continue
-                      </button>
-                    </div>
-
-                    {configHint ? (
-                      <div
-                        className={`${styles.authDbStatus}${
-                          configHint === "Connected to Database"
-                            ? ` ${styles.authDbStatusReady}`
-                            : configHint === MISSING_SUPABASE_MESSAGE
-                              ? ` ${styles.authDbStatusError}`
-                              : ` ${styles.authDbStatusLoading}`
-                        }`}
-                      >
-                        {configHint}
-                      </div>
-                    ) : null}
-                  </>
-                ) : (
-                  <>
-                    <button
-                      className="redeem-info-back"
-                      type="button"
-                      onClick={() => {
-                        setAuthStep(1);
-                        setAuthMessage({ text: "", type: "" });
-                        setPassword("");
-                      }}
+              <div className={styles.loginGateFaqList}>
+                {LOGIN_GUEST_FAQ_ITEMS.map((item, index) => {
+                  const open = loginFaqOpenIndex === index;
+                  return (
+                    <div
+                      className={`${styles.loginGateFaqItem}${open ? ` ${styles.loginGateFaqItemOpen}` : ""}`}
+                      key={item.q}
                     >
-                      <ChevronLeft size={16} />
-                      <span>Back</span>
-                    </button>
-
-                    <p className="redeem-muted">Enter your administrator password to continue.</p>
-
-                    <div className="redeem-summary">
-                      <div>
-                        <div className="redeem-summary-label">Email</div>
-                        <div className="redeem-summary-value">{email.trim()}</div>
-                      </div>
-                    </div>
-
-                    <div className="redeem-field">
-                      <label htmlFor="auth-password">Password</label>
-                      <div className="redeem-input-row">
-                        <input
-                          id="auth-password"
-                          className="redeem-input"
-                          type={passwordVisible ? "text" : "password"}
-                          placeholder="Password"
-                          autoComplete="current-password"
-                          required
-                          spellCheck="false"
-                          value={password}
-                          onChange={(event) => setPassword(event.target.value)}
-                          disabled={Boolean(authBusy)}
-                        />
-                        <button
-                          type="button"
-                          className="redeem-info-button"
-                          aria-label={passwordVisible ? "Hide password" : "Show password"}
-                          onClick={() => setPasswordVisible((value) => !value)}
-                        >
-                          {passwordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="redeem-actions">
-                      <button className="redeem-button redeem-button-primary" type="submit" disabled={Boolean(authBusy)}>
-                        {authBusy || "Sign in"}
+                      <button
+                        type="button"
+                        className={styles.loginGateFaqQuestion}
+                        aria-expanded={open}
+                        onClick={() => setLoginFaqOpenIndex(open ? -1 : index)}
+                      >
+                        <span>{item.q}</span>
+                        <ChevronDown size={16} className={styles.loginGateFaqChevron} aria-hidden="true" />
                       </button>
+                      <div
+                        className={`${styles.loginGateFaqAnswerPanel}${open ? ` ${styles.loginGateFaqAnswerPanelOpen}` : ""}`}
+                      >
+                        <p className={styles.loginGateFaqAnswer}>{item.a}</p>
+                      </div>
                     </div>
-                  </>
-                )}
+                  );
+                })}
+              </div>
+            </section>
 
-                <div className={`redeem-message${authMessage.type ? ` is-${authMessage.type}` : ""}`}>
-                  {authMessage.text}
+            <div className={styles.loginGateSeparator} aria-hidden="true" />
+
+            <div className={styles.loginGateCardSlot}>
+              <div className={`redeem-panel ${styles.loginAuthPanel}`}>
+                <div className={styles.loginGateFaqHead}>
+                  <h2>Login using Discord</h2>
+                  <p>Sign in with the authorized Discord admin account.</p>
                 </div>
-              </form>
+
+                <div className="redeem-panel-body">
+                  <div className="redeem-section">
+                    <>
+                        <div className={styles.loginThemeRow}>
+                          <div className={styles.themeSwitchCopy}>
+                            <strong>Appearance</strong>
+                            <span>Choose light or dark theme for the panel.</span>
+                          </div>
+                          <div
+                            className={`${styles.themeSwitch}${adminTheme === "light" ? ` ${styles.themeSwitchLight}` : ""}`}
+                            role="group"
+                            aria-label="Theme"
+                          >
+                            <span className={styles.themeSwitchThumb} aria-hidden="true" />
+                            <button
+                              type="button"
+                              className={`${styles.themeSwitchOption}${adminTheme === "dark" ? ` ${styles.themeSwitchOptionActive}` : ""}`}
+                              aria-pressed={adminTheme === "dark"}
+                              disabled={Boolean(authBusy)}
+                              onClick={() => handleAdminThemeToggle(false)}
+                            >
+                              <Moon size={14} />
+                              Dark
+                            </button>
+                            <button
+                              type="button"
+                              className={`${styles.themeSwitchOption}${adminTheme === "light" ? ` ${styles.themeSwitchOptionActive}` : ""}`}
+                              aria-pressed={adminTheme === "light"}
+                              disabled={Boolean(authBusy)}
+                              onClick={() => handleAdminThemeToggle(true)}
+                            >
+                              <Sun size={14} />
+                              Light
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="redeem-actions">
+                          <button
+                            className="redeem-button redeem-button-primary"
+                            type="button"
+                            disabled={Boolean(authBusy) || !loginTermsAccepted || loginCfStatus !== "success"}
+                            title={
+                              !loginTermsAccepted
+                                ? "Accept Terms of Service to continue"
+                                : loginCfStatus !== "success"
+                                  ? "Complete Cloudflare verification to continue"
+                                  : undefined
+                            }
+                            onClick={() => void handleDiscordLogin()}
+                          >
+                            {authBusy ? (
+                              authBusy
+                            ) : (
+                              <>
+                                <DiscordIcon size={15} />
+                                Login with Discord
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        <div className={styles.loginAuthOptions}>
+                          <CloudflareTurnstileWidget
+                            status={loginCfStatus}
+                            onStart={startAdminLoginCloudflareVerify}
+                            disabled={Boolean(authBusy)}
+                            className="checkout-turnstile"
+                          />
+
+                          <label
+                            className={`checkout-terms${loginTermsAccepted ? " is-checked" : ""} ${styles.loginAuthCheck}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={loginTermsAccepted}
+                              disabled={Boolean(authBusy)}
+                              onChange={(event) => setLoginTermsAccepted(event.target.checked)}
+                            />
+                            <span className="checkout-terms-box" aria-hidden="true">
+                              {loginTermsAccepted ? <Check size={14} strokeWidth={3} /> : null}
+                            </span>
+                            <span className="checkout-terms-text">
+                              I agree to the{" "}
+                              <Link
+                                href="/terms"
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(event) => event.stopPropagation()}
+                              >
+                                Terms of Service
+                              </Link>
+                            </span>
+                          </label>
+
+                          <label
+                            className={`checkout-terms${loginRememberMe ? " is-checked" : ""} ${styles.loginAuthCheck}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={loginRememberMe}
+                              disabled={Boolean(authBusy)}
+                              onChange={(event) => {
+                                const next = event.target.checked;
+                                setLoginRememberMe(next);
+                                try {
+                                  window.localStorage.setItem("unbanhwid.admin-panel.rememberMe", next ? "1" : "0");
+                                } catch {
+                                  // ignore
+                                }
+                              }}
+                            />
+                            <span className="checkout-terms-box" aria-hidden="true">
+                              {loginRememberMe ? <Check size={14} strokeWidth={3} /> : null}
+                            </span>
+                            <span className="checkout-terms-text">Remember me on this device</span>
+                          </label>
+                        </div>
+
+                        {configHint ? (
+                          <div
+                            className={`${styles.authDbStatus}${
+                              configHint === "Connected to Database"
+                                ? ` ${styles.authDbStatusReady}`
+                                : configHint === MISSING_SUPABASE_MESSAGE
+                                  ? ` ${styles.authDbStatusError}`
+                                  : ` ${styles.authDbStatusLoading}`
+                            }`}
+                          >
+                            {configHint}
+                          </div>
+                        ) : null}
+                      </>
+                    <div className={`redeem-message${authMessage.type ? ` is-${authMessage.type}` : ""}`}>
+                      {authMessage.text}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       ) : (
-        <div className={styles.shell}>
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <div className={styles.cardHeaderMain}>
-                <img className={styles.cardHeaderLogo} src="/images/unbanhwid-logo.png" alt="unbanhwid.com" />
-                <h1 className={styles.cardHeaderTitle}>unbanhwid.com management panel</h1>
+        <div className={styles.adminLayout}>
+          <header className={styles.adminTopbar}>
+            <a href="/" className={styles.adminTopbarBrand}>
+              <img src="/images/unbanhwid-logo.png" alt="unbanhwid.com" />
+              <span>unbanhwid.com</span>
+            </a>
+            <div className={styles.adminTopbarSearchWrap}>
+              <button type="button" className={styles.adminTopbarSearch} aria-label="Search">
+                <Search size={13} />
+                <span>Search applications, licenses...</span>
+                <kbd>Ctrl K</kbd>
+              </button>
+            </div>
+            <nav className={styles.adminTopbarNav}>
+              <a href="https://unbanhwid.com" target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
+                <Globe size={13} /> Website
+              </a>
+              <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
+                <DiscordIcon size={14} /> Discord
+              </a>
+              <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
+                <HelpCircle size={13} /> Support
+              </a>
+              <AdminResponseMonitor configUrl={config.url} signedIn={signedIn} theme={adminTheme} />
+              <button
+                type="button"
+                className={styles.adminTopbarTheme}
+                aria-label={adminTheme === "light" ? "Switch to dark theme" : "Switch to light theme"}
+                title={adminTheme === "light" ? "Dark" : "Light"}
+                onClick={() => handleAdminThemeToggle(adminTheme !== "light")}
+              >
+                {adminTheme === "light" ? <Moon size={15} /> : <Sun size={15} />}
+              </button>
+              <button
+                type="button"
+                className={styles.adminTopbarSignOut}
+                aria-label="Sign out"
+                onClick={() => {
+                  clearSession();
+                  setAuthMessage({ text: "", type: "" });
+                }}
+              >
+                <LogOut size={15} />
+              </button>
+            </nav>
+          </header>
+          <div className={styles.adminBody}>
+          <aside className={styles.adminSidebar}>
+            <div className={styles.adminSidebarScroll}>
+              <div className={styles.adminNavSection}>
+                <div className={styles.adminNavSectionLabel}>Getting Started</div>
+                <div className={styles.adminNavItems}>
+                  <button
+                    type="button"
+                    className={`${styles.adminNavItem}${adminView === "welcome" ? ` ${styles.adminNavItemActive}` : ""}`}
+                    onClick={() => setAdminView("welcome")}
+                  >
+                    <House size={14} />
+                    <span className={styles.adminNavItemLabel}>Welcome</span>
+                  </button>
+                </div>
               </div>
 
-              <div className={styles.dashboardTopActions}>
+              <div className={styles.adminNavSection}>
+                <div className={styles.adminNavSectionLabel}>General</div>
+                <div className={styles.adminNavItems}>
+                  <button
+                    type="button"
+                    className={`${styles.adminNavItem}${adminView === "applications" ? ` ${styles.adminNavItemActive}` : ""}`}
+                    onClick={() => setAdminView("applications")}
+                  >
+                    <Layers3 size={14} />
+                    <span className={styles.adminNavItemLabel}>Applications</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.adminNavItem}${adminView === "licenses" ? ` ${styles.adminNavItemActive}` : ""}`}
+                    onClick={() => setAdminView("licenses")}
+                  >
+                    <KeyRound size={14} />
+                    <span className={styles.adminNavItemLabel}>Licenses</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.adminNavItem}${adminView === "transactions" ? ` ${styles.adminNavItemActive}` : ""}`}
+                    onClick={() => setAdminView("transactions")}
+                  >
+                    <ArrowLeftRight size={14} />
+                    <span className={styles.adminNavItemLabel}>Transactions</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.adminNavItem}${adminView === "changelogs" ? ` ${styles.adminNavItemActive}` : ""}`}
+                    onClick={() => setAdminView("changelogs")}
+                    aria-label="Changelogs"
+                  >
+                    <Zap size={14} />
+                    <span className={styles.adminNavItemLabel}>Changelogs</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className={styles.adminNavSection}>
+                <div className={styles.adminNavSectionLabel}>Resell</div>
+                <div className={styles.adminNavItems}>
+                  <button
+                    type="button"
+                    className={`${styles.adminNavItem}${adminView === "resellers" ? ` ${styles.adminNavItemActive}` : ""}`}
+                    onClick={() => setAdminView("resellers")}
+                    aria-label="Resellers"
+                  >
+                    <Users size={14} />
+                    <span className={styles.adminNavItemLabel}>Resellers</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.adminNavItem}${adminView === "products" ? ` ${styles.adminNavItemActive}` : ""}`}
+                    onClick={() => setAdminView("products")}
+                    aria-label="Products"
+                  >
+                    <Package size={14} />
+                    <span className={styles.adminNavItemLabel}>Products</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className={styles.adminNavSection}>
+                <div className={styles.adminNavSectionLabel}>Other</div>
+                <div className={styles.adminNavItems}>
+                  <button
+                    type="button"
+                    className={`${styles.adminNavItem}${adminView === "settings" ? ` ${styles.adminNavItemActive}` : ""}`}
+                    onClick={() => setAdminView("settings")}
+                    aria-label="Settings"
+                  >
+                    <Settings size={14} />
+                    <span className={styles.adminNavItemLabel}>Settings</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className={styles.adminSidebarFooter}>
+              <div className={styles.sidebarUserCard}>
+                {session.discordAvatarUrl ? (
+                  <img className={styles.sidebarUserAvatar} src={session.discordAvatarUrl} alt="" />
+                ) : (
+                  <span className={styles.sidebarUserAvatarFallback} aria-hidden="true">
+                    <DiscordIcon size={16} />
+                  </span>
+                )}
+                <div className={styles.sidebarUserMeta}>
+                  <strong className={styles.sidebarUserName}>{adminDisplayName}</strong>
+                  <span className={styles.sidebarUserBalance}>Administrator</span>
+                </div>
                 <button
-                  className={styles.secondaryButton}
                   type="button"
+                  className={`${styles.adminTopbarSignOut} ${styles.sidebarUserLogout}`}
+                  aria-label="Sign out"
                   onClick={() => {
                     clearSession();
                     setAuthMessage({ text: "", type: "" });
                   }}
                 >
-                  <LogOut size={16} />
-                  Sign out
+                  <LogOut size={15} />
                 </button>
               </div>
             </div>
+          </aside>
 
-            <div className={styles.cardBody}>
+          <div className={styles.adminMain}>
+            <div className={styles.adminContent}>
             <div className={styles.dashboard}>
 
-              {!dashboardInitialized ? (
+              {adminView === "welcome" ? (
+                <section className={styles.welcomeHub}>
+                  <div className={styles.welcomeHero}>
+                    <img className={styles.welcomeLogo} src="/images/unbanhwid-logo.png" alt="unbanhwid.com" />
+                    <h1 className={styles.welcomeTitle}>unbanhwid.com</h1>
+                    <p className={styles.welcomeSubtitle}>
+                      Management panel for applications, licenses, and delivery packages.
+                    </p>
+                  </div>
+
+                  <div className={styles.welcomeAccount}>
+                    {session.discordAvatarUrl ? (
+                      <img className={styles.settingsProfileAvatar} src={session.discordAvatarUrl} alt="" />
+                    ) : (
+                      <span className={styles.welcomeAccountIcon} aria-hidden="true">
+                        <DiscordIcon size={18} />
+                      </span>
+                    )}
+                    <div className={styles.welcomeAccountCopy}>
+                      <span className={styles.welcomeAccountLabel}>Signed in as</span>
+                      <strong className={styles.welcomeAccountEmail}>{adminDisplayName}</strong>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      onClick={() => {
+                        clearSession();
+                        setAuthMessage({ text: "", type: "" });
+                      }}
+                    >
+                      <LogOut size={14} />
+                      Sign out
+                    </button>
+                  </div>
+
+                  <div className={styles.welcomeQuickLinks}>
+                    <div className={styles.welcomeQuickLinksHead}>
+                      <h2>Quick Links</h2>
+                      <p>Jump to admin tools, public pages, and support.</p>
+                    </div>
+                    <div className={styles.welcomeQuickGrid}>
+                      <button type="button" className={styles.welcomeQuickCard} onClick={() => setAdminView("applications")}>
+                        <span className={styles.welcomeQuickIcon}>
+                          <Layers3 size={18} />
+                        </span>
+                        <span className={styles.welcomeQuickCopy}>
+                          <strong>Applications</strong>
+                          <span>Manage products, versions, and packages</span>
+                        </span>
+                        <ArrowRight size={16} className={styles.welcomeQuickArrow} />
+                      </button>
+                      <button type="button" className={styles.welcomeQuickCard} onClick={() => setAdminView("licenses")}>
+                        <span className={styles.welcomeQuickIcon}>
+                          <KeyRound size={18} />
+                        </span>
+                        <span className={styles.welcomeQuickCopy}>
+                          <strong>Licenses</strong>
+                          <span>Generate, freeze, ban, and extend keys</span>
+                        </span>
+                        <ArrowRight size={16} className={styles.welcomeQuickArrow} />
+                      </button>
+                      <button type="button" className={styles.welcomeQuickCard} onClick={() => setAdminView("resellers")}>
+                        <span className={styles.welcomeQuickIcon}>
+                          <Users size={18} />
+                        </span>
+                        <span className={styles.welcomeQuickCopy}>
+                          <strong>Resellers</strong>
+                          <span>Accounts, balance, and access</span>
+                        </span>
+                        <ArrowRight size={16} className={styles.welcomeQuickArrow} />
+                      </button>
+                      <button type="button" className={styles.welcomeQuickCard} onClick={() => setAdminView("products")}>
+                        <span className={styles.welcomeQuickIcon}>
+                          <Package size={18} />
+                        </span>
+                        <span className={styles.welcomeQuickCopy}>
+                          <strong>Products</strong>
+                          <span>Store items and deposit packages</span>
+                        </span>
+                        <ArrowRight size={16} className={styles.welcomeQuickArrow} />
+                      </button>
+                      <button type="button" className={styles.welcomeQuickCard} onClick={() => setAdminView("transactions")}>
+                        <span className={styles.welcomeQuickIcon}>
+                          <ArrowLeftRight size={18} />
+                        </span>
+                        <span className={styles.welcomeQuickCopy}>
+                          <strong>Transactions</strong>
+                          <span>Balance ledger and purchases</span>
+                        </span>
+                        <ArrowRight size={16} className={styles.welcomeQuickArrow} />
+                      </button>
+                      <button type="button" className={styles.welcomeQuickCard} onClick={() => setAdminView("changelogs")}>
+                        <span className={styles.welcomeQuickIcon}>
+                          <FileText size={18} />
+                        </span>
+                        <span className={styles.welcomeQuickCopy}>
+                          <strong>Changelogs</strong>
+                          <span>Publish update notes for loaders</span>
+                        </span>
+                        <ArrowRight size={16} className={styles.welcomeQuickArrow} />
+                      </button>
+                      <button type="button" className={styles.welcomeQuickCard} onClick={() => setAdminView("settings")}>
+                        <span className={styles.welcomeQuickIcon}>
+                          <Settings size={18} />
+                        </span>
+                        <span className={styles.welcomeQuickCopy}>
+                          <strong>Settings</strong>
+                          <span>Panel preferences and account</span>
+                        </span>
+                        <ArrowRight size={16} className={styles.welcomeQuickArrow} />
+                      </button>
+                      <a href="/" className={styles.welcomeQuickCard}>
+                        <span className={styles.welcomeQuickIcon}>
+                          <Globe size={18} />
+                        </span>
+                        <span className={styles.welcomeQuickCopy}>
+                          <strong>Website</strong>
+                          <span>Open the public storefront</span>
+                        </span>
+                        <ArrowRight size={16} className={styles.welcomeQuickArrow} />
+                      </a>
+                      <Link href="/loader" className={styles.welcomeQuickCard}>
+                        <span className={styles.welcomeQuickIcon}>
+                          <Download size={18} />
+                        </span>
+                        <span className={styles.welcomeQuickCopy}>
+                          <strong>Loader</strong>
+                          <span>Customer loader dashboard</span>
+                        </span>
+                        <ArrowRight size={16} className={styles.welcomeQuickArrow} />
+                      </Link>
+                      <Link href="/reviews" className={styles.welcomeQuickCard}>
+                        <span className={styles.welcomeQuickIcon}>
+                          <Star size={18} />
+                        </span>
+                        <span className={styles.welcomeQuickCopy}>
+                          <strong>Reviews</strong>
+                          <span>Public reviews page</span>
+                        </span>
+                        <ArrowRight size={16} className={styles.welcomeQuickArrow} />
+                      </Link>
+                      <Link href="/terms" className={styles.welcomeQuickCard}>
+                        <span className={styles.welcomeQuickIcon}>
+                          <ScrollText size={18} />
+                        </span>
+                        <span className={styles.welcomeQuickCopy}>
+                          <strong>Terms</strong>
+                          <span>Terms of service &amp; policies</span>
+                        </span>
+                        <ArrowRight size={16} className={styles.welcomeQuickArrow} />
+                      </Link>
+                      <a
+                        href={DISCORD_INVITE_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.welcomeQuickCard}
+                      >
+                        <span className={styles.welcomeQuickIcon}>
+                          <DiscordIcon size={18} />
+                        </span>
+                        <span className={styles.welcomeQuickCopy}>
+                          <strong>Discord</strong>
+                          <span>Community server</span>
+                        </span>
+                        <ArrowRight size={16} className={styles.welcomeQuickArrow} />
+                      </a>
+                      <a
+                        href={DISCORD_INVITE_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.welcomeQuickCard}
+                      >
+                        <span className={styles.welcomeQuickIcon}>
+                          <HelpCircle size={18} />
+                        </span>
+                        <span className={styles.welcomeQuickCopy}>
+                          <strong>Support</strong>
+                          <span>Get help on Discord</span>
+                        </span>
+                        <ArrowRight size={16} className={styles.welcomeQuickArrow} />
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className={styles.welcomeMetrics}>
+                    <div className={styles.metricCard}>
+                      <span className={styles.metricIcon} aria-hidden="true">
+                        <KeyRound size={22} />
+                      </span>
+                      <div className={styles.metricContent}>
+                        <span className={styles.metricLabel}>Total Licenses</span>
+                        <strong className={styles.metricValue}>
+                          {dashboardInitialized ? (
+                            metricValue(metrics.total)
+                          ) : (
+                            <SkeletonBlock className={styles.skeletonMetricValue} />
+                          )}
+                        </strong>
+                      </div>
+                    </div>
+                    <div className={styles.metricCard}>
+                      <span className={styles.metricIcon} aria-hidden="true">
+                        <CircleCheck size={22} />
+                      </span>
+                      <div className={styles.metricContent}>
+                        <span className={styles.metricLabel}>Active</span>
+                        <strong className={styles.metricValue}>
+                          {dashboardInitialized ? (
+                            metricValue(metrics.active)
+                          ) : (
+                            <SkeletonBlock className={styles.skeletonMetricValue} />
+                          )}
+                        </strong>
+                      </div>
+                    </div>
+                    <div className={styles.metricCard}>
+                      <span className={styles.metricIcon} aria-hidden="true">
+                        <Layers3 size={22} />
+                      </span>
+                      <div className={styles.metricContent}>
+                        <span className={styles.metricLabel}>Applications</span>
+                        <strong className={styles.metricValue}>
+                          {dashboardInitialized ? (
+                            metricValue(applications.length)
+                          ) : (
+                            <SkeletonBlock className={styles.skeletonMetricValue} />
+                          )}
+                        </strong>
+                      </div>
+                    </div>
+                    <div className={styles.metricCard}>
+                      <span className={styles.metricIcon} aria-hidden="true">
+                        <Ban size={22} />
+                      </span>
+                      <div className={styles.metricContent}>
+                        <span className={styles.metricLabel}>Banned</span>
+                        <strong className={styles.metricValue}>
+                          {dashboardInitialized ? (
+                            metricValue(metrics.banned)
+                          ) : (
+                            <SkeletonBlock className={styles.skeletonMetricValue} />
+                          )}
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              ) : adminView === "settings" ? (
+                <section className={styles.settingsPanel}>
+                  <div className={styles.settingsCard}>
+                    <div className={styles.settingsCardHeader}>
+                      <h2>Admin profile</h2>
+                      <p>Signed-in administrator account.</p>
+                    </div>
+                    <div className={styles.settingsCardBody}>
+                      <div className={styles.settingsProfileRow}>
+                        {session.discordAvatarUrl ? (
+                          <img className={styles.settingsProfileAvatar} src={session.discordAvatarUrl} alt="" />
+                        ) : (
+                          <span className={styles.settingsProfileAvatarFallback} aria-hidden="true">
+                            <DiscordIcon size={20} />
+                          </span>
+                        )}
+                        <div className={styles.settingsProfileMeta}>
+                          <strong>{adminDisplayName}</strong>
+                          <span>Admin panel access</span>
+                        </div>
+                      </div>
+
+                      <div className={styles.settingsFieldGrid}>
+                        <div className={styles.settingsField}>
+                          <span className={styles.settingsFieldLabel}>Discord</span>
+                          <span className={styles.settingsFieldValue}>{adminDisplayName}</span>
+                        </div>
+                        <div className={styles.settingsField}>
+                          <span className={styles.settingsFieldLabel}>Discord ID</span>
+                          <span className={styles.settingsFieldValue}>{session.discordUserId || "-"}</span>
+                        </div>
+                        <div className={styles.settingsField}>
+                          <span className={styles.settingsFieldLabel}>Role</span>
+                          <span className={styles.settingsFieldValue}>Administrator</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={styles.settingsCard}>
+                    <div className={styles.settingsCardHeader}>
+                      <h2>Preferences</h2>
+                      <p>Panel appearance.</p>
+                    </div>
+                    <div className={styles.settingsCardBody}>
+                      <div className={styles.settingsOptionRow}>
+                        <div className={styles.themeSwitchBlock}>
+                          <div className={styles.themeSwitchCopy}>
+                            <strong>Theme</strong>
+                            <span>Switch between dark and light panel appearance.</span>
+                          </div>
+                          <div
+                            className={`${styles.themeSwitch}${adminTheme === "light" ? ` ${styles.themeSwitchLight}` : ""}`}
+                            role="group"
+                            aria-label="Theme"
+                          >
+                            <span className={styles.themeSwitchThumb} aria-hidden="true" />
+                            <button
+                              type="button"
+                              className={`${styles.themeSwitchOption}${adminTheme === "dark" ? ` ${styles.themeSwitchOptionActive}` : ""}`}
+                              aria-pressed={adminTheme === "dark"}
+                              onClick={() => handleAdminThemeToggle(false)}
+                            >
+                              <Moon size={14} />
+                              Dark
+                            </button>
+                            <button
+                              type="button"
+                              className={`${styles.themeSwitchOption}${adminTheme === "light" ? ` ${styles.themeSwitchOptionActive}` : ""}`}
+                              aria-pressed={adminTheme === "light"}
+                              onClick={() => handleAdminThemeToggle(true)}
+                            >
+                              <Sun size={14} />
+                              Light
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={styles.settingsCard}>
+                    <div className={styles.settingsCardHeader}>
+                      <h2>Session</h2>
+                      <p>Sign out of the administrator panel on this device.</p>
+                    </div>
+                    <div className={styles.settingsCardBody}>
+                      <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={() => {
+                          clearSession();
+                          setAuthMessage({ text: "", type: "" });
+                        }}
+                      >
+                        <LogOut size={14} />
+                        Sign out
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              ) : !dashboardInitialized ? (
                 <AdminDashboardSkeleton />
               ) : (
                 <>
+              {(adminView === "applications" || adminView === "licenses") && (
               <div className={styles.metrics}>
                 <div className={styles.metricCard}>
                   <span className={styles.metricIcon} aria-hidden="true">
@@ -1922,13 +4444,100 @@ export default function AdminPage() {
                   </div>
                 </div>
               </div>
+              )}
+
+              {adminView === "resellers" ? (
+              <div className={styles.metrics}>
+                <div className={styles.metricCard}>
+                  <span className={styles.metricIcon} aria-hidden="true">
+                    <Users size={22} />
+                  </span>
+                  <div className={styles.metricContent}>
+                    <span className={styles.metricLabel}>Total Resellers</span>
+                    <strong className={styles.metricValue}>
+                      {resellersBusy && !resellersLoaded ? (
+                        <SkeletonBlock className={styles.skeletonMetricValue} />
+                      ) : (
+                        metricValue(resellerMetrics.total)
+                      )}
+                    </strong>
+                  </div>
+                </div>
+                <div className={styles.metricCard}>
+                  <span className={styles.metricIcon} aria-hidden="true">
+                    <CircleCheck size={22} />
+                  </span>
+                  <div className={styles.metricContent}>
+                    <span className={styles.metricLabel}>Active Resellers</span>
+                    <strong className={styles.metricValue}>
+                      {resellersBusy && !resellersLoaded ? (
+                        <SkeletonBlock className={styles.skeletonMetricValue} />
+                      ) : (
+                        metricValue(resellerMetrics.active)
+                      )}
+                    </strong>
+                  </div>
+                </div>
+                <div className={styles.metricCard}>
+                  <span className={styles.metricIcon} aria-hidden="true">
+                    <Wallet size={22} />
+                  </span>
+                  <div className={styles.metricContent}>
+                    <span className={styles.metricLabel}>Total Balance</span>
+                    <strong className={styles.metricValue}>
+                      {resellersBusy && !resellersLoaded ? (
+                        <SkeletonBlock className={styles.skeletonMetricValue} />
+                      ) : (
+                        formatMoney(resellerMetrics.totalBalance)
+                      )}
+                    </strong>
+                  </div>
+                </div>
+                <div className={styles.metricCard}>
+                  <span className={styles.metricIcon} aria-hidden="true">
+                    <Ban size={22} />
+                  </span>
+                  <div className={styles.metricContent}>
+                    <span className={styles.metricLabel}>Total Spent</span>
+                    <strong className={styles.metricValue}>
+                      {resellersBusy && !resellersLoaded ? (
+                        <SkeletonBlock className={styles.skeletonMetricValue} />
+                      ) : (
+                        formatMoney(resellerMetrics.totalSpent)
+                      )}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+              ) : null}
+
+              {adminView === "products" ? (
+              <div className={styles.metrics}>
+                <div className={styles.metricCard}>
+                  <span className={styles.metricIcon} aria-hidden="true">
+                    <Package size={22} />
+                  </span>
+                  <div className={styles.metricContent}>
+                    <span className={styles.metricLabel}>Store Products</span>
+                    <strong className={styles.metricValue}>
+                      {storeProductsBusy && !storeProductsLoaded ? (
+                        <SkeletonBlock className={styles.skeletonMetricValue} />
+                      ) : (
+                        metricValue(storeProducts.length)
+                      )}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+              ) : null}
 
               <div className={`${styles.message} ${dashboardMessage.type ? styles[`message${dashboardMessage.type}`] : ""}`}>
                 {dashboardMessage.text}
               </div>
 
               <div className={styles.mainGrid}>
-                <section className={styles.tableModule}>
+                {adminView === "applications" ? (
+                <section className={styles.tableModule} id="admin-applications">
                   <div className={styles.tableHeader}>
                     <h2 className={styles.noSpaceBottom}>Application List</h2>
                     <button
@@ -1936,6 +4545,7 @@ export default function AdminPage() {
                       type="button"
                       onClick={() => {
                         setCreateAppMessage({ text: "", type: "" });
+                        resetCreateImageState();
                         setCreateModalOpen(true);
                       }}
                     >
@@ -1975,8 +4585,18 @@ export default function AdminPage() {
                                 }
                               }}
                             >
-                              <div className={styles.tableTitle}>{app.name}</div>
-                              <div>{app.app_id || "-"}</div>
+                              <div className={styles.appNameCell}>
+                                <AppImage
+                                  app={app}
+                                  supabaseUrl={config.url}
+                                  className={styles.appThumb}
+                                  placeholderClassName={styles.appThumbPlaceholder}
+                                  placeholderIconSize={14}
+                                  alt=""
+                                />
+                                <span className={styles.tableTitle}>{app.name}</span>
+                              </div>
+                              <div className={styles.appIdBlur}>{app.app_id || "-"}</div>
                               <div>{licenseCount}</div>
                               <div>{app.version || "1.0.0"}</div>
                               <div>
@@ -2051,11 +4671,55 @@ export default function AdminPage() {
                   </div>
 
                   <div className={styles.tableBottomCaption}>
-                    <div>Applications are loaded from Supabase.</div>
+                    <div>Applications are loaded from Database.</div>
                   </div>
                 </section>
+                ) : null}
 
-                <section className={`${styles.licensesPanel} ${selectedApp ? styles.licensesPanelOpen : ""}`}>
+                {adminView === "licenses" ? (
+                <section
+                  className={`${styles.licensesPanel} ${styles.licensesPanelOpen}`}
+                  id="admin-licenses"
+                >
+                  <div className={styles.licenseAppCard}>
+                    <div className={styles.licenseAppCardMain}>
+                      <AppImage
+                        app={selectedApp}
+                        supabaseUrl={config.url}
+                        className={styles.licenseAppCardImage}
+                        placeholderClassName={styles.licenseAppCardIcon}
+                        placeholderIconSize={24}
+                        alt={selectedApp?.name || "Application"}
+                      />
+                      <div className={styles.licenseAppCardCopy}>
+                        <span className={styles.licenseAppCardKicker}>Last used application</span>
+                        <strong className={styles.licenseAppCardName}>
+                          {selectedApp?.name || "No application selected"}
+                        </strong>
+                        <span className={styles.licenseAppCardMeta}>
+                          {selectedApp
+                            ? `v${selectedApp.version || "1.0.0"} · ${formatApplicationStatus(selectedApp.status)}${
+                                isApplicationFrozen(selectedApp) &&
+                                String(selectedApp.status || "").trim().toLowerCase() !== "maintenance"
+                                  ? " · Freezed"
+                                  : ""
+                              }`
+                            : "Choose an application to manage its licenses"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className={styles.licenseAppSelectWrap}>
+                      <span className={styles.licenseAppSelectLabel}>Switch application</span>
+                      <AdminAppSelect
+                        applications={applications}
+                        value={selectedAppId}
+                        onChange={(appId) => selectApplication(appId, { switchView: false })}
+                        placeholder="Select application"
+                        emptyLabel="No applications"
+                      />
+                    </div>
+                  </div>
+
                   <div className={styles.tableModule}>
                     <div className={styles.tableHeader}>
                       <h2 className={styles.noSpaceBottom}>Licenses {selectedApp ? `· ${selectedApp.name}` : ""}</h2>
@@ -2214,16 +4878,1363 @@ export default function AdminPage() {
                     </div>
                   </div>
                 </section>
+                ) : null}
+
+                {adminView === "transactions" ? (
+                <div className={styles.transactionsView} id="admin-transactions">
+                  <div className={styles.transactionsAnnounce} role="status">
+                    <p>
+                      Transaction history may take a few seconds to refresh after balance changes or purchases.
+                    </p>
+                  </div>
+                  <section className={styles.tableModule}>
+                    <div className={styles.tableHeader}>
+                      <div>
+                        <h2 className={styles.noSpaceBottom}>Transactions</h2>
+                        <p className={styles.tableHeaderHint}>
+                          All balance changes, license purchases, and store activity across resellers.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={() => void loadTransactions()}
+                        disabled={transactionsBusy}
+                      >
+                        <RefreshCw size={14} />
+                        Refresh
+                      </button>
+                    </div>
+                    {transactionsMessage.text ? (
+                      <div
+                        className={`${styles.message} ${
+                          transactionsMessage.type ? styles[`message${transactionsMessage.type}`] : ""
+                        }`}
+                      >
+                        {transactionsMessage.text}
+                      </div>
+                    ) : null}
+                    <div className={styles.tableContent}>
+                      <div className={styles.tableList}>
+                        <div className={`${styles.licenseTableHeaders} ${styles.transactionsColumnsAdmin}`}>
+                          <div>Date</div>
+                          <div>Reseller</div>
+                          <div>Type</div>
+                          <div>Description</div>
+                          <div>Amount</div>
+                          <div>Balance</div>
+                        </div>
+                        {transactionsBusy && !transactions.length ? (
+                          <div className={styles.emptyState}>Loading transactions…</div>
+                        ) : transactions.length ? (
+                          transactions.map((entry) => {
+                            const amount = Number(entry.amount) || 0;
+                            const amountClass =
+                              amount > 0
+                                ? styles.transactionAmountPositive
+                                : amount < 0
+                                  ? styles.transactionAmountNegative
+                                  : styles.transactionAmountNeutral;
+                            return (
+                              <div
+                                className={`${styles.licenseTableRow} ${styles.transactionsColumnsAdmin}`}
+                                key={entry.id}
+                              >
+                                <div>{formatDisplayDateTime(entry.created_at)}</div>
+                                <div className={styles.transactionDescription}>
+                                  {entry.reseller_username || entry.reseller_email || entry.reseller_id || "—"}
+                                </div>
+                                <div>
+                                  <span className={styles.transactionTypeBadge}>
+                                    {entry.type_label || entry.type}
+                                  </span>
+                                </div>
+                                <div className={styles.transactionDescription}>{entry.description || "—"}</div>
+                                <div className={amountClass}>
+                                  {amount > 0 ? "+" : ""}
+                                  {formatMoney(amount)}
+                                </div>
+                                <div>
+                                  {entry.balance_after == null ? "—" : formatMoney(entry.balance_after)}
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className={styles.emptyState}>No transactions yet.</div>
+                        )}
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                ) : null}
+
+                {adminView === "changelogs" ? (
+                <section className={styles.tableModule} id="admin-changelogs">
+                  {changelogEditorApp ? (
+                    <>
+                      <div className={styles.tableHeader}>
+                        <div className={styles.changelogEditorHeading}>
+                          <button
+                            className={styles.secondaryButton}
+                            type="button"
+                            onClick={handleBackFromChangelogEditor}
+                            disabled={changelogBusy}
+                          >
+                            <ChevronLeft size={16} />
+                            Back
+                          </button>
+                          <h2 className={styles.noSpaceBottom}>
+                            Changelogs · {changelogEditorApp.name || "Application"}
+                          </h2>
+                        </div>
+                        {!changelogFormOpen ? (
+                          <button
+                            className={styles.primaryButton}
+                            type="button"
+                            onClick={startCreateChangelog}
+                            disabled={changelogBusy}
+                          >
+                            <Plus size={16} />
+                            Add Changelog
+                          </button>
+                        ) : null}
+                      </div>
+
+                      <div className={styles.tableContent}>
+                        <div
+                          className={`${styles.message} ${changelogMessage.type ? styles[`message${changelogMessage.type}`] : ""}`}
+                        >
+                          {changelogMessage.text}
+                        </div>
+
+                        {changelogFormOpen ? (
+                          <form className={styles.formPad} onSubmit={handleSaveChangelogEntry}>
+                            <div className={styles.twoCols}>
+                              <div className={styles.group}>
+                                <label htmlFor="changelog-title">Title</label>
+                                <input
+                                  id="changelog-title"
+                                  type="text"
+                                  placeholder="e.g. v2.5.1"
+                                  value={changelogTitle}
+                                  onChange={(event) => setChangelogTitle(event.target.value)}
+                                  disabled={changelogBusy}
+                                />
+                              </div>
+                              <div className={styles.group}>
+                                <label htmlFor="changelog-date">Date</label>
+                                <input
+                                  id="changelog-date"
+                                  type="date"
+                                  value={changelogDate}
+                                  onChange={(event) => setChangelogDate(event.target.value)}
+                                  disabled={changelogBusy}
+                                />
+                              </div>
+                            </div>
+
+                            <div className={styles.group}>
+                              <label>Description lines</label>
+                              {changelogNotes.length ? (
+                                <ul className={styles.changelogNotesList}>
+                                  {changelogNotes.map((note, noteIndex) => (
+                                    <li key={`changelog-note-${noteIndex}`}>
+                                      <span>{note}</span>
+                                      <button
+                                        className={styles.dangerLinkButton}
+                                        type="button"
+                                        disabled={changelogBusy}
+                                        onClick={() => handleRemoveChangelogNoteLine(noteIndex)}
+                                      >
+                                        Remove
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p className={styles.changelogNotesEmpty}>No lines yet. Add changes one by one.</p>
+                              )}
+                              <div className={styles.changelogNoteComposer}>
+                                <input
+                                  type="text"
+                                  placeholder="Single change line"
+                                  value={changelogNoteDraft}
+                                  onChange={(event) => setChangelogNoteDraft(event.target.value)}
+                                  onKeyDown={(event) => {
+                                    if (event.key === "Enter") {
+                                      event.preventDefault();
+                                      handleAddChangelogNoteLine();
+                                    }
+                                  }}
+                                  disabled={changelogBusy}
+                                />
+                                <button
+                                  className={styles.secondaryButton}
+                                  type="button"
+                                  onClick={handleAddChangelogNoteLine}
+                                  disabled={changelogBusy || !changelogNoteDraft.trim()}
+                                >
+                                  Add line
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className={styles.formActions}>
+                              <button
+                                className={styles.secondaryButton}
+                                type="button"
+                                onClick={resetChangelogForm}
+                                disabled={changelogBusy}
+                              >
+                                Cancel
+                              </button>
+                              <button className={styles.primaryButton} type="submit" disabled={changelogBusy}>
+                                {changelogEditingId ? "Save Changes" : "Create Changelog"}
+                              </button>
+                            </div>
+                          </form>
+                        ) : (
+                          <div className={styles.tableList}>
+                            <div className={styles.changelogEntryHeaders}>
+                              <div>Title</div>
+                              <div>Date</div>
+                              <div>Lines</div>
+                              <div>Action</div>
+                            </div>
+
+                            {changelogBusy && !changelogEntries.length ? (
+                              <div className={styles.emptyState}>Loading changelogs…</div>
+                            ) : changelogEntries.length ? (
+                              changelogEntries.map((entry) => (
+                                <div className={styles.changelogEntryRow} key={entry.id}>
+                                  <div className={styles.tableTitle}>{entry.title}</div>
+                                  <div>{formatDate(entry.released_at)}</div>
+                                  <div>{Array.isArray(entry.notes) ? entry.notes.length : 0}</div>
+                                  <div className={styles.tableActionsCell}>
+                                    <div className={styles.adminInlineActions}>
+                                      <button
+                                        type="button"
+                                        className={styles.rowActionButton}
+                                        title="Edit changelog"
+                                        aria-label="Edit changelog"
+                                        disabled={changelogBusy}
+                                        onClick={() => startEditChangelog(entry)}
+                                      >
+                                        <Pencil size={15} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className={styles.rowActionButton}
+                                        title="Delete changelog"
+                                        aria-label="Delete changelog"
+                                        disabled={changelogBusy}
+                                        onClick={() => handleDeleteChangelogEntry(entry)}
+                                      >
+                                        <Trash2 size={15} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <div className={styles.emptyState}>No changelogs yet. Add the first one.</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className={styles.tableBottomCaption}>
+                        <div>These changelogs appear in every product loader for guests and signed-in users.</div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className={styles.tableHeader}>
+                        <h2 className={styles.noSpaceBottom}>Changelogs</h2>
+                      </div>
+
+                      <div className={styles.tableContent}>
+                        <div className={styles.tableList}>
+                          <div className={styles.changelogTableHeaders}>
+                            <div>Application</div>
+                            <div>Version</div>
+                            <div>Status</div>
+                            <div>Total logs</div>
+                            <div>Latest log</div>
+                            <div>Action</div>
+                          </div>
+
+                          {applications.length ? (
+                            applications.map((app) => {
+                              const tone = getStatusTone(app.status);
+                              const summary = changelogSummaries[app.id];
+                              const logsLoading = !summary;
+
+                              return (
+                                <div className={styles.changelogTableRow} key={app.id}>
+                                  <div className={styles.appNameCell}>
+                                    <AppImage
+                                      app={app}
+                                      supabaseUrl={config.url}
+                                      className={styles.appThumb}
+                                      placeholderClassName={styles.appThumbPlaceholder}
+                                      placeholderIconSize={14}
+                                      alt=""
+                                    />
+                                    <span className={styles.tableTitle}>{app.name}</span>
+                                  </div>
+                                  <div>{app.version || "1.0.0"}</div>
+                                  <div>
+                                    <span className={styles.status}>
+                                      <span className={`${styles.indicationColor} ${styles[`tone${tone}`]}`} />
+                                      {formatApplicationStatus(app.status)}
+                                      {isApplicationFrozen(app) &&
+                                      String(app.status || "").trim().toLowerCase() !== "maintenance"
+                                        ? " · Freezed"
+                                        : ""}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    {logsLoading ? (
+                                      <SkeletonBlock className={styles.skeletonChangelogTotal} />
+                                    ) : (
+                                      summary.total
+                                    )}
+                                  </div>
+                                  <div className={styles.tableEllipsis} title={logsLoading ? undefined : summary.latestTitle}>
+                                    {logsLoading ? (
+                                      <SkeletonBlock className={styles.skeletonChangelogLatest} />
+                                    ) : (
+                                      summary.latestTitle
+                                    )}
+                                  </div>
+                                  <div className={styles.tableActionsCell}>
+                                    <button
+                                      className={styles.secondaryButton}
+                                      type="button"
+                                      onClick={() => openChangelogEditor(app)}
+                                    >
+                                      Edit Changelogs
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <div className={styles.emptyState}>No applications loaded.</div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className={styles.tableBottomCaption}>
+                        <div>Applications are loaded from Database.</div>
+                      </div>
+                    </>
+                  )}
+                </section>
+                ) : null}
+
+                {adminView === "resellers" ? (
+                <section className={styles.tableModule} id="admin-reselling">
+                  <div className={styles.tableHeader}>
+                    <h2 className={styles.noSpaceBottom}>Active Resellers</h2>
+                    <button
+                      className={styles.primaryButton}
+                      type="button"
+                      onClick={openAddResellerDrawer}
+                      disabled={resellersBusy}
+                    >
+                      <Plus size={16} />
+                      Add Reseller
+                    </button>
+                  </div>
+
+                  <div className={styles.tableContent}>
+                    <div className={styles.tableList}>
+                      <div className={styles.resellerTableHeaders}>
+                        <div>Username</div>
+                        <div>Role</div>
+                        <div>Discount</div>
+                        <div>Apps</div>
+                        <div>Balance</div>
+                        <div>Action</div>
+                      </div>
+
+                      {resellersBusy && !resellers.length ? (
+                        <div className={styles.emptyState}>Loading resellers…</div>
+                      ) : resellers.filter((entry) => entry.status === "active").length ? (
+                        resellers
+                          .filter((entry) => entry.status === "active")
+                          .map((reseller) => {
+                            const displayUser = getResellerUsername(reseller);
+                            return (
+                              <div className={styles.resellerTableRow} key={reseller.id}>
+                                <div className={styles.licenseDiscordUser}>
+                                  {reseller.discord_avatar_url ? (
+                                    <img
+                                      className={styles.licenseAvatar}
+                                      src={reseller.discord_avatar_url}
+                                      alt={displayUser}
+                                    />
+                                  ) : (
+                                    <div className={styles.licenseAvatarPlaceholder} />
+                                  )}
+                                  <span className={styles.licenseDiscordName}>{displayUser}</span>
+                                </div>
+                                <div>
+                                  {reseller.role === "panel_access" ? "Panel Access" : "Reseller"}
+                                </div>
+                                <div>
+                                  {reseller.role === "panel_access"
+                                    ? "−100%"
+                                    : `−${Number(reseller.discount_percent || 0)}%`}
+                                </div>
+                                <div>
+                                  {Array.isArray(reseller.application_access)
+                                    ? reseller.application_access.length
+                                    : 0}
+                                </div>
+                                <div>{formatMoney(reseller.balance)}</div>
+                                <div className={styles.tableActionsCell}>
+                                  <div className={styles.adminInlineActions}>
+                                    <button
+                                      type="button"
+                                      className={styles.rowActionButton}
+                                      title="Edit reseller"
+                                      aria-label="Edit reseller"
+                                      disabled={resellersBusy}
+                                      onClick={() => openEditResellerDrawer(reseller)}
+                                    >
+                                      <Pencil size={15} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={styles.rowActionButton}
+                                      title="Remove reseller"
+                                      aria-label="Remove reseller"
+                                      disabled={resellersBusy}
+                                      onClick={() => handleDeleteReseller(reseller)}
+                                    >
+                                      <Trash2 size={15} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                      ) : (
+                        <div className={styles.emptyState}>No active resellers yet.</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={styles.tableBottomCaption}>
+                    <div>Resellers sign in at /resell-panel with their Discord account.</div>
+                  </div>
+                </section>
+                ) : null}
+
+                {adminView === "products" ? (
+                <section className={styles.tableModule} id="admin-reseller-products">
+                  <div className={styles.tableHeader}>
+                    <h2 className={styles.noSpaceBottom}>Store Products</h2>
+                    <button
+                      className={styles.primaryButton}
+                      type="button"
+                      onClick={openAddStoreProductDrawer}
+                      disabled={storeProductsBusy}
+                    >
+                      <Plus size={16} />
+                      Add Product
+                    </button>
+                  </div>
+
+                  <div className={styles.tableContent}>
+                    <div className={styles.tableList}>
+                      <div className={styles.storeProductTableHeaders}>
+                        <div>Name</div>
+                        <div>Price</div>
+                        <div>Product ID</div>
+                        <div>Variant ID</div>
+                        <div>Action</div>
+                      </div>
+
+                      {storeProductsBusy && !storeProducts.length ? (
+                        <div className={styles.emptyState}>Loading products…</div>
+                      ) : storeProducts.length ? (
+                        storeProducts.map((product) => (
+                          <div className={styles.storeProductTableRow} key={product.id}>
+                            <div>
+                              <strong className={styles.storeProductName}>{product.name}</strong>
+                              {product.description ? (
+                                <p className={styles.storeProductDesc}>{product.description}</p>
+                              ) : null}
+                            </div>
+                            <div>{product.priceLabel || formatMoney(product.price)}</div>
+                            <div>{product.productId}</div>
+                            <div>{product.variantId}</div>
+                            <div className={styles.tableActionsCell}>
+                              <div className={styles.adminInlineActions}>
+                                <button
+                                  type="button"
+                                  className={styles.rowActionButton}
+                                  title="Bundle coupons / keys"
+                                  aria-label="Bundle coupons"
+                                  disabled={storeProductsBusy || storeProductBusy || couponsBusy}
+                                  onClick={() => void openCouponsDrawer(product)}
+                                >
+                                  <KeyRound size={15} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className={styles.rowActionButton}
+                                  title="Edit product"
+                                  aria-label="Edit product"
+                                  disabled={storeProductsBusy || storeProductBusy}
+                                  onClick={() => openEditStoreProductDrawer(product)}
+                                >
+                                  <Pencil size={15} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className={styles.rowActionButton}
+                                  title="Remove product"
+                                  aria-label="Remove product"
+                                  disabled={storeProductsBusy || storeProductBusy}
+                                  onClick={() => void handleDeleteStoreProduct(product)}
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className={styles.emptyState}>No store products yet.</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={styles.tableBottomCaption}>
+                    <div>These products appear in the reseller panel Store and use SellAuth product / variant IDs.</div>
+                  </div>
+                </section>
+                ) : null}
+
+                {adminView === "products" ? (
+                <section className={styles.tableModule} id="admin-deposit-variants">
+                  <div className={styles.tableHeader}>
+                    <h2 className={styles.noSpaceBottom}>Balance deposit variants</h2>
+                    <button
+                      className={styles.primaryButton}
+                      type="button"
+                      onClick={() => openEditDepositVariantDrawer(null)}
+                      disabled={depositVariantsBusy}
+                    >
+                      <Plus size={16} />
+                      Add variant
+                    </button>
+                  </div>
+
+                  <div className={styles.tableContent}>
+                    <div className={styles.tableList}>
+                      <div className={styles.storeProductTableHeaders}>
+                        <div>Package</div>
+                        <div>Pay / Credit</div>
+                        <div>Product ID</div>
+                        <div>Variant ID</div>
+                        <div>Action</div>
+                      </div>
+
+                      {depositVariantsBusy && !depositVariants.length ? (
+                        <div className={styles.emptyState}>Loading deposit variants…</div>
+                      ) : depositVariants.length ? (
+                        depositVariants.map((variant) => (
+                          <div className={styles.storeProductTableRow} key={variant.id}>
+                            <div>
+                              <strong className={styles.storeProductName}>
+                                {variant.name}
+                                {variant.popular ? " · Most popular" : ""}
+                              </strong>
+                              <p className={styles.storeProductDesc}>
+                                {variant.bonusPercent > 0
+                                  ? `+${variant.bonusPercent}% bonus credit`
+                                  : "No bonus"}
+                              </p>
+                            </div>
+                            <div>
+                              {variant.payLabel} → {variant.creditLabel}
+                            </div>
+                            <div>{variant.productId || "—"}</div>
+                            <div>{variant.variantId || "—"}</div>
+                            <div className={styles.tableActionsCell}>
+                              <div className={styles.adminInlineActions}>
+                                <button
+                                  type="button"
+                                  className={styles.rowActionButton}
+                                  title="Bundle coupons / keys"
+                                  aria-label="Bundle coupons"
+                                  disabled={depositVariantsBusy || depositVariantBusy || couponsBusy}
+                                  onClick={() => void openCouponsDrawer(variant, "deposit")}
+                                >
+                                  <KeyRound size={15} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className={styles.rowActionButton}
+                                  title="Edit deposit variant"
+                                  aria-label="Edit deposit variant"
+                                  disabled={depositVariantsBusy || depositVariantBusy}
+                                  onClick={() => openEditDepositVariantDrawer(variant)}
+                                >
+                                  <Pencil size={15} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className={styles.rowActionButton}
+                                  title="Remove deposit variant"
+                                  aria-label="Remove deposit variant"
+                                  disabled={depositVariantsBusy || depositVariantBusy}
+                                  onClick={() => void handleDeleteDepositVariant(variant)}
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className={styles.emptyState}>No deposit variants yet.</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={styles.tableBottomCaption}>
+                    <div>
+                      Deposit coupons credit reseller balance (including bonus). Set SellAuth Product / Variant IDs for
+                      crypto checkout in the Deposit tab.
+                    </div>
+                  </div>
+                </section>
+                ) : null}
               </div>
                 </>
               )}
 
+              {addResellerOpen ? (
+                <div
+                  className={`${styles.sideDrawer} ${styles.sideDrawerOpen}`}
+                  onClick={() => setAddResellerOpen(false)}
+                >
+                  <div className={`${styles.sideDrawerPanel} ${styles.sideDrawerPanelWide}`} onClick={(event) => event.stopPropagation()}>
+                    <div className={styles.tableHeader}>
+                      <h2 className={styles.noSpaceBottom}>Add Reseller</h2>
+                      <button className={styles.closeButton} type="button" onClick={() => setAddResellerOpen(false)}>
+                        <X size={18} />
+                      </button>
+                    </div>
+                    <div className={styles.tableContent}>
+                      <form className={styles.formPad} onSubmit={handleAddReseller}>
+                        <div className={styles.group}>
+                          <label htmlFor="reseller-email">Discord account email</label>
+                          <input
+                            id="reseller-email"
+                            type="email"
+                            placeholder="user@email.com"
+                            value={addResellerEmail}
+                            onChange={(event) => setAddResellerEmail(event.target.value)}
+                            disabled={addResellerBusy}
+                          />
+                          <p className={styles.appImageHint}>
+                            Use the email linked to their Discord account (same as Discord login on the site).
+                          </p>
+                        </div>
+
+                        <div className={styles.group}>
+                          <label htmlFor="reseller-start-balance">Starting balance</label>
+                          <input
+                            id="reseller-start-balance"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={addResellerBalance}
+                            onChange={(event) => setAddResellerBalance(event.target.value)}
+                            disabled={addResellerBusy}
+                          />
+                        </div>
+
+                        <div className={styles.twoCols}>
+                          <div className={styles.group}>
+                            <label>Access type</label>
+                            <AdminSelect
+                              options={RESELLER_ROLE_OPTIONS}
+                              value={addResellerRole}
+                              onChange={(role) => {
+                                setAddResellerRole(role);
+                                if (role === "panel_access") setAddResellerDiscount("100");
+                                else if (addResellerDiscount === "100") setAddResellerDiscount("30");
+                              }}
+                              disabled={addResellerBusy}
+                            />
+                          </div>
+                          <div className={styles.group}>
+                            <label htmlFor="reseller-discount">Reseller discount (%)</label>
+                            <input
+                              id="reseller-discount"
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="1"
+                              value={addResellerRole === "panel_access" ? "100" : addResellerDiscount}
+                              onChange={(event) => setAddResellerDiscount(event.target.value)}
+                              disabled={addResellerBusy || addResellerRole === "panel_access"}
+                            />
+                            <p className={styles.appImageHint}>
+                              Panel Access always uses −100%. Reseller uses the custom % off retail variant price.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className={styles.group}>
+                          <label>Application permissions</label>
+                          {applications.length ? (
+                            <div className={styles.resellerAppChecklist}>
+                              {applications.map((app) => {
+                                const checked = addResellerAppIds.includes(app.id);
+                                return (
+                                  <label
+                                    key={app.id}
+                                    className={`checkout-terms${checked ? " is-checked" : ""} ${styles.resellerPermissionItem}`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      disabled={addResellerBusy}
+                                      onChange={() =>
+                                        toggleResellerAppId(addResellerAppIds, setAddResellerAppIds, app.id)
+                                      }
+                                    />
+                                    <span className="checkout-terms-box" aria-hidden="true">
+                                      {checked ? <Check size={14} strokeWidth={3} /> : null}
+                                    </span>
+                                    <span className="checkout-terms-text">{app.name}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className={styles.appImageHint}>No applications loaded.</p>
+                          )}
+                        </div>
+
+                        <div
+                          className={`${styles.message} ${addResellerMessage.type ? styles[`message${addResellerMessage.type}`] : ""}`}
+                        >
+                          {addResellerMessage.text}
+                        </div>
+                        <div className={styles.formActions}>
+                          <button
+                            className={styles.secondaryButton}
+                            type="button"
+                            onClick={() => setAddResellerOpen(false)}
+                            disabled={addResellerBusy}
+                          >
+                            Cancel
+                          </button>
+                          <button className={styles.primaryButton} type="submit" disabled={addResellerBusy}>
+                            {addResellerBusy ? "Adding…" : "Add Reseller"}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {editResellerOpen && editReseller ? (
+                <div
+                  className={`${styles.sideDrawer} ${styles.sideDrawerOpen}`}
+                  onClick={() => setEditResellerOpen(false)}
+                >
+                  <div className={`${styles.sideDrawerPanel} ${styles.sideDrawerPanelWide}`} onClick={(event) => event.stopPropagation()}>
+                    <div className={styles.tableHeader}>
+                      <h2 className={styles.noSpaceBottom}>
+                        Edit Reseller · {getResellerUsername(editReseller)}
+                      </h2>
+                      <button className={styles.closeButton} type="button" onClick={() => setEditResellerOpen(false)}>
+                        <X size={18} />
+                      </button>
+                    </div>
+                    <div className={styles.tableContent}>
+                      <form className={styles.formPad} onSubmit={handleSaveResellerPermissions}>
+                        <div className={styles.group}>
+                          <label>Current balance</label>
+                          <strong className={styles.resellerBalanceValue}>{formatMoney(editReseller.balance)}</strong>
+                        </div>
+
+                        <div className={styles.twoCols}>
+                          <div className={styles.group}>
+                            <label>Access type</label>
+                            <AdminSelect
+                              options={RESELLER_ROLE_OPTIONS}
+                              value={editResellerRole}
+                              onChange={(role) => {
+                                setEditResellerRole(role);
+                                if (role === "panel_access") setEditResellerDiscount("100");
+                                else if (editResellerDiscount === "100") setEditResellerDiscount("30");
+                              }}
+                              disabled={editResellerBusy}
+                            />
+                          </div>
+                          <div className={styles.group}>
+                            <label htmlFor="edit-reseller-discount">Reseller discount (%)</label>
+                            <input
+                              id="edit-reseller-discount"
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="1"
+                              value={editResellerRole === "panel_access" ? "100" : editResellerDiscount}
+                              onChange={(event) => setEditResellerDiscount(event.target.value)}
+                              disabled={editResellerBusy || editResellerRole === "panel_access"}
+                            />
+                          </div>
+                        </div>
+
+                        <div className={styles.group}>
+                          <label htmlFor="reseller-balance-amount">Adjust balance</label>
+                          <div className={styles.resellerBalanceComposer}>
+                            <input
+                              id="reseller-balance-amount"
+                              type="number"
+                              min="0.01"
+                              step="0.01"
+                              placeholder="Amount"
+                              value={editBalanceAmount}
+                              onChange={(event) => setEditBalanceAmount(event.target.value)}
+                              disabled={editResellerBusy}
+                            />
+                            <button
+                              className={styles.secondaryButton}
+                              type="button"
+                              disabled={editResellerBusy}
+                              onClick={() => void handleAdjustResellerBalance("add")}
+                            >
+                              Add
+                            </button>
+                            <button
+                              className={styles.secondaryButton}
+                              type="button"
+                              disabled={editResellerBusy}
+                              onClick={() => void handleAdjustResellerBalance("subtract")}
+                            >
+                              Subtract
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className={styles.group}>
+                          <label>Application permissions</label>
+                          {applications.length ? (
+                            <div className={styles.resellerAppChecklist}>
+                              {applications.map((app) => {
+                                const checked = editResellerAppIds.includes(app.id);
+                                return (
+                                  <label
+                                    key={app.id}
+                                    className={`checkout-terms${checked ? " is-checked" : ""} ${styles.resellerPermissionItem}`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      disabled={editResellerBusy}
+                                      onChange={() =>
+                                        toggleResellerAppId(editResellerAppIds, setEditResellerAppIds, app.id)
+                                      }
+                                    />
+                                    <span className="checkout-terms-box" aria-hidden="true">
+                                      {checked ? <Check size={14} strokeWidth={3} /> : null}
+                                    </span>
+                                    <span className="checkout-terms-text">{app.name}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className={styles.appImageHint}>No applications loaded.</p>
+                          )}
+                        </div>
+
+                        <div
+                          className={`${styles.message} ${editResellerMessage.type ? styles[`message${editResellerMessage.type}`] : ""}`}
+                        >
+                          {editResellerMessage.text}
+                        </div>
+                        <div className={styles.formActions}>
+                          <button
+                            className={styles.secondaryButton}
+                            type="button"
+                            onClick={() => setEditResellerOpen(false)}
+                            disabled={editResellerBusy}
+                          >
+                            Close
+                          </button>
+                          <button className={styles.primaryButton} type="submit" disabled={editResellerBusy}>
+                            {editResellerBusy ? "Saving…" : "Save Permissions"}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {storeProductFormOpen ? (
+                <div
+                  className={`${styles.sideDrawer} ${styles.sideDrawerOpen}`}
+                  onClick={() => {
+                    if (!storeProductBusy) setStoreProductFormOpen(false);
+                  }}
+                >
+                  <div
+                    className={`${styles.sideDrawerPanel} ${styles.sideDrawerPanelWide}`}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div className={styles.tableHeader}>
+                      <h2 className={styles.noSpaceBottom}>
+                        {storeProductEditing ? "Edit Store Product" : "Add Store Product"}
+                      </h2>
+                      <button
+                        className={styles.closeButton}
+                        type="button"
+                        disabled={storeProductBusy}
+                        onClick={() => setStoreProductFormOpen(false)}
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                    <div className={styles.tableContent}>
+                      <form className={styles.formPad} onSubmit={handleSaveStoreProduct}>
+                        <div className={styles.group}>
+                          <label htmlFor="store-product-name">Name</label>
+                          <input
+                            id="store-product-name"
+                            type="text"
+                            placeholder="Loader Rebrand"
+                            value={storeProductForm.name}
+                            onChange={(event) =>
+                              setStoreProductForm((current) => ({ ...current, name: event.target.value }))
+                            }
+                            disabled={storeProductBusy}
+                            required
+                          />
+                        </div>
+
+                        <div className={styles.group}>
+                          <label htmlFor="store-product-description">Description</label>
+                          <textarea
+                            id="store-product-description"
+                            rows={4}
+                            placeholder="Product description shown in the reseller store…"
+                            value={storeProductForm.description}
+                            onChange={(event) =>
+                              setStoreProductForm((current) => ({ ...current, description: event.target.value }))
+                            }
+                            disabled={storeProductBusy}
+                          />
+                        </div>
+
+                        <div className={styles.twoCols}>
+                          <div className={styles.group}>
+                            <label htmlFor="store-product-price">Price (USD)</label>
+                            <input
+                              id="store-product-price"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="149.99"
+                              value={storeProductForm.price}
+                              onChange={(event) =>
+                                setStoreProductForm((current) => ({ ...current, price: event.target.value }))
+                              }
+                              disabled={storeProductBusy}
+                              required
+                            />
+                          </div>
+                          <div className={styles.group}>
+                            <label htmlFor="store-product-variant-label">Variant label</label>
+                            <input
+                              id="store-product-variant-label"
+                              type="text"
+                              placeholder="One-Time"
+                              value={storeProductForm.variantLabel}
+                              onChange={(event) =>
+                                setStoreProductForm((current) => ({ ...current, variantLabel: event.target.value }))
+                              }
+                              disabled={storeProductBusy}
+                            />
+                          </div>
+                        </div>
+
+                        <div className={styles.twoCols}>
+                          <div className={styles.group}>
+                            <label htmlFor="store-product-id">Product ID</label>
+                            <input
+                              id="store-product-id"
+                              type="number"
+                              min="1"
+                              step="1"
+                              placeholder="804671"
+                              value={storeProductForm.productId}
+                              onChange={(event) =>
+                                setStoreProductForm((current) => ({ ...current, productId: event.target.value }))
+                              }
+                              disabled={storeProductBusy}
+                              required
+                            />
+                          </div>
+                          <div className={styles.group}>
+                            <label htmlFor="store-variant-id">Variant ID</label>
+                            <input
+                              id="store-variant-id"
+                              type="number"
+                              min="1"
+                              step="1"
+                              placeholder="1376598"
+                              value={storeProductForm.variantId}
+                              onChange={(event) =>
+                                setStoreProductForm((current) => ({ ...current, variantId: event.target.value }))
+                              }
+                              disabled={storeProductBusy}
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        <p className={styles.appImageHint}>
+                          Product ID and Variant ID come from SellAuth Dashboard when editing a product.
+                        </p>
+
+                        <div
+                          className={`${styles.message} ${storeProductMessage.type ? styles[`message${storeProductMessage.type}`] : ""}`}
+                        >
+                          {storeProductMessage.text}
+                        </div>
+                        <div className={styles.formActions}>
+                          <button
+                            className={styles.secondaryButton}
+                            type="button"
+                            onClick={() => setStoreProductFormOpen(false)}
+                            disabled={storeProductBusy}
+                          >
+                            Cancel
+                          </button>
+                          <button className={styles.primaryButton} type="submit" disabled={storeProductBusy}>
+                            {storeProductBusy
+                              ? "Saving…"
+                              : storeProductEditing
+                                ? "Save Product"
+                                : "Add Product"}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {depositVariantFormOpen ? (
+                <div
+                  className={`${styles.sideDrawer} ${styles.sideDrawerOpen}`}
+                  onClick={() => {
+                    if (!depositVariantBusy) setDepositVariantFormOpen(false);
+                  }}
+                >
+                  <div
+                    className={`${styles.sideDrawerPanel} ${styles.sideDrawerPanelWide}`}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div className={styles.tableHeader}>
+                      <h2 className={styles.noSpaceBottom}>
+                        {depositVariantEditing ? "Edit deposit variant" : "Add deposit variant"}
+                      </h2>
+                      <button
+                        className={styles.closeButton}
+                        type="button"
+                        disabled={depositVariantBusy}
+                        onClick={() => setDepositVariantFormOpen(false)}
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                    <div className={styles.tableContent}>
+                      <form className={styles.formPad} onSubmit={handleSaveDepositVariant}>
+                        <div className={styles.group}>
+                          <label htmlFor="deposit-variant-name">Name</label>
+                          <input
+                            id="deposit-variant-name"
+                            type="text"
+                            placeholder="Deposit $100"
+                            value={depositVariantForm.name}
+                            onChange={(event) =>
+                              setDepositVariantForm((current) => ({ ...current, name: event.target.value }))
+                            }
+                            disabled={depositVariantBusy}
+                            required
+                          />
+                        </div>
+                        <div className={styles.twoCols}>
+                          <div className={styles.group}>
+                            <label htmlFor="deposit-pay-amount">Pay amount (USD)</label>
+                            <input
+                              id="deposit-pay-amount"
+                              type="number"
+                              min="1"
+                              step="0.01"
+                              value={depositVariantForm.payAmount}
+                              onChange={(event) =>
+                                setDepositVariantForm((current) => ({ ...current, payAmount: event.target.value }))
+                              }
+                              disabled={depositVariantBusy}
+                              required
+                            />
+                          </div>
+                          <div className={styles.group}>
+                            <label htmlFor="deposit-bonus-percent">Bonus %</label>
+                            <input
+                              id="deposit-bonus-percent"
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={depositVariantForm.bonusPercent}
+                              onChange={(event) =>
+                                setDepositVariantForm((current) => ({
+                                  ...current,
+                                  bonusPercent: event.target.value,
+                                }))
+                              }
+                              disabled={depositVariantBusy}
+                            />
+                          </div>
+                        </div>
+                        <div className={styles.twoCols}>
+                          <div className={styles.group}>
+                            <label htmlFor="deposit-product-id">SellAuth Product ID</label>
+                            <input
+                              id="deposit-product-id"
+                              type="number"
+                              min="0"
+                              step="1"
+                              placeholder="0"
+                              value={depositVariantForm.productId}
+                              onChange={(event) =>
+                                setDepositVariantForm((current) => ({ ...current, productId: event.target.value }))
+                              }
+                              disabled={depositVariantBusy}
+                            />
+                          </div>
+                          <div className={styles.group}>
+                            <label htmlFor="deposit-variant-id">SellAuth Variant ID</label>
+                            <input
+                              id="deposit-variant-id"
+                              type="number"
+                              min="0"
+                              step="1"
+                              placeholder="0"
+                              value={depositVariantForm.variantId}
+                              onChange={(event) =>
+                                setDepositVariantForm((current) => ({ ...current, variantId: event.target.value }))
+                              }
+                              disabled={depositVariantBusy}
+                            />
+                          </div>
+                        </div>
+                        <label
+                          className={`checkout-terms${depositVariantForm.popular ? " is-checked" : ""} ${styles.resellerPermissionItem}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={depositVariantForm.popular}
+                            disabled={depositVariantBusy}
+                            onChange={(event) =>
+                              setDepositVariantForm((current) => ({
+                                ...current,
+                                popular: event.target.checked,
+                              }))
+                            }
+                          />
+                          <span className="checkout-terms-box" aria-hidden="true">
+                            {depositVariantForm.popular ? <Check size={14} strokeWidth={3} /> : null}
+                          </span>
+                          <span className="checkout-terms-text">Mark as Most popular</span>
+                        </label>
+                        <p className={styles.appImageHint}>
+                          Credit amount is calculated as pay × (1 + bonus%). Example: $100 + 10% = $110 credited.
+                        </p>
+                        <div
+                          className={`${styles.message} ${
+                            depositVariantMessage.type ? styles[`message${depositVariantMessage.type}`] : ""
+                          }`}
+                        >
+                          {depositVariantMessage.text}
+                        </div>
+                        <div className={styles.formActions}>
+                          <button
+                            className={styles.secondaryButton}
+                            type="button"
+                            onClick={() => setDepositVariantFormOpen(false)}
+                            disabled={depositVariantBusy}
+                          >
+                            Cancel
+                          </button>
+                          <button className={styles.primaryButton} type="submit" disabled={depositVariantBusy}>
+                            {depositVariantBusy
+                              ? "Saving…"
+                              : depositVariantEditing
+                                ? "Save variant"
+                                : "Add variant"}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {couponsDrawerOpen && couponsProduct ? (
+                <div
+                  className={`${styles.sideDrawer} ${styles.sideDrawerOpen}`}
+                  onClick={() => {
+                    if (!couponsBusy) setCouponsDrawerOpen(false);
+                  }}
+                >
+                  <div
+                    className={`${styles.sideDrawerPanel} ${styles.sideDrawerPanelWide}`}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div className={styles.tableHeader}>
+                      <h2 className={styles.noSpaceBottom}>
+                        {couponsKind === "deposit" ? "Deposit Coupons" : "Bundle Coupons"} · {couponsProduct.name}
+                      </h2>
+                      <button
+                        className={styles.closeButton}
+                        type="button"
+                        disabled={couponsBusy}
+                        onClick={() => setCouponsDrawerOpen(false)}
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                    <div className={styles.tableContent}>
+                      <form className={styles.formPad} onSubmit={handleSaveCoupons}>
+                        <p className={styles.appImageHint}>
+                          One coupon / key per line. Bulk paste works. Generated codes are appended below — click Save to
+                          persist them.
+                        </p>
+
+                        <div className={styles.group}>
+                          <label htmlFor="bundle-coupons-bulk">Coupons</label>
+                          <textarea
+                            id="bundle-coupons-bulk"
+                            className={styles.couponBulkTextarea}
+                            rows={14}
+                            placeholder={"COUPON-Bv9q\nCOUPON-x7Km\n..."}
+                            value={couponsText}
+                            onChange={(event) => setCouponsText(event.target.value)}
+                            disabled={couponsBusy}
+                            spellCheck={false}
+                          />
+                          <p className={styles.appImageHint}>
+                            {parseBulkCouponLines(couponsText).length} coupon(s) in list
+                          </p>
+                        </div>
+
+                        <div className={styles.twoCols}>
+                          <div className={styles.group}>
+                            <label htmlFor="coupon-format">Coupon format</label>
+                            <input
+                              id="coupon-format"
+                              type="text"
+                              placeholder="COUPON-****"
+                              value={couponFormat}
+                              onChange={(event) => setCouponFormat(event.target.value)}
+                              disabled={couponsBusy}
+                            />
+                            <p className={styles.appImageHint}>
+                              Each <code>*</code> becomes a random character (e.g. COUPON-**** → COUPON-Bv9q).
+                            </p>
+                          </div>
+                          <div className={styles.group}>
+                            <label htmlFor="coupon-quantity">Quantity</label>
+                            <input
+                              id="coupon-quantity"
+                              type="number"
+                              min="1"
+                              max="500"
+                              value={couponQuantity}
+                              onChange={(event) => setCouponQuantity(Number(event.target.value) || 1)}
+                              disabled={couponsBusy}
+                            />
+                          </div>
+                        </div>
+
+                        <div className={styles.formActions}>
+                          <button
+                            className={styles.secondaryButton}
+                            type="button"
+                            disabled={couponsBusy}
+                            onClick={handleGenerateRandomCoupons}
+                          >
+                            <KeyRound size={15} />
+                            Generate random coupon
+                          </button>
+                        </div>
+
+                        <div
+                          className={`${styles.message} ${couponsMessage.type ? styles[`message${couponsMessage.type}`] : ""}`}
+                        >
+                          {couponsMessage.text}
+                        </div>
+
+                        <div className={styles.formActions}>
+                          <button
+                            className={styles.secondaryButton}
+                            type="button"
+                            disabled={couponsBusy}
+                            onClick={() => setCouponsDrawerOpen(false)}
+                          >
+                            Close
+                          </button>
+                          <button className={styles.primaryButton} type="submit" disabled={couponsBusy}>
+                            {couponsBusy ? "Saving…" : "Save Coupons"}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
               {createModalOpen ? (
-                <div className={`${styles.sideDrawer} ${styles.sideDrawerOpen}`} onClick={() => setCreateModalOpen(false)}>
+                <div
+                  className={`${styles.sideDrawer} ${styles.sideDrawerOpen}`}
+                  onClick={() => {
+                    resetCreateImageState();
+                    setCreateModalOpen(false);
+                  }}
+                >
                   <div className={`${styles.sideDrawerPanel} ${styles.sideDrawerPanelWide}`} onClick={(event) => event.stopPropagation()}>
                     <div className={styles.tableHeader}>
                       <h2 className={styles.noSpaceBottom}>Create Application</h2>
-                      <button className={styles.closeButton} type="button" onClick={() => setCreateModalOpen(false)}>
+                      <button
+                        className={styles.closeButton}
+                        type="button"
+                        onClick={() => {
+                          resetCreateImageState();
+                          setCreateModalOpen(false);
+                        }}
+                      >
                         <X size={18} />
                       </button>
                     </div>
@@ -2260,16 +6271,12 @@ export default function AdminPage() {
                             />
                           </div>
                           <div className={styles.group}>
-                            <label htmlFor="app-status">Status</label>
-                            <select
-                              id="app-status"
+                            <label>Status</label>
+                            <AdminSelect
+                              options={APP_STATUS_OPTIONS}
                               value={appForm.status}
-                              onChange={(event) => setAppForm((value) => ({ ...value, status: event.target.value }))}
-                            >
-                              <option value="Active">Active</option>
-                              <option value="Paused">Paused</option>
-                              <option value="Maintenance">Maintenance</option>
-                            </select>
+                              onChange={(status) => setAppForm((value) => ({ ...value, status }))}
+                            />
                           </div>
                         </div>
                         <div className={styles.group}>
@@ -2282,14 +6289,59 @@ export default function AdminPage() {
                             onChange={(event) => setAppForm((value) => ({ ...value, webhook: event.target.value }))}
                           />
                         </div>
+                        <div className={styles.group}>
+                          <label>Main image</label>
+                          <div className={styles.appImageEditor}>
+                            <div className={styles.appImagePreview}>
+                              {createImagePreview ? (
+                                <img src={createImagePreview} alt="Application preview" />
+                              ) : (
+                                <span className={styles.appImagePreviewEmpty}>
+                                  <Layers3 size={22} />
+                                  <span>No image</span>
+                                </span>
+                              )}
+                            </div>
+                            <div className={styles.appImageActions}>
+                              <input
+                                ref={createImageInputRef}
+                                className={styles.uploadFileInput}
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp,image/gif"
+                                onChange={handleCreateImagePick}
+                              />
+                              <button
+                                className={styles.secondaryButton}
+                                type="button"
+                                disabled={createImageBusy}
+                                onClick={() => createImageInputRef.current?.click()}
+                              >
+                                {createImageBusy ? "Processing…" : createImagePreview ? "Replace image" : "Upload image"}
+                              </button>
+                              {createImagePreview ? (
+                                <button className={styles.dangerLinkButton} type="button" onClick={handleRemoveCreateImage}>
+                                  Remove image
+                                </button>
+                              ) : null}
+                              <p className={styles.appImageHint}>PNG, JPG, WEBP or GIF. Uploaded after the application is created.</p>
+                            </div>
+                          </div>
+                        </div>
                         <div className={`${styles.message} ${createAppMessage.type ? styles[`message${createAppMessage.type}`] : ""}`}>
                           {createAppMessage.text}
                         </div>
                         <div className={styles.formActions}>
-                          <button className={styles.secondaryButton} type="button" onClick={() => setCreateModalOpen(false)}>
+                          <button
+                            className={styles.secondaryButton}
+                            type="button"
+                            onClick={() => {
+                              resetCreateImageState();
+                              setCreateModalOpen(false);
+                            }}
+                          >
                             Cancel
                           </button>
-                          <button className={styles.primaryButton} type="submit">
+                          <button className={styles.primaryButton} type="submit" disabled={createImageBusy}>
                             Create Application
                           </button>
                         </div>
@@ -2339,18 +6391,12 @@ export default function AdminPage() {
                             />
                           </div>
                           <div className={styles.group}>
-                            <label htmlFor="edit-status">Status</label>
-                            <select
-                              id="edit-status"
+                            <label>Status</label>
+                            <AdminSelect
+                              options={APPLICATION_PRODUCT_STATUSES.map((status) => ({ value: status, label: status }))}
                               value={editForm.status}
-                              onChange={(event) => setEditForm((value) => ({ ...value, status: event.target.value }))}
-                            >
-                              {APPLICATION_PRODUCT_STATUSES.map((status) => (
-                                <option key={status} value={status}>
-                                  {status}
-                                </option>
-                              ))}
-                            </select>
+                              onChange={(status) => setEditForm((value) => ({ ...value, status }))}
+                            />
                           </div>
                         </div>
                         <div className={styles.group}>
@@ -2362,10 +6408,55 @@ export default function AdminPage() {
                             onChange={(event) => setEditForm((value) => ({ ...value, webhook: event.target.value }))}
                           />
                         </div>
+                        <div className={styles.group}>
+                          <label>Main image</label>
+                          <div className={styles.appImageEditor}>
+                            <div className={styles.appImagePreview}>
+                              {editImagePreview ? (
+                                <img src={editImagePreview} alt="Application preview" />
+                              ) : (
+                                <span className={styles.appImagePreviewEmpty}>
+                                  <Layers3 size={22} />
+                                  <span>No image</span>
+                                </span>
+                              )}
+                            </div>
+                            <div className={styles.appImageActions}>
+                              <input
+                                ref={editImageInputRef}
+                                className={styles.uploadFileInput}
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp,image/gif"
+                                onChange={handleEditImagePick}
+                              />
+                              <button
+                                className={styles.secondaryButton}
+                                type="button"
+                                disabled={editImageBusy}
+                                onClick={() => editImageInputRef.current?.click()}
+                              >
+                                {editImageBusy ? "Processing…" : editImagePreview ? "Replace image" : "Upload image"}
+                              </button>
+                              {editImagePreview ? (
+                                <button className={styles.dangerLinkButton} type="button" onClick={handleRemoveEditImage}>
+                                  Remove image
+                                </button>
+                              ) : null}
+                              <p className={styles.appImageHint}>PNG, JPG, WEBP or GIF. Saved with the application.</p>
+                            </div>
+                          </div>
+                        </div>
                         <div className={`${styles.message} ${editAppMessage.type ? styles[`message${editAppMessage.type}`] : ""}`}>
                           {editAppMessage.text}
                         </div>
                         <div className={styles.formActions}>
+                          <button
+                            className={styles.secondaryButton}
+                            type="button"
+                            onClick={() => void openVariantsDrawer(activeEditApp)}
+                          >
+                            Edit Variants
+                          </button>
                           <button className={styles.secondaryButton} type="button" onClick={() => setEditModalOpen(false)}>
                             Cancel
                           </button>
@@ -2374,6 +6465,181 @@ export default function AdminPage() {
                           </button>
                         </div>
                       </form>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {variantsDrawerOpen && variantsApp ? (
+                <div
+                  className={`${styles.sideDrawer} ${styles.sideDrawerOpen}`}
+                  onClick={() => {
+                    if (!variantsBusy) setVariantsDrawerOpen(false);
+                  }}
+                >
+                  <div
+                    className={`${styles.sideDrawerPanel} ${styles.sideDrawerPanelWide}`}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div className={styles.tableHeader}>
+                      <h2 className={styles.noSpaceBottom}>Edit Variants · {variantsApp.name}</h2>
+                      <button
+                        className={styles.closeButton}
+                        type="button"
+                        disabled={variantsBusy}
+                        onClick={() => setVariantsDrawerOpen(false)}
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                    <div className={styles.tableContent}>
+                      <div className={styles.formPad}>
+                        <p className={styles.appImageHint}>
+                          Configure license variants (name, price, real duration). Permanent Spoofer: One-Time = 24 hours,
+                          Lifetime = unlimited.
+                        </p>
+
+                        <div className={styles.variantList}>
+                          {variantsBusy && !variantsList.length ? (
+                            <div className={styles.emptyState}>Loading variants…</div>
+                          ) : variantsList.length ? (
+                            variantsList.map((variant) => (
+                              <div className={styles.variantListItem} key={variant.id}>
+                                <div className={styles.variantListMeta}>
+                                  <strong>{variant.label}</strong>
+                                  <span>
+                                    {formatMoney(variant.price)} ·{" "}
+                                    {variant.durationUnit === "unlimited"
+                                      ? "Unlimited"
+                                      : `${variant.durationValue} ${variant.durationUnit}`}
+                                  </span>
+                                </div>
+                                <div className={styles.adminInlineActions}>
+                                  <button
+                                    type="button"
+                                    className={styles.rowActionButton}
+                                    title="Edit variant"
+                                    disabled={variantsBusy}
+                                    onClick={() => beginEditVariant(variant)}
+                                  >
+                                    <Pencil size={14} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={styles.rowActionButton}
+                                    title="Delete variant"
+                                    disabled={variantsBusy}
+                                    onClick={() => void handleDeleteVariant(variant)}
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className={styles.emptyState}>No variants yet. Add the first one below.</div>
+                          )}
+                        </div>
+
+                        <form onSubmit={handleSaveVariant}>
+                          <div className={styles.group}>
+                            <label htmlFor="variant-label">
+                              {variantEditingId ? "Edit variant name" : "New variant name"}
+                            </label>
+                            <input
+                              id="variant-label"
+                              type="text"
+                              placeholder="e.g. 1 Day License"
+                              value={variantForm.label}
+                              onChange={(event) =>
+                                setVariantForm((current) => ({ ...current, label: event.target.value }))
+                              }
+                              disabled={variantsBusy}
+                            />
+                          </div>
+                          <div className={styles.twoCols}>
+                            <div className={styles.group}>
+                              <label htmlFor="variant-price">Price (USD)</label>
+                              <input
+                                id="variant-price"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={variantForm.price}
+                                onChange={(event) =>
+                                  setVariantForm((current) => ({ ...current, price: event.target.value }))
+                                }
+                                disabled={variantsBusy}
+                              />
+                            </div>
+                            <div className={styles.group}>
+                              <label>Duration unit</label>
+                              <AdminSelect
+                                options={VARIANT_DURATION_UNIT_OPTIONS}
+                                value={variantForm.durationUnit}
+                                onChange={(durationUnit) =>
+                                  setVariantForm((current) => ({ ...current, durationUnit }))
+                                }
+                                disabled={variantsBusy}
+                              />
+                            </div>
+                          </div>
+                          {variantForm.durationUnit !== "unlimited" ? (
+                            <div className={styles.group}>
+                              <label htmlFor="variant-duration">Duration length</label>
+                              <input
+                                id="variant-duration"
+                                type="number"
+                                min="1"
+                                value={variantForm.durationValue}
+                                onChange={(event) =>
+                                  setVariantForm((current) => ({
+                                    ...current,
+                                    durationValue: Number(event.target.value || 1),
+                                  }))
+                                }
+                                disabled={variantsBusy}
+                              />
+                            </div>
+                          ) : null}
+                          <div
+                            className={`${styles.message} ${variantsMessage.type ? styles[`message${variantsMessage.type}`] : ""}`}
+                          >
+                            {variantsMessage.text}
+                          </div>
+                          <div className={styles.formActions}>
+                            {variantEditingId ? (
+                              <button
+                                className={styles.secondaryButton}
+                                type="button"
+                                disabled={variantsBusy}
+                                onClick={() => {
+                                  setVariantEditingId(null);
+                                  setVariantForm(emptyVariantForm());
+                                }}
+                              >
+                                Cancel edit
+                              </button>
+                            ) : (
+                              <button
+                                className={styles.secondaryButton}
+                                type="button"
+                                disabled={variantsBusy}
+                                onClick={() => setVariantsDrawerOpen(false)}
+                              >
+                                Close
+                              </button>
+                            )}
+                            <button className={styles.primaryButton} type="submit" disabled={variantsBusy}>
+                              {variantsBusy
+                                ? "Saving…"
+                                : variantEditingId
+                                  ? "Save Variant"
+                                  : "Add Variant"}
+                            </button>
+                          </div>
+                        </form>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2401,16 +6667,12 @@ export default function AdminPage() {
                             />
                           </div>
                           <div className={styles.group}>
-                            <label htmlFor="package-status">Status</label>
-                            <select
-                              id="package-status"
+                            <label>Status</label>
+                            <AdminSelect
+                              options={APP_STATUS_OPTIONS}
                               value={packageForm.status}
-                              onChange={(event) => setPackageForm((value) => ({ ...value, status: event.target.value }))}
-                            >
-                              <option value="Active">Active</option>
-                              <option value="Paused">Paused</option>
-                              <option value="Maintenance">Maintenance</option>
-                            </select>
+                              onChange={(status) => setPackageForm((value) => ({ ...value, status }))}
+                            />
                           </div>
                         </div>
                         <div
@@ -2625,18 +6887,12 @@ export default function AdminPage() {
                             />
                           </div>
                           <div className={styles.group}>
-                            <label htmlFor="extend-unit">Duration Unit</label>
-                            <select
-                              id="extend-unit"
+                            <label>Duration Unit</label>
+                            <AdminSelect
+                              options={DURATION_UNIT_OPTIONS}
                               value={extendForm.durationUnit}
-                              onChange={(event) => setExtendForm((value) => ({ ...value, durationUnit: event.target.value }))}
-                            >
-                              <option value="minutes">Minutes</option>
-                              <option value="days">Days</option>
-                              <option value="weeks">Weeks</option>
-                              <option value="months">Months</option>
-                              <option value="unlimited">Unlimited</option>
-                            </select>
+                              onChange={(durationUnit) => setExtendForm((value) => ({ ...value, durationUnit }))}
+                            />
                           </div>
                         </div>
                         <div className={`${styles.message} ${extendMessage.type ? styles[`message${extendMessage.type}`] : ""}`}>
@@ -2666,19 +6922,13 @@ export default function AdminPage() {
                   </div>
                   <form className={styles.formPad} onSubmit={handleGenerateKeys}>
                     <div className={styles.group}>
-                      <label htmlFor="license-app">Application</label>
-                      <select
-                        id="license-app"
+                      <label>Application</label>
+                      <AdminAppSelect
+                        applications={applications}
                         value={selectedAppId}
-                        onChange={(event) => setSelectedAppId(event.target.value)}
-                      >
-                        <option value="">Select application</option>
-                        {applications.map((app) => (
-                          <option key={app.id} value={app.id}>
-                            {app.name}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(appId) => selectApplication(appId, { switchView: false })}
+                        placeholder="Select application"
+                      />
                     </div>
                     <div className={styles.licenseDrawerRow}>
                       <div className={styles.group}>
@@ -2695,20 +6945,12 @@ export default function AdminPage() {
                         />
                       </div>
                       <div className={styles.group}>
-                        <label htmlFor="license-unit">Duration Unit</label>
-                        <select
-                          id="license-unit"
+                        <label>Duration Unit</label>
+                        <AdminSelect
+                          options={DURATION_UNIT_OPTIONS}
                           value={licenseForm.durationUnit}
-                          onChange={(event) =>
-                            setLicenseForm((value) => ({ ...value, durationUnit: event.target.value }))
-                          }
-                        >
-                          <option value="minutes">Minutes</option>
-                          <option value="days">Days</option>
-                          <option value="weeks">Weeks</option>
-                          <option value="months">Months</option>
-                          <option value="unlimited">Unlimited</option>
-                        </select>
+                          onChange={(durationUnit) => setLicenseForm((value) => ({ ...value, durationUnit }))}
+                        />
                       </div>
                     </div>
                     {licenseForm.durationUnit !== "unlimited" ? (
@@ -2742,6 +6984,7 @@ export default function AdminPage() {
               </div>
             </div>
             </div>
+          </div>
           </div>
         </div>
       )}

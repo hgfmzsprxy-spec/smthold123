@@ -106,10 +106,11 @@ function isFormField(target) {
 }
 
 function isBlockedDevToolsShortcut(event) {
-  const key = event.key.toUpperCase();
+  const key = String(event.key || "").toUpperCase();
   const ctrlOrMeta = event.ctrlKey || event.metaKey;
   const shift = event.shiftKey;
 
+  if (!key) return event.keyCode === 123;
   if (key === "F12") return true;
   if (ctrlOrMeta && shift && (key === "I" || key === "J" || key === "C")) return true;
   if (event.keyCode === 123) return true;
@@ -120,7 +121,9 @@ function isBlockedDevToolsShortcut(event) {
 function isBlockedShortcut(event) {
   if (isFormField(event.target)) return false;
 
-  const key = event.key.toUpperCase();
+  const key = String(event.key || "").toUpperCase();
+  if (!key) return event.keyCode === 123;
+
   const ctrlOrMeta = event.ctrlKey || event.metaKey;
   const shift = event.shiftKey;
   const alt = event.altKey;
@@ -248,7 +251,7 @@ export default function SiteProtection() {
 
   useEffect(() => {
     if (!isProtectionEnabled()) return undefined;
-    if (pathname?.startsWith("/admin") || pathname === "/site-access") return undefined;
+    if (pathname === "/site-access") return undefined;
 
     let devToolsTriggered = false;
     let devToolsPositiveCount = 0;

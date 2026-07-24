@@ -92,6 +92,8 @@ import {
   syncSubscriptionMetrics,
 } from "../../lib/loader-subscription";
 import { supabase } from "../../lib/supabase";
+import { DISCORD_INVITE_URL } from "../../lib/discord";
+import { LOGIN_GUEST_FAQ_ITEMS, LOGIN_LOGGED_IN_FAQ_ITEMS } from "../../lib/login-faq";
 import {
   CHECKOUT_EMAIL_KEY,
   hasKomerzaProduct,
@@ -235,7 +237,6 @@ function scrollTop() {
 
 const CART_STORAGE_KEY = "unbanhwid.com-cart";
 const CART_EVENT = "unbanhwid.com-cart-change";
-const DISCORD_INVITE_URL = "https://discord.gg/unbanhwid";
 
 function CartBasketIcon({ size = 19 }) {
   return (
@@ -560,7 +561,7 @@ function CustomScrollbar() {
   );
 }
 
-function PageChrome({ active, children }) {
+export function PageChrome({ active, children }) {
   useScrollReveal();
 
   return (
@@ -2780,6 +2781,161 @@ const loaderProducts = [
   },
 ];
 
+const loaderChangelogBySlug = {
+  "fortnite-private": [
+    {
+      version: "v2.5.1",
+      date: "24.06.2026",
+      notes: [
+        "Humanized aimbot smoothing rework for tournament play.",
+        "Streamproof overlay now excludes OBS game capture.",
+        "Config Sync stability improvements across sessions.",
+      ],
+    },
+    {
+      version: "v2.5.0",
+      date: "10.06.2026",
+      notes: [
+        "Added FOV Control slider with per-preset memory.",
+        "Radar performance optimised for large lobbies.",
+      ],
+    },
+    {
+      version: "v2.4.2",
+      date: "28.05.2026",
+      notes: ["Fixed rare Quick Launch hang after game update."],
+    },
+    {
+      version: "v2.4.0",
+      date: "14.05.2026",
+      notes: [
+        "Reworked Visuals rendering pipeline for smoother ESP tracking.",
+        "Added Hotkey rebinding for aim and trigger modules.",
+        "Reduced overlay CPU draw during large end-game circles.",
+      ],
+    },
+    {
+      version: "v2.3.3",
+      date: "30.04.2026",
+      notes: [
+        "Aim prediction tuned for the latest projectile weapons.",
+        "Config Sync now supports cloud preset sharing between devices.",
+      ],
+    },
+    {
+      version: "v2.3.0",
+      date: "12.04.2026",
+      notes: [
+        "Introduced Radar zoom and player-count filters.",
+        "Streamproof mode hardened against new capture plugins.",
+        "Fixed FOV Control resetting after game focus loss.",
+      ],
+    },
+    {
+      version: "v2.2.4",
+      date: "26.03.2026",
+      notes: [
+        "Stability pass on the loader handshake for slower connections.",
+        "Visuals distance fade now respects per-preset thresholds.",
+      ],
+    },
+  ],
+  "arc-raiders": [
+    {
+      version: "v1.8.4",
+      date: "26.06.2026",
+      notes: [
+        "Triggerbot delay tuning for more natural timing.",
+        "Loot ESP category filters added.",
+        "Realtime Status polling reduced to lower CPU usage.",
+      ],
+    },
+    {
+      version: "v1.8.0",
+      date: "12.06.2026",
+      notes: ["Config Presets import/export.", "Improved Denuvo compatibility."],
+    },
+  ],
+  "call-of-duty": [
+    {
+      version: "v1.0.0",
+      date: "20.07.2026",
+      notes: [
+        "Initial Call of Duty loader release.",
+        "Humanized aimbot, full visuals and radar in one panel.",
+        "Lobby Data readout and prediction module included.",
+      ],
+    },
+  ],
+  "apex-legends": [
+    {
+      version: "v1.2.0",
+      date: "15.07.2026",
+      notes: [
+        "Skinchanger catalogue updated for the current season.",
+        "World ESP distance fade added.",
+        "Spectators counter accuracy improvements.",
+      ],
+    },
+    {
+      version: "v1.1.4",
+      date: "01.07.2026",
+      notes: ["V-Sync frame pacing fix for high refresh monitors."],
+    },
+  ],
+  "permanent-spoofer": [
+    {
+      version: "v3.1.0",
+      date: "28.06.2026",
+      notes: [
+        "S.M.A.R.T spoofing expanded to additional disk controllers.",
+        "SMBIOS generation hardened against detection.",
+        "Network adapter spoof now persists across reboots.",
+      ],
+    },
+    {
+      version: "v3.0.2",
+      date: "14.06.2026",
+      notes: ["TPM 2.0 spoof stability improvements."],
+    },
+  ],
+  "temporary-spoofer": [
+    {
+      version: "v1.4.2",
+      date: "15.07.2026",
+      notes: [
+        "Hypervisor profile switching faster on AMD platforms.",
+        "GPU and RAM serial spoof added.",
+        "Cleaner support extended for new anti-cheat builds.",
+      ],
+    },
+    {
+      version: "v1.4.0",
+      date: "30.06.2026",
+      notes: ["DISKS spoof rework for newer NVMe drives."],
+    },
+  ],
+};
+
+function getLoaderChangelog(slug) {
+  return loaderChangelogBySlug[slug] || [];
+}
+
+async function fetchLoaderChangelogs(appId) {
+  if (!appId) return [];
+
+  try {
+    const response = await fetch(`/api/loader-changelogs?appId=${encodeURIComponent(appId)}`, {
+      cache: "no-store",
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) return [];
+    return Array.isArray(result.entries) ? result.entries.filter((entry) => entry?.version && Array.isArray(entry.notes)) : [];
+  } catch {
+    return [];
+  }
+}
+
 const arcRaidersLoaderFeatures = [
   {
     title: "Information",
@@ -2861,10 +3017,6 @@ const callOfDutyLoaderFeatures = [
   {
     title: "Visuals",
     items: ["Box", "Skeleton", "Snaplines", "Healthbar", "Weapon", "Offscreen Arrows"],
-  },
-  {
-    title: "Other",
-    items: ["Radar", "Lobby Data", "Crosshair", "Configs"],
   },
 ];
 
@@ -5718,11 +5870,15 @@ function LoaderDetailContent({ slug }) {
   const product = getLoaderProduct(slug);
   const previewImages = useMemo(() => getProductPreviewImages(slug), [slug]);
   const lightboxImages = useMemo(() => getProductLightboxImages(slug), [slug]);
+  const [changelog, setChangelog] = useState([]);
+  const [changelogReady, setChangelogReady] = useState(false);
+  const previewExtraCount = Math.max(0, (lightboxImages?.length || 0) - (previewImages?.length || 0));
   const appId = getLoaderAppId(slug);
   const { user, ready: authReady } = useAuthUser();
   const [redeemOpen, setRedeemOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(null);
+  const [visibleLogs, setVisibleLogs] = useState(3);
   const [redeemState, setRedeemState] = useState(null);
   const [licenseRecord, setLicenseRecord] = useState(null);
   const [subscriptionMode, setSubscriptionMode] = useState("empty");
@@ -5763,7 +5919,30 @@ function LoaderDetailContent({ slug }) {
 
   useEffect(() => {
     setPreviewIndex(null);
+    setVisibleLogs(3);
   }, [slug]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setChangelogReady(false);
+    setVisibleLogs(3);
+
+    if (!appId) {
+      setChangelog([]);
+      setChangelogReady(true);
+      return undefined;
+    }
+
+    void fetchLoaderChangelogs(appId).then((entries) => {
+      if (cancelled) return;
+      setChangelog(entries);
+      setChangelogReady(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appId, slug]);
 
   function openPreviewLightbox(thumbnailIndex) {
     const thumbnail = previewImages[thumbnailIndex];
@@ -6532,6 +6711,126 @@ function LoaderDetailContent({ slug }) {
                 )}
               </div>
             </div>
+            <div className="loader-side-card loader-actions-card">
+              <div className="loader-actions-header">
+                <div className="loader-actions-header-inner">
+                  <div className="loader-actions-header-left">
+                    <div className="loader-actions-header-icon">
+                      <Zap size={20} />
+                    </div>
+                    <h2>Actions</h2>
+                  </div>
+                </div>
+              </div>
+              <div className="loader-actions-body">
+                <Link className="loader-actions-item" href="/loader#instruction">
+                  <span className="loader-actions-item-icon">
+                    <Play size={18} />
+                  </span>
+                  <span className="loader-actions-item-text">
+                    <strong>How to launch loader</strong>
+                    <small>Watch the setup video guide.</small>
+                  </span>
+                  <ArrowRight size={16} strokeWidth={2.4} />
+                </Link>
+                <Link className="loader-actions-item" href="/pomoc">
+                  <span className="loader-actions-item-icon">
+                    <Info size={18} />
+                  </span>
+                  <span className="loader-actions-item-text">
+                    <strong>Initialization guide</strong>
+                    <small>Read the help &amp; init docs.</small>
+                  </span>
+                  <ArrowRight size={16} strokeWidth={2.4} />
+                </Link>
+                <a className="loader-actions-item" href={DISCORD_INVITE_URL} target="_blank" rel="noreferrer">
+                  <span className="loader-actions-item-icon">
+                    <Headphones size={18} />
+                  </span>
+                  <span className="loader-actions-item-text">
+                    <strong>Contact support</strong>
+                    <small>Reach our team on Discord.</small>
+                  </span>
+                  <ArrowRight size={16} strokeWidth={2.4} />
+                </a>
+              </div>
+            </div>
+            <div className="loader-side-card loader-changelog-card">
+              <div className="loader-changelog-header">
+                <div className="loader-changelog-header-inner">
+                  <div className="loader-changelog-header-left">
+                    <div className="loader-changelog-header-icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                        <path d="M3 3v5h5"></path>
+                        <path d="M12 7v5l4 2"></path>
+                      </svg>
+                    </div>
+                    <h2>Changelog</h2>
+                  </div>
+                </div>
+              </div>
+              <div className="loader-changelog-body">
+                {!changelogReady ? (
+                  <div className="loader-subscription-empty">
+                    <div>
+                      <h3>Loading changelog…</h3>
+                      <p>Fetching the latest release notes.</p>
+                    </div>
+                  </div>
+                ) : changelog.length ? (
+                  <>
+                    <ol className="loader-changelog-list">
+                      {changelog.slice(0, visibleLogs).map((entry, entryIndex) => (
+                        <li className="loader-changelog-entry" key={`${entry.version}-${entry.date}-${entryIndex}`}>
+                          <div className="loader-changelog-entry-head">
+                            <strong className="loader-changelog-version">{entry.version}</strong>
+                            <span className="loader-changelog-date">{entry.date}</span>
+                            {entryIndex === 0 ? <span className="loader-changelog-badge">NEW</span> : null}
+                          </div>
+                          <ul className="loader-changelog-notes">
+                            {entry.notes.map((note, noteIndex) => (
+                              <li key={`${entry.version}-${noteIndex}`}>
+                                <Check size={14} />
+                                <span>{note}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </li>
+                      ))}
+                    </ol>
+                    {visibleLogs < changelog.length ? (
+                      <button
+                        type="button"
+                        className="loader-changelog-more"
+                        onClick={() => setVisibleLogs((count) => count + 3)}
+                      >
+                        <span>
+                          <ChevronRight size={16} strokeWidth={2.4} />
+                          Load older changelogs
+                        </span>
+                      </button>
+                    ) : (
+                      <p className="loader-changelog-end">You've reached the oldest release.</p>
+                    )}
+                  </>
+                ) : (
+                  <div className="loader-subscription-empty">
+                    <div className="loader-subscription-empty-icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                        <path d="M3 3v5h5"></path>
+                        <path d="M12 7v5l4 2"></path>
+                      </svg>
+                    </div>
+                    <div>
+                      <h3>No changelog yet</h3>
+                      <p>Release notes will appear here once published.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
             <div className="loader-side-card loader-preview-card">
               <div className="loader-preview-header">
                 <div className="loader-preview-header-inner">
@@ -6566,8 +6865,43 @@ function LoaderDetailContent({ slug }) {
                         aria-hidden={!loaderMetaReady}
                       />
                       {!loaderMetaReady ? <SkeletonBlock className="loader-preview-image-overlay" /> : null}
+                      <span className="loader-preview-zoom" aria-hidden="true">
+                        <Search size={22} strokeWidth={2.2} />
+                      </span>
                     </button>
                   ))}
+                  {previewExtraCount > 0 ? (() => {
+                    const nextImage =
+                      lightboxImages.find((image) => image.lightboxOnly) ||
+                      lightboxImages[previewImages.length] ||
+                      null;
+                    return (
+                      <button
+                        type="button"
+                        className="loader-preview-image-shell loader-preview-more"
+                        disabled={!loaderMetaReady}
+                        onClick={() => {
+                          const firstHidden = lightboxImages.findIndex((image) => image.lightboxOnly);
+                          setPreviewIndex(firstHidden === -1 ? previewImages.length : firstHidden);
+                        }}
+                        aria-label={`View ${previewExtraCount} more images`}
+                      >
+                        {nextImage ? (
+                          <img
+                            className="loader-preview-more-bg"
+                            src={nextImage.src}
+                            alt=""
+                            loading="lazy"
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                        <span className="loader-preview-more-overlay">
+                          <Images size={22} />
+                          <span className="loader-preview-more-count">+{previewExtraCount}</span>
+                        </span>
+                      </button>
+                    );
+                  })() : null}
                 </div>
               </div>
             </div>
@@ -6893,34 +7227,8 @@ function LoginContent() {
     "Discord User";
 
   const accountAvatar = user?.user_metadata?.avatar_url || null;
-  const guestFaqItems = [
-    {
-      q: "Why this login option?",
-      a: "This makes it easier for us to identify customers, as all your licenses are recorded in our panels and linked to your accounts. This is also a good solution for customers, as logging in is quick and requires neither verification nor the need to remember every password.",
-    },
-    {
-      q: "What information do we collect during login?",
-      a: "This is shown during Discord authentication. We only collect your username, avatar, banner, and account email address.",
-    },
-    {
-      q: "Is this a safe solution?",
-      a: "Naturally, we care about our clients' privacy; we do not store logins in our data, authentication is securely handled via Discord.",
-    },
-  ];
-  const loggedInFaqItems = [
-    {
-      q: "What does this give me?",
-      a: "You can now easily redeem your license within the loader. Please remember that logging-in helps us identify customers more quickly.",
-    },
-    {
-      q: "Where can I redeem my key?",
-      a: 'Go to the /loader page, select the product, and choose the "redeem" option on your PC/mobile-phone.',
-    },
-    {
-      q: "When the key time activates.",
-      a: "You can link the key on the site whenever you want; the time starts counting from the moment the cheat is injected.",
-    },
-  ];
+  const guestFaqItems = LOGIN_GUEST_FAQ_ITEMS;
+  const loggedInFaqItems = LOGIN_LOGGED_IN_FAQ_ITEMS;
 
   const showLoading = !isClient || (!ready && !user);
 
@@ -6945,76 +7253,76 @@ function LoginContent() {
         <div className="container">
           {user ? (
             <div className="login-success-layout">
+              <Faq items={loggedInFaqItems} />
+              <div className="login-layout-separator" aria-hidden="true" />
               <div className="login-card">
                 <div className="login-card-head">
                   <h2>Successfully logged in</h2>
-                <p>Your Discord account is connected and ready to use.</p>
-              </div>
+                  <p>Your Discord account is connected and ready to use.</p>
+                </div>
 
-              <div className="login-message">Your account has been linked successfully!</div>
+                <div className="login-message">Your account has been linked successfully!</div>
 
-              <div className="login-account">
-                {accountAvatar ? (
-                  <img className="login-account-avatar" src={accountAvatar} alt={accountName} />
-                ) : (
-                  <div className="login-account-avatar login-account-avatar-placeholder">
-                    <DiscordIcon size={24} />
+                <div className="login-account">
+                  {accountAvatar ? (
+                    <img className="login-account-avatar" src={accountAvatar} alt={accountName} />
+                  ) : (
+                    <div className="login-account-avatar login-account-avatar-placeholder">
+                      <DiscordIcon size={24} />
+                    </div>
+                  )}
+                  <div className="login-account-copy">
+                    <strong>{accountName}</strong>
                   </div>
-                )}
-                <div className="login-account-copy">
-                  <strong>{accountName}</strong>
+                </div>
+
+                <div className="login-account-grid login-account-grid--single">
+                  <div className="login-account-item">
+                    <small>ACCOUNT ID</small>
+                    <strong className="login-account-id">{user.id}</strong>
+                  </div>
+                </div>
+
+                <div className="login-actions">
+                  <Link className="button button-secondary" href="/loader">
+                    Loader
+                    <ArrowRight size={16} strokeWidth={2.4} />
+                  </Link>
+                  <button className="button button-secondary button-logout" type="button" onClick={handleLogout}>
+                    Logout
+                    <LogOut size={16} strokeWidth={2.4} />
+                  </button>
                 </div>
               </div>
-
-              <div className="login-account-grid login-account-grid--single">
-                <div className="login-account-item">
-                  <small>ACCOUNT ID</small>
-                  <strong className="login-account-id">{user.id}</strong>
+            </div>
+          ) : (
+            <div className="login-success-layout">
+              <Faq items={guestFaqItems} />
+              <div className="login-layout-separator" aria-hidden="true" />
+              <div className="login-card">
+                <div className="login-card-head">
+                  <h2>Login using Discord</h2>
+                  <p>Click the button below to login.</p>
                 </div>
-              </div>
 
-              <div className="login-actions">
-                <Link className="button button-secondary" href="/loader">
-                  Loader
-                  <ArrowRight size={16} strokeWidth={2.4} />
-                </Link>
-                <button className="button button-secondary button-logout" type="button" onClick={handleLogout}>
-                  Logout
-                  <LogOut size={16} strokeWidth={2.4} />
+                <div className="login-card-spacer" />
+
+                <button className="button login-discord-button full" type="button" onClick={handleDiscordLogin}>
+                  <DiscordIcon size={15} />
+                  Login With Discord
                 </button>
+
+                <div className="login-support">
+                  <span>or</span>
+                  <a className="button button-logout full" href={DISCORD_INVITE_URL}>
+                    Contact support
+                    <ArrowRight size={16} strokeWidth={2.4} />
+                  </a>
+                  <p>If you need help from our support team or have any questions.</p>
+                </div>
               </div>
             </div>
-
-            <Faq items={loggedInFaqItems} />
-          </div>
-        ) : (
-          <div className="login-success-layout">
-            <div className="login-card">
-              <div className="login-card-head">
-                <h2>Login using Discord</h2>
-                <p>Click the button below to login.</p>
-              </div>
-
-              <div className="login-card-spacer" />
-
-              <button className="button login-discord-button full" type="button" onClick={handleDiscordLogin}>
-                <DiscordIcon size={15} />
-                Login With Discord
-              </button>
-
-              <div className="login-support">
-                <span>or</span>
-                <a className="button button-logout full" href={DISCORD_INVITE_URL}>
-                  Contact support
-                  <ArrowRight size={16} strokeWidth={2.4} />
-                </a>
-                <p>If you need help from our support team or have any questions.</p>
-              </div>
-            </div>
-
-            <Faq items={guestFaqItems} />
-          </div>
-        )}
+          )}
         </div>
       </section>
     </>
