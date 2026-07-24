@@ -35,6 +35,7 @@ import {
   Package,
   Users,
   Wallet,
+  Bell,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -44,7 +45,9 @@ import { arrayBufferToBase64, triggerBase64FileDownload } from "../../lib/base64
 import { DISCORD_INVITE_URL } from "../../lib/discord";
 import { LOGIN_GUEST_FAQ_ITEMS } from "../../lib/login-faq";
 import { extractDiscordProfile } from "../../lib/loader-redeem";
+import { NOTIFICATION_BADGE_COLORS, NOTIFICATION_BADGE_MAX, emptyNotificationBadgeDraft } from "../../lib/panel-notification-badges";
 import { runAccessChecks } from "../../lib/site-access";
+import { resolveOAuthReturnSession } from "../../lib/supabase-oauth";
 import { supabase } from "../../lib/supabase";
 import {
   buildBanLicensePatch,
@@ -189,6 +192,7 @@ function cleanAdminPanelUrl() {
       "licenses",
       "transactions",
       "changelogs",
+      "notifications",
       "resellers",
       "products",
       "settings",
@@ -1062,6 +1066,7 @@ export default function AdminPage() {
         "licenses",
         "transactions",
         "changelogs",
+        "notifications",
         "resellers",
         "products",
         "settings",
@@ -1089,6 +1094,7 @@ export default function AdminPage() {
       "licenses",
       "transactions",
       "changelogs",
+      "notifications",
       "resellers",
       "products",
       "settings",
@@ -1180,6 +1186,15 @@ export default function AdminPage() {
   const [transactions, setTransactions] = useState([]);
   const [transactionsBusy, setTransactionsBusy] = useState(false);
   const [transactionsMessage, setTransactionsMessage] = useState({ text: "", type: "" });
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsBusy, setNotificationsBusy] = useState(false);
+  const [notificationsMessage, setNotificationsMessage] = useState({ text: "", type: "" });
+  const [notificationForm, setNotificationForm] = useState({
+    title: "",
+    description: "",
+    badges: [emptyNotificationBadgeDraft()],
+  });
+  const [notificationPublishBusy, setNotificationPublishBusy] = useState(false);
   const [resellersSectionOpen, setResellersSectionOpen] = useState(false);
   const [addResellerOpen, setAddResellerOpen] = useState(false);
   const [addResellerEmail, setAddResellerEmail] = useState("");
@@ -1433,16 +1448,19 @@ export default function AdminPage() {
 
         if (code) {
           setOauthReturnPending(true);
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          const { session, user, error } = await resolveOAuthReturnSession(code);
           if (cancelled) return;
           cleanAdminPanelUrl();
-          if (error) {
-            setAuthMessage({ text: error.message || String(error), type: "error" });
+          if (!session) {
+            setAuthMessage({
+              text: error?.message || "Discord login failed. Please try again.",
+              type: "error",
+            });
             setOauthReturnPending(false);
             setAccessChecking(false);
             return;
           }
-          const ok = await acceptAdminSession(data?.session, data?.user || data?.session?.user);
+          const ok = await acceptAdminSession(session, user || session.user);
           if (!cancelled && !ok) {
             setAuthMessage({
               text: "This Discord account is not allowed to access the admin panel.",
@@ -1901,6 +1919,106 @@ export default function AdminPage() {
   useEffect(() => {
     if (adminView !== "transactions" || !signedIn) return;
     void loadTransactions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminView, signedIn]);
+
+  async function loadNotifications() {
+    setNotificationsBusy(true);
+    setNotificationsMessage({ text: "", type: "" });
+    try {
+      const accessToken = getAdminAccessToken();
+      if (!accessToken) throw new Error("Not signed in.");
+      const response = await fetch("/api/admin/notifications", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Failed to load notifications.");
+      setNotifications(Array.isArray(result.entries) ? result.entries : []);
+    } catch (error) {
+      setNotificationsMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setNotificationsBusy(false);
+    }
+  }
+
+  async function handlePublishNotification(event) {
+    event.preventDefault();
+    if (notificationPublishBusy) return;
+    setNotificationPublishBusy(true);
+    setNotificationsMessage({ text: "", type: "" });
+    try {
+      const accessToken = getAdminAccessToken();
+      if (!accessToken) throw new Error("Not signed in.");
+      const response = await fetch("/api/admin/notifications", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: notificationForm.title,
+          description: notificationForm.description,
+          badges: notificationForm.badges
+            .map((badge) => ({
+              label: String(badge.label || "").trim(),
+              color: badge.color || NOTIFICATION_BADGE_COLORS[0].value,
+            }))
+            .filter((badge) => badge.label),
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Failed to publish notification.");
+      const published = Array.isArray(result.entries) ? result.entries : [];
+      if (result.entry?.id && !published.some((entry) => entry.id === result.entry.id)) {
+        published.unshift(result.entry);
+      }
+      setNotifications(published);
+      setNotificationForm({
+        title: "",
+        description: "",
+        badges: [emptyNotificationBadgeDraft()],
+      });
+      setNotificationsMessage({ text: "Notification published.", type: "success" });
+      // Confirm persisted list (survives refresh).
+      void loadNotifications();
+    } catch (error) {
+      setNotificationsMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setNotificationPublishBusy(false);
+    }
+  }
+
+  async function handleDeleteNotification(entry) {
+    if (!entry?.id || notificationPublishBusy) return;
+    if (!window.confirm("Delete this notification?")) return;
+    setNotificationPublishBusy(true);
+    setNotificationsMessage({ text: "", type: "" });
+    try {
+      const accessToken = getAdminAccessToken();
+      if (!accessToken) throw new Error("Not signed in.");
+      const response = await fetch("/api/admin/notifications", {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id: entry.id }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Failed to delete notification.");
+      setNotifications(Array.isArray(result.entries) ? result.entries : []);
+      setNotificationsMessage({ text: "Notification deleted.", type: "success" });
+    } catch (error) {
+      setNotificationsMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setNotificationPublishBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (adminView !== "notifications" || !signedIn) return;
+    void loadNotifications();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminView, signedIn]);
 
@@ -3975,6 +4093,15 @@ export default function AdminPage() {
                   </button>
                   <button
                     type="button"
+                    className={`${styles.adminNavItem}${adminView === "notifications" ? ` ${styles.adminNavItemActive}` : ""}`}
+                    onClick={() => setAdminView("notifications")}
+                    aria-label="Notifications"
+                  >
+                    <Bell size={14} />
+                    <span className={styles.adminNavItemLabel}>Notifications</span>
+                  </button>
+                  <button
+                    type="button"
                     className={`${styles.adminNavItem}${adminView === "licenses" ? ` ${styles.adminNavItemActive}` : ""}`}
                     onClick={() => setAdminView("licenses")}
                   >
@@ -5251,6 +5378,242 @@ export default function AdminPage() {
                       </div>
                     </>
                   )}
+                </section>
+                ) : null}
+
+                {adminView === "notifications" ? (
+                <section className={styles.notificationsStack} id="admin-notifications">
+                      <article className={styles.notificationComposer}>
+                        <div className={styles.settingsCardHeader}>
+                          <h2>New notification</h2>
+                          <p>Publish a title, description, and up to 3 rectangular badges for resellers.</p>
+                        </div>
+                        <form className={styles.notificationComposerBody} onSubmit={handlePublishNotification}>
+                          <div className={styles.group}>
+                            <label htmlFor="admin-notification-title">Title</label>
+                            <input
+                              id="admin-notification-title"
+                              type="text"
+                              value={notificationForm.title}
+                              disabled={notificationPublishBusy}
+                              onChange={(event) =>
+                                setNotificationForm((current) => ({ ...current, title: event.target.value }))
+                              }
+                              placeholder="Maintenance tonight"
+                              required
+                            />
+                          </div>
+                          <div className={styles.group}>
+                            <label htmlFor="admin-notification-description">Description</label>
+                            <textarea
+                              id="admin-notification-description"
+                              value={notificationForm.description}
+                              disabled={notificationPublishBusy}
+                              onChange={(event) =>
+                                setNotificationForm((current) => ({ ...current, description: event.target.value }))
+                              }
+                              placeholder="Write the notification details…"
+                              rows={4}
+                              required
+                            />
+                          </div>
+
+                          <div className={styles.notificationBadgeEditor}>
+                            <div className={styles.notificationComposerActions}>
+                              <label>Badges (optional, max {NOTIFICATION_BADGE_MAX})</label>
+                              <button
+                                type="button"
+                                className={styles.secondaryButton}
+                                disabled={
+                                  notificationPublishBusy || notificationForm.badges.length >= NOTIFICATION_BADGE_MAX
+                                }
+                                onClick={() =>
+                                  setNotificationForm((current) => ({
+                                    ...current,
+                                    badges:
+                                      current.badges.length >= NOTIFICATION_BADGE_MAX
+                                        ? current.badges
+                                        : [...current.badges, emptyNotificationBadgeDraft()],
+                                  }))
+                                }
+                              >
+                                <Plus size={14} />
+                                Add badge
+                              </button>
+                            </div>
+
+                            {notificationForm.badges.map((badge, index) => (
+                              <div key={`badge-draft-${index}`} className={styles.notificationBadgeDraft}>
+                                <div className={styles.group}>
+                                  <label htmlFor={`admin-notification-badge-${index}`}>Badge word</label>
+                                  <input
+                                    id={`admin-notification-badge-${index}`}
+                                    type="text"
+                                    maxLength={24}
+                                    value={badge.label}
+                                    disabled={notificationPublishBusy}
+                                    onChange={(event) => {
+                                      const nextLabel = event.target.value;
+                                      setNotificationForm((current) => ({
+                                        ...current,
+                                        badges: current.badges.map((item, itemIndex) =>
+                                          itemIndex === index ? { ...item, label: nextLabel } : item
+                                        ),
+                                      }));
+                                    }}
+                                    placeholder="NEW / UPDATE / IMPORTANT"
+                                  />
+                                </div>
+                                <div className={styles.group}>
+                                  <label>Badge color</label>
+                                  <div className={styles.notificationBadgeSwatches} role="group" aria-label={`Badge ${index + 1} color`}>
+                                    {NOTIFICATION_BADGE_COLORS.map((color) => (
+                                      <button
+                                        key={`${index}-${color.id}`}
+                                        type="button"
+                                        className={`${styles.notificationBadgeSwatch}${
+                                          badge.color === color.value ? ` ${styles.notificationBadgeSwatchActive}` : ""
+                                        }`}
+                                        style={{ background: color.value }}
+                                        title={color.label}
+                                        aria-label={color.label}
+                                        aria-pressed={badge.color === color.value}
+                                        disabled={notificationPublishBusy || !String(badge.label || "").trim()}
+                                        onClick={() =>
+                                          setNotificationForm((current) => ({
+                                            ...current,
+                                            badges: current.badges.map((item, itemIndex) =>
+                                              itemIndex === index ? { ...item, color: color.value } : item
+                                            ),
+                                          }))
+                                        }
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                                <div className={styles.notificationComposerActions}>
+                                  {String(badge.label || "").trim() ? (
+                                    <span className={styles.notificationBadge} style={{ background: badge.color }}>
+                                      {String(badge.label).trim()}
+                                    </span>
+                                  ) : (
+                                    <span className={styles.notificationCardMeta}>Empty badge</span>
+                                  )}
+                                  {notificationForm.badges.length > 1 ? (
+                                    <button
+                                      type="button"
+                                      className={styles.secondaryButton}
+                                      disabled={notificationPublishBusy}
+                                      onClick={() =>
+                                        setNotificationForm((current) => ({
+                                          ...current,
+                                          badges: current.badges.filter((_, itemIndex) => itemIndex !== index),
+                                        }))
+                                      }
+                                    >
+                                      <Trash2 size={14} />
+                                      Remove
+                                    </button>
+                                  ) : null}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className={styles.notificationComposerActions}>
+                            <div className={styles.notificationBadgeRow}>
+                              {notificationForm.badges.some((badge) => String(badge.label || "").trim()) ? (
+                                notificationForm.badges
+                                  .filter((badge) => String(badge.label || "").trim())
+                                  .map((badge, index) => (
+                                    <span
+                                      key={`preview-${index}`}
+                                      className={styles.notificationBadge}
+                                      style={{ background: badge.color }}
+                                    >
+                                      {String(badge.label).trim()}
+                                    </span>
+                                  ))
+                              ) : (
+                                <span className={styles.notificationCardMeta}>No badge preview</span>
+                              )}
+                            </div>
+                            <button
+                              className={styles.primaryButton}
+                              type="submit"
+                              disabled={
+                                notificationPublishBusy ||
+                                !notificationForm.title.trim() ||
+                                !notificationForm.description.trim()
+                              }
+                            >
+                              {notificationPublishBusy ? "Publishing…" : "Publish notification"}
+                            </button>
+                          </div>
+                        </form>
+                      </article>
+
+                      {notificationsMessage.text ? (
+                        <div
+                          className={`${styles.message} ${
+                            notificationsMessage.type ? styles[`message${notificationsMessage.type}`] : ""
+                          }`}
+                        >
+                          {notificationsMessage.text}
+                        </div>
+                      ) : null}
+
+                      {notificationsBusy && !notifications.length ? (
+                        <div className={styles.emptyState}>Loading notifications…</div>
+                      ) : notifications.length ? (
+                        notifications.map((entry) => {
+                          const badges = Array.isArray(entry.badges)
+                            ? entry.badges
+                            : entry.badge_label
+                              ? [{ label: entry.badge_label, color: entry.badge_color }]
+                              : [];
+                          return (
+                          <article key={entry.id} className={styles.notificationCard}>
+                            <div className={styles.notificationCardBody}>
+                              <div className={styles.notificationCardTop}>
+                                <div className={styles.notificationCardHeading}>
+                                  <h3 className={styles.notificationCardTitle}>{entry.title}</h3>
+                                  {badges.length ? (
+                                    <div className={styles.notificationBadgeRow}>
+                                      {badges.map((badge, index) => (
+                                        <span
+                                          key={`${entry.id}-badge-${index}`}
+                                          className={styles.notificationBadge}
+                                          style={{ background: badge.color || NOTIFICATION_BADGE_COLORS[0].value }}
+                                        >
+                                          {badge.label}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                </div>
+                                <button
+                                  type="button"
+                                  className={styles.secondaryButton}
+                                  disabled={notificationPublishBusy}
+                                  onClick={() => void handleDeleteNotification(entry)}
+                                >
+                                  <Trash2 size={14} />
+                                  Delete
+                                </button>
+                              </div>
+                              <p className={styles.notificationCardDesc}>{entry.description}</p>
+                              <div className={styles.notificationCardMeta}>
+                                {formatDisplayDateTime(entry.created_at)}
+                                {entry.created_by ? ` · ${entry.created_by}` : ""}
+                              </div>
+                            </div>
+                          </article>
+                          );
+                        })
+                      ) : (
+                        <div className={styles.emptyState}>No notifications yet.</div>
+                      )}
                 </section>
                 ) : null}
 

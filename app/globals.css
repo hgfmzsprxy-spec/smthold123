@@ -9797,8 +9797,22 @@ html.menu-open {
 }
 
 .redeem-modal.is-theme-light .cf-turnstile-box {
-  border-color: rgba(15, 18, 22, 0.4);
+  border: 2px solid rgba(15, 18, 22, 0.45);
   background: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(15, 18, 22, 0.06);
+}
+
+.redeem-modal.is-theme-light .checkout-terms-box {
+  border: 1.5px solid rgba(15, 18, 22, 0.35);
+  background: #ffffff;
+  color: #15191f;
+}
+
+.redeem-modal.is-theme-light .checkout-terms.is-checked .checkout-terms-box,
+.redeem-modal.is-theme-light .checkout-terms:has(input:checked) .checkout-terms-box {
+  border-color: #a32e3b;
+  background: #a32e3b;
+  color: #ffffff;
 }
 
 .redeem-modal.is-theme-light .cf-turnstile-links,

@@ -36,6 +36,7 @@ import {
   Unplug,
   Wallet,
   X,
+  Bell,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -44,10 +45,12 @@ import { LOGIN_GUEST_FAQ_ITEMS } from "../../lib/login-faq";
 import { formatLicenseExpiresLabel } from "../../lib/license-freeze";
 import { DEPOSIT_DISCOUNT_LEGEND } from "../../lib/deposit-discount-tiers";
 import { formatApplicationProductStatus, formatDisplayDateTime } from "../../lib/loader-redeem";
+import { NOTIFICATION_BADGE_COLORS } from "../../lib/panel-notification-badges";
 import {
   openSellAuthEmbedCheckout,
 } from "../../lib/sellauth";
 import { readStoredAuthUser } from "../../lib/auth-session";
+import { resolveOAuthReturnSession } from "../../lib/supabase-oauth";
 import { supabase } from "../../lib/supabase";
 import { useAuthUser, useIsClient } from "../../lib/use-auth-user";
 import styles from "./AdminPage.module.css";
@@ -209,6 +212,7 @@ const RESELL_VIEWS = [
   "welcome",
   "faq",
   "applications",
+  "notifications",
   "licenses",
   "transactions",
   "deposit",
@@ -1305,6 +1309,9 @@ function ResellDashboard({ reseller, onLogout }) {
   const [transactions, setTransactions] = useState([]);
   const [transactionsBusy, setTransactionsBusy] = useState(false);
   const [transactionsMessage, setTransactionsMessage] = useState({ text: "", type: "" });
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsBusy, setNotificationsBusy] = useState(false);
+  const [notificationsMessage, setNotificationsMessage] = useState({ text: "", type: "" });
 
   function changeView(nextView) {
     const viewName = persistResellView(nextView);
@@ -1942,6 +1949,34 @@ function ResellDashboard({ reseller, onLogout }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view]);
 
+  async function loadNotifications() {
+    setNotificationsBusy(true);
+    setNotificationsMessage({ text: "", type: "" });
+    try {
+      await resolvePublicNetworkIp();
+      const token = await getAccessToken();
+      if (!token) throw new Error("Not signed in.");
+      const response = await fetch("/api/resell-panel/notifications", {
+        headers: resellAuthHeaders(token),
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (await handleRevokedResponse(response, result, onLogout)) return;
+      if (!response.ok) throw new Error(result.error || "Failed to load notifications.");
+      setNotifications(Array.isArray(result.entries) ? result.entries : []);
+    } catch (error) {
+      setNotificationsMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setNotificationsBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (view !== "notifications") return;
+    void loadNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
+
   const redeemedProducts = useMemo(() => {
     const snapshots = Array.isArray(profile?.purchased_store_products) ? profile.purchased_store_products : [];
     if (snapshots.length) {
@@ -2347,6 +2382,14 @@ function ResellDashboard({ reseller, onLogout }) {
                 </button>
                 <button
                   type="button"
+                  className={`${styles.adminNavItem}${view === "notifications" ? ` ${styles.adminNavItemActive}` : ""}`}
+                  onClick={() => changeView("notifications")}
+                >
+                  <Bell size={14} />
+                  <span className={styles.adminNavItemLabel}>Notifications</span>
+                </button>
+                <button
+                  type="button"
                   className={`${styles.adminNavItem}${view === "licenses" ? ` ${styles.adminNavItemActive}` : ""}`}
                   onClick={() => changeView("licenses")}
                 >
@@ -2653,6 +2696,68 @@ function ResellDashboard({ reseller, onLogout }) {
                 </section>
               ) : view === "faq" ? (
                 <ResellFaqView onNavigate={changeView} />
+              ) : view === "notifications" ? (
+                <section className={styles.notificationsStack} id="resell-notifications">
+                  <div className={styles.notificationComposerActions}>
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      onClick={() => void loadNotifications()}
+                      disabled={notificationsBusy}
+                    >
+                      <RefreshCw size={14} />
+                      Refresh
+                    </button>
+                  </div>
+                  {notificationsMessage.text ? (
+                    <div
+                      className={`${styles.message} ${
+                        notificationsMessage.type ? styles[`message${notificationsMessage.type}`] : ""
+                      }`}
+                    >
+                      {notificationsMessage.text}
+                    </div>
+                  ) : null}
+                  {notificationsBusy && !notifications.length ? (
+                    <div className={styles.emptyState}>Loading notifications…</div>
+                  ) : notifications.length ? (
+                    notifications.map((entry) => {
+                      const badges = Array.isArray(entry.badges)
+                        ? entry.badges
+                        : entry.badge_label
+                          ? [{ label: entry.badge_label, color: entry.badge_color }]
+                          : [];
+                      return (
+                      <article key={entry.id} className={styles.notificationCard}>
+                        <div className={styles.notificationCardBody}>
+                          <div className={styles.notificationCardHeading}>
+                            <h3 className={styles.notificationCardTitle}>{entry.title}</h3>
+                            {badges.length ? (
+                              <div className={styles.notificationBadgeRow}>
+                                {badges.map((badge, index) => (
+                                  <span
+                                    key={`${entry.id}-badge-${index}`}
+                                    className={styles.notificationBadge}
+                                    style={{ background: badge.color || NOTIFICATION_BADGE_COLORS[0].value }}
+                                  >
+                                    {badge.label}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                          <p className={styles.notificationCardDesc}>{entry.description}</p>
+                          <div className={styles.notificationCardMeta}>
+                            {formatDisplayDateTime(entry.created_at)}
+                          </div>
+                        </div>
+                      </article>
+                      );
+                    })
+                  ) : (
+                    <div className={styles.emptyState}>No notifications yet.</div>
+                  )}
+                </section>
               ) : view === "transactions" ? (
                 <div className={styles.transactionsView}>
                   <div className={styles.transactionsAnnounce} role="status">
@@ -3991,13 +4096,17 @@ function ResellPanelContent() {
         return;
       }
 
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      const { session, error } = await resolveOAuthReturnSession(code);
       if (cancelled) return;
       cleanResellPanelUrl();
-      if (error && !/already|exchange|verifier/i.test(error.message || "")) {
+      if (!session) {
         clearCachedReseller();
         setCachedReseller(null);
-        setAccessState({ status: "guest", error: error.message || String(error), reseller: null });
+        setAccessState({
+          status: "guest",
+          error: error?.message || "Discord login failed. Please try again.",
+          reseller: null,
+        });
       }
       setOauthReturnPending(false);
     }
