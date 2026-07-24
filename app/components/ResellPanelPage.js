@@ -37,7 +37,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { DISCORD_INVITE_URL } from "../../lib/discord";
 import { LOGIN_GUEST_FAQ_ITEMS } from "../../lib/login-faq";
@@ -121,18 +121,6 @@ function clearCachedReseller() {
   } catch {
     // ignore
   }
-}
-
-function subscribeResellerCache(onStoreChange) {
-  if (typeof window === "undefined") return () => {};
-  const handleStorage = (event) => {
-    const key = event.key || "";
-    if (key === RESELL_CACHE_RESELLER_KEY || key.includes("-auth-token")) {
-      onStoreChange();
-    }
-  };
-  window.addEventListener("storage", handleStorage);
-  return () => window.removeEventListener("storage", handleStorage);
 }
 
 function readCachedCount(key, fallback = 0) {
@@ -3924,7 +3912,7 @@ function ResellDashboard({ reseller, onLogout }) {
 function ResellPanelContent() {
   const { user, ready } = useAuthUser();
   const isClient = useIsClient();
-  const cachedReseller = useSyncExternalStore(subscribeResellerCache, readCachedReseller, () => null);
+  const [cachedReseller, setCachedReseller] = useState(null);
   const [loginBusy, setLoginBusy] = useState(false);
   const [oauthReturnPending, setOauthReturnPending] = useState(false);
   const [accessState, setAccessState] = useState({ status: "idle", error: "", reseller: null });
@@ -3932,6 +3920,10 @@ function ResellPanelContent() {
   const [rememberMe, setRememberMe] = useState(true);
   const [theme, setTheme] = useState("dark");
   const [loginPrefsReady, setLoginPrefsReady] = useState(false);
+
+  useLayoutEffect(() => {
+    setCachedReseller(readCachedReseller());
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -3960,6 +3952,7 @@ function ResellPanelContent() {
             // ignore
           }
           clearCachedReseller();
+          setCachedReseller(null);
           if (!cancelled) {
             setAccessState({ status: "guest", error: "", reseller: null });
           }
@@ -3991,6 +3984,7 @@ function ResellPanelContent() {
         if (!cancelled) {
           cleanResellPanelUrl();
           clearCachedReseller();
+          setCachedReseller(null);
           setAccessState({ status: "guest", error: String(oauthError), reseller: null });
           setOauthReturnPending(false);
         }
@@ -4002,6 +3996,7 @@ function ResellPanelContent() {
       cleanResellPanelUrl();
       if (error && !/already|exchange|verifier/i.test(error.message || "")) {
         clearCachedReseller();
+        setCachedReseller(null);
         setAccessState({ status: "guest", error: error.message || String(error), reseller: null });
       }
       setOauthReturnPending(false);
@@ -4020,6 +4015,7 @@ function ResellPanelContent() {
       if (oauthReturnPending || !ready || !loginPrefsReady) return;
       if (!user) {
         clearCachedReseller();
+        setCachedReseller(null);
         setAccessState({ status: "guest", error: "", reseller: null });
         return;
       }
@@ -4039,6 +4035,7 @@ function ResellPanelContent() {
         const token = data?.session?.access_token;
         if (!token) {
           clearCachedReseller();
+          setCachedReseller(null);
           if (!cancelled) setAccessState({ status: "guest", error: "", reseller: null });
           return;
         }
@@ -4053,6 +4050,7 @@ function ResellPanelContent() {
         if (response.status === 401 && result.revoked) {
           clearResellDeviceSessionId();
           clearCachedReseller();
+          setCachedReseller(null);
           await supabase.auth.signOut({ scope: "local" });
           setAccessState({ status: "guest", error: "This session was disconnected.", reseller: null });
           return;
@@ -4060,6 +4058,7 @@ function ResellPanelContent() {
 
         if (!response.ok) {
           clearCachedReseller();
+          setCachedReseller(null);
           setAccessState({
             status: "denied",
             error: result.error || "Access denied.",
@@ -4070,6 +4069,7 @@ function ResellPanelContent() {
 
         const reseller = result.reseller || null;
         writeCachedReseller(reseller);
+        setCachedReseller(reseller);
         setAccessState({
           status: "allowed",
           error: "",
@@ -4080,6 +4080,7 @@ function ResellPanelContent() {
           // Keep cached reseller on transient network errors so refresh doesn't kick to login.
           const reseller = readCachedReseller();
           if (reseller) {
+            setCachedReseller(reseller);
             setAccessState({ status: "allowed", error: "", reseller });
             return;
           }
@@ -4152,6 +4153,7 @@ function ResellPanelContent() {
   async function handleLogout() {
     clearResellDeviceSessionId();
     clearCachedReseller();
+    setCachedReseller(null);
     try {
       window.sessionStorage.removeItem(RESELL_SESSION_ACTIVE_KEY);
     } catch {

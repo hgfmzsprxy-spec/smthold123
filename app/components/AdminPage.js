@@ -41,7 +41,6 @@ import { createPortal } from "react-dom";
 import { SkeletonBlock } from "./Skeleton";
 import { CloudflareTurnstileWidget } from "./CloudflareTurnstileWidget";
 import { arrayBufferToBase64, triggerBase64FileDownload } from "../../lib/base64-file";
-import { isAllowedAdminUser } from "../../lib/admin-auth";
 import { DISCORD_INVITE_URL } from "../../lib/discord";
 import { LOGIN_GUEST_FAQ_ITEMS } from "../../lib/login-faq";
 import { extractDiscordProfile } from "../../lib/loader-redeem";
@@ -950,14 +949,19 @@ function AdminResponseMonitor({ configUrl, signedIn, theme = "dark" }) {
     let timer = null;
 
     async function ping() {
-      const base = configUrl || (typeof window !== "undefined" ? window.location.origin : "");
+      const supabaseBase = String(configUrl || "").trim();
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      // Prefer Supabase REST when configured; otherwise ping the site origin.
+      const base = supabaseBase || origin;
       if (!base) return;
-      const target = `${base.replace(/\/+$/, "")}/rest/v1/?t=${Date.now()}`;
+      const target = supabaseBase
+        ? `${supabaseBase.replace(/\/+$/, "")}/rest/v1/?t=${Date.now()}`
+        : `${origin.replace(/\/+$/, "")}/api/reviews?t=${Date.now()}`;
       const start = performance.now();
       try {
-        await fetch(target, { method: "GET", cache: "no-store", mode: "no-cors" });
+        await fetch(target, { method: "GET", cache: "no-store", mode: supabaseBase ? "no-cors" : "cors" });
       } catch {
-        // ignore — round-trip still measured for opaque/no-cors
+        // ignore — round-trip still measured
       }
       if (cancelled) return;
       const ms = Math.round(performance.now() - start);
@@ -1359,8 +1363,13 @@ export default function AdminPage() {
 
     async function acceptAdminSession(supabaseSession, userOverride = null) {
       if (!supabaseSession?.access_token) return false;
-      const user = userOverride || (await supabase.auth.getUser()).data?.user;
-      if (!user || !isAllowedAdminUser(user)) {
+
+      let user = userOverride || null;
+      if (!user) {
+        const { data } = await supabase.auth.getUser();
+        user = data?.user || null;
+      }
+      if (!user) {
         await supabase.auth.signOut({ scope: "local" });
         return false;
       }
@@ -1372,13 +1381,14 @@ export default function AdminPage() {
         refreshToken: supabaseSession.refresh_token || "",
         expiresAt:
           supabaseSession.expires_at ||
-          Math.floor(Date.now() / 1000) + (typeof supabaseSession.expires_in === "number" ? supabaseSession.expires_in : 3600),
+          Math.floor(Date.now() / 1000) +
+            (typeof supabaseSession.expires_in === "number" ? supabaseSession.expires_in : 3600),
         discordUserId: profile.discordUserId || "",
         discordUsername: profile.username || "",
         discordAvatarUrl: profile.avatarUrl || "",
       };
 
-      // Server-side confirm
+      // Server is the source of truth for admin allowlist (avoids false client denials).
       const response = await fetch("/api/admin/session", {
         headers: { Authorization: `Bearer ${nextSession.accessToken}` },
         cache: "no-store",
@@ -1388,7 +1398,16 @@ export default function AdminPage() {
         return false;
       }
 
-      persistSession(nextSession);
+      const result = await response.json().catch(() => ({}));
+      persistSession({
+        email: result.admin?.email || nextSession.email,
+        accessToken: nextSession.accessToken,
+        refreshToken: nextSession.refreshToken,
+        expiresAt: nextSession.expiresAt,
+        discordUserId: result.admin?.discord_user_id || nextSession.discordUserId || "",
+        discordUsername: result.admin?.discord_username || nextSession.discordUsername || "",
+        discordAvatarUrl: result.admin?.discord_avatar_url || nextSession.discordAvatarUrl || "",
+      });
       return true;
     }
 

@@ -1,0 +1,12 @@
+-- OPTIONAL (not required anymore).
+-- Application images are stored in Supabase Storage bucket: application-images
+-- Path: {application_id}/main.webp
+--
+-- The previous columns are unused by the current admin panel.
+-- You can ignore this file unless you still want DB columns for another purpose.
+
+-- alter table public.applications
+--   add column if not exists image_data_base64 text,
+--   add column if not exists image_file_type text;
+--
+-- notify pgrst, 'reload schema';
