@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import {
   appendProtectionLog,
   buildProtectionLogFromLicense,
+  isProtectionLogUserIgnored,
   lookupLicenseForProtectionLog,
+  readIgnoredProtectionLogUserIds,
 } from "../../../lib/panel-protection-logs";
 import { getSupabaseAdmin } from "../../../lib/supabase-admin";
 
@@ -28,6 +30,18 @@ export async function POST(request) {
       return NextResponse.json({ error: "License not found." }, { status: 404 });
     }
 
+    const discordUserId = String(
+      body?.discord_user_id || body?.discordUserId || license.discord_user_id || ""
+    ).trim();
+    const ignoredUserIds = await readIgnoredProtectionLogUserIds(admin).catch(() => []);
+    if (isProtectionLogUserIgnored(discordUserId, ignoredUserIds)) {
+      return NextResponse.json({
+        ok: true,
+        skipped: true,
+        reason: "ignored_user",
+      });
+    }
+
     const entry = await buildProtectionLogFromLicense({
       license,
       appId,
@@ -36,7 +50,7 @@ export async function POST(request) {
       hardwareId,
       discordUsername: body?.discord_username || body?.discordUsername || "",
       discordAvatarUrl: body?.discord_avatar_url || body?.discordAvatarUrl || "",
-      discordUserId: body?.discord_user_id || body?.discordUserId || "",
+      discordUserId,
       discordEmail: body?.discord_email || body?.discordEmail || "",
       admin,
     });

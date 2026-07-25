@@ -3958,6 +3958,137 @@
   gap: 12px;
 }
 
+.protectionLogIgnoreBox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.protectionLogIgnoreHint,
+.protectionLogIgnoreEmpty {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #7c858f;
+}
+
+.protectionLogIgnoreRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.protectionLogIgnoreInput {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  padding: 0 11px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+}
+
+.protectionLogIgnoreInput:hover,
+.protectionLogIgnoreInput:focus {
+  border-color: rgba(163, 46, 59, 0.7);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.protectionLogIgnoreInput::placeholder {
+  color: rgba(255, 255, 255, 0.34);
+}
+
+.protectionLogIgnoreList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 160px;
+  overflow: auto;
+}
+
+.protectionLogIgnoreItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.protectionLogDeleteBtn:hover:not(:disabled) {
+  color: #f0a0a4;
+  border-color: rgba(196, 68, 78, 0.45);
+  background: rgba(168, 52, 62, 0.16);
+}
+
+.protectionLogDeleteBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.protectionLogsSearch {
+  width: 100%;
+  min-width: 0;
+}
+
+.protectionLogsSearch .licenseSearchInput {
+  min-width: 0;
+  width: 100%;
+}
+
+.protectionLogsPagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 10px 0 2px;
+}
+
+.protectionLogsPageBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(0, 0, 0, 0.22);
+  color: #e8ecf1;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.protectionLogsPageBtn:hover:not(:disabled) {
+  border-color: rgba(163, 46, 59, 0.7);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.protectionLogsPageBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.protectionLogsPageLabel {
+  min-width: 64px;
+  text-align: center;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: #9aa3ad;
+}
+
 .protectionLogsList {
   display: flex;
   flex-direction: column;
@@ -4449,21 +4580,48 @@
   transform: translateY(-1px);
 }
 
-.protectionLogScreenshot img,
-.protectionLogScreenshotPlaceholder {
+.protectionLogScreenshotMedia {
+  position: relative;
   display: block;
   width: 100%;
   aspect-ratio: 16 / 10;
-  object-fit: cover;
   background: rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+}
+
+.protectionLogScreenshotMedia img,
+.protectionLogScreenshotPlaceholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.protectionLogScreenshotImgPending {
+  opacity: 0;
+}
+
+.protectionLogScreenshotImgReady {
+  opacity: 1;
+  transition: opacity 0.2s ease;
 }
 
 .protectionLogScreenshotPlaceholder {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  color: #8b949e;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.protectionLogScreenshotSpinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(163, 46, 59, 0.22);
+  border-top-color: #c94b58;
+  animation: panelLoadingSpin 0.8s linear infinite;
 }
 
 .protectionLogScreenshotMeta {
@@ -4729,6 +4887,56 @@
 .themeLight .protectionLogScreenshot {
   border-color: rgba(15, 23, 42, 0.1);
   background: #f8fafc;
+}
+
+.themeLight .protectionLogScreenshotSpinner {
+  border-color: rgba(163, 46, 59, 0.18);
+  border-top-color: #a32e3b;
+}
+
+.themeLight .protectionLogsPageBtn {
+  background: #f4f5f7;
+  border-color: rgba(15, 18, 22, 0.12);
+  color: #121417;
+}
+
+.themeLight .protectionLogsPageBtn:hover:not(:disabled) {
+  background: #ffffff;
+  border-color: rgba(163, 46, 59, 0.55);
+}
+
+.themeLight .protectionLogsPageLabel {
+  color: #64748b;
+}
+
+.themeLight .protectionLogIgnoreBox {
+  border-top-color: rgba(15, 18, 22, 0.08);
+}
+
+.themeLight .protectionLogIgnoreHint,
+.themeLight .protectionLogIgnoreEmpty {
+  color: #64748b;
+}
+
+.themeLight .protectionLogIgnoreInput {
+  background: #f4f5f7;
+  border-color: rgba(15, 18, 22, 0.12);
+  color: #121417;
+}
+
+.themeLight .protectionLogIgnoreInput::placeholder {
+  color: rgba(15, 18, 22, 0.4);
+}
+
+.themeLight .protectionLogIgnoreInput:hover,
+.themeLight .protectionLogIgnoreInput:focus {
+  background: #ffffff;
+  border-color: rgba(163, 46, 59, 0.55);
+}
+
+.themeLight .protectionLogIgnoreItem {
+  background: #f8fafc;
+  border-color: rgba(15, 18, 22, 0.08);
 }
 
 .themeLight .protectionLogMono {

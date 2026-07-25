@@ -7,6 +7,7 @@ import {
   Ban,
   Check,
   ChevronLeft,
+  ChevronRight,
   CircleCheck,
   Clock3,
   Copy,
@@ -91,6 +92,8 @@ import {
 } from "../../lib/license-freeze";
 import { APPLICATION_PRODUCT_STATUSES, formatApplicationProductStatus, formatDisplayDateTime } from "../../lib/loader-redeem";
 import styles from "./AdminPage.module.css";
+
+const PROTECTION_LOGS_PAGE_SIZE = 9;
 
 const DISCORD_ICON_PATH =
   "M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.08.12 18.1.143 18.115a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z";
@@ -802,6 +805,70 @@ function licenseMatchesSearch(license, query) {
   return licenseKey.includes(normalized) || discordUser.includes(normalized);
 }
 
+function protectionLogMatchesSearch(entry, query) {
+  const normalized = String(query || "").trim().toLowerCase();
+  if (!normalized) return true;
+
+  const haystack = [
+    entry?.id,
+    entry?.discord_username,
+    entry?.discord_user_id,
+    entry?.discord_email,
+    entry?.license_key,
+    entry?.application,
+    entry?.app_id,
+    entry?.reseller,
+    entry?.reseller_id,
+    entry?.product_variant,
+    entry?.hwid,
+    entry?.message,
+  ]
+    .map((value) => String(value || "").toLowerCase())
+    .filter(Boolean);
+
+  return haystack.some((value) => value.includes(normalized));
+}
+
+function ProtectionLogScreenshotThumb({ shot, label, size, onOpen }) {
+  const [loaded, setLoaded] = useState(false);
+  const hasUrl = Boolean(shot?.url);
+
+  useEffect(() => {
+    setLoaded(false);
+  }, [shot?.url, shot?.path]);
+
+  return (
+    <button
+      type="button"
+      className={styles.protectionLogScreenshot}
+      onClick={onOpen}
+      title={[label, size].filter(Boolean).join(" · ")}
+    >
+      <span className={styles.protectionLogScreenshotMedia}>
+        {hasUrl ? (
+          <img
+            src={shot.url}
+            alt={label}
+            loading="lazy"
+            className={loaded ? styles.protectionLogScreenshotImgReady : styles.protectionLogScreenshotImgPending}
+            onLoad={() => setLoaded(true)}
+            onError={() => setLoaded(true)}
+          />
+        ) : null}
+        {!hasUrl || !loaded ? (
+          <span className={styles.protectionLogScreenshotPlaceholder} aria-hidden={hasUrl ? true : undefined}>
+            <span className={styles.protectionLogScreenshotSpinner} aria-label="Loading screenshot" />
+          </span>
+        ) : null}
+      </span>
+      <span className={styles.protectionLogScreenshotMeta}>
+        <span>{label}</span>
+        {size ? <span className={styles.protectionLogScreenshotRes}>{size}</span> : null}
+      </span>
+    </button>
+  );
+}
+
 const DURATION_UNIT_OPTIONS = [
   { value: "minutes", label: "Minutes" },
   { value: "days", label: "Days" },
@@ -1126,6 +1193,12 @@ export default function AdminPage() {
   const [protectionLogsMessage, setProtectionLogsMessage] = useState({ text: "", type: "" });
   const [protectionLogAppFilter, setProtectionLogAppFilter] = useState("all");
   const [protectionLogSourceFilter, setProtectionLogSourceFilter] = useState("all");
+  const [protectionLogSearchQuery, setProtectionLogSearchQuery] = useState("");
+  const [protectionLogsPage, setProtectionLogsPage] = useState(1);
+  const [protectionLogIgnoredUserIds, setProtectionLogIgnoredUserIds] = useState([]);
+  const [protectionLogIgnoredDraft, setProtectionLogIgnoredDraft] = useState("");
+  const [protectionLogIgnoredBusy, setProtectionLogIgnoredBusy] = useState(false);
+  const [deletingProtectionLogId, setDeletingProtectionLogId] = useState("");
   const [protectionLogColumns, setProtectionLogColumns] = useState(() => {
     if (typeof window === "undefined") return defaultProtectionLogColumns();
     try {
@@ -2029,6 +2102,11 @@ export default function AdminPage() {
       setProtectionLogsRaw(result.protectionLogs);
       setProtectionLogsScreenshotsSigned(Boolean(result.screenshotsSigned));
     }
+    if (Array.isArray(result.protectionLogIgnoredUserIds)) {
+      setProtectionLogIgnoredUserIds(
+        result.protectionLogIgnoredUserIds.map((id) => String(id || "").trim()).filter(Boolean)
+      );
+    }
   }
 
   function refreshDashboardSilently() {
@@ -2047,13 +2125,36 @@ export default function AdminPage() {
         next = next.filter((entry) => String(entry.reseller_id || "") === protectionLogSourceFilter);
       }
     }
+    if (protectionLogSearchQuery.trim()) {
+      next = next.filter((entry) => protectionLogMatchesSearch(entry, protectionLogSearchQuery));
+    }
     return next;
   }
 
   useEffect(() => {
     setProtectionLogs(filterProtectionLogsLocal(protectionLogsRaw));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [protectionLogsRaw, protectionLogAppFilter, protectionLogSourceFilter]);
+  }, [protectionLogsRaw, protectionLogAppFilter, protectionLogSourceFilter, protectionLogSearchQuery]);
+
+  useEffect(() => {
+    setProtectionLogsPage(1);
+  }, [protectionLogAppFilter, protectionLogSourceFilter, protectionLogSearchQuery]);
+
+  const protectionLogsTotalPages = Math.max(
+    1,
+    Math.ceil(protectionLogs.length / PROTECTION_LOGS_PAGE_SIZE)
+  );
+  const protectionLogsPageSafe = Math.min(protectionLogsPage, protectionLogsTotalPages);
+  const pagedProtectionLogs = useMemo(() => {
+    const start = (protectionLogsPageSafe - 1) * PROTECTION_LOGS_PAGE_SIZE;
+    return protectionLogs.slice(start, start + PROTECTION_LOGS_PAGE_SIZE);
+  }, [protectionLogs, protectionLogsPageSafe]);
+
+  useEffect(() => {
+    if (protectionLogsPage !== protectionLogsPageSafe) {
+      setProtectionLogsPage(protectionLogsPageSafe);
+    }
+  }, [protectionLogsPage, protectionLogsPageSafe]);
 
   useEffect(() => {
     if (adminView !== "changelogs") {
@@ -2499,10 +2600,98 @@ export default function AdminPage() {
       if (Array.isArray(result.sources) && result.sources.length) {
         setProtectionLogSources(result.sources);
       }
+      if (Array.isArray(result.ignored_user_ids)) {
+        setProtectionLogIgnoredUserIds(result.ignored_user_ids.map((id) => String(id || "").trim()).filter(Boolean));
+      }
     } catch (error) {
       setProtectionLogsMessage({ text: error?.message || String(error), type: "error" });
     } finally {
       setProtectionLogsBusy(false);
+    }
+  }
+
+  async function saveIgnoredProtectionLogUserIds(nextIds) {
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) return false;
+
+    const ignored_user_ids = Array.from(
+      new Set((Array.isArray(nextIds) ? nextIds : []).map((id) => String(id || "").trim()).filter(Boolean))
+    );
+
+    setProtectionLogIgnoredBusy(true);
+    setProtectionLogsMessage({ text: "", type: "" });
+    try {
+      const response = await fetch("/api/admin/protection-logs", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ignored_user_ids }),
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to update ignored user IDs.");
+      }
+      const saved = Array.isArray(result.ignored_user_ids) ? result.ignored_user_ids : ignored_user_ids;
+      setProtectionLogIgnoredUserIds(saved);
+      setProtectionLogsRaw((current) =>
+        current.filter((entry) => !saved.includes(String(entry.discord_user_id || "").trim()))
+      );
+      return true;
+    } catch (error) {
+      setProtectionLogsMessage({ text: error?.message || String(error), type: "error" });
+      return false;
+    } finally {
+      setProtectionLogIgnoredBusy(false);
+    }
+  }
+
+  async function addIgnoredProtectionLogUserId() {
+    const userId = protectionLogIgnoredDraft.trim();
+    if (!userId) return;
+    if (protectionLogIgnoredUserIds.includes(userId)) {
+      setProtectionLogIgnoredDraft("");
+      return;
+    }
+    const ok = await saveIgnoredProtectionLogUserIds([...protectionLogIgnoredUserIds, userId]);
+    if (ok) setProtectionLogIgnoredDraft("");
+  }
+
+  async function removeIgnoredProtectionLogUserId(userId) {
+    const id = String(userId || "").trim();
+    if (!id) return;
+    await saveIgnoredProtectionLogUserIds(protectionLogIgnoredUserIds.filter((entry) => entry !== id));
+  }
+
+  async function deleteProtectionLogEntry(entry) {
+    const accessToken = getAdminAccessToken();
+    const logId = String(entry?.id || "").trim();
+    if (!accessToken || !logId) return;
+
+    const label = entry?.discord_username || entry?.license_key || logId;
+    const confirmed = window.confirm(`Delete this protection log (${label}) permanently?`);
+    if (!confirmed) return;
+
+    setDeletingProtectionLogId(logId);
+    setProtectionLogsMessage({ text: "", type: "" });
+    try {
+      const response = await fetch(`/api/admin/protection-logs?id=${encodeURIComponent(logId)}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to delete protection log.");
+      }
+      setProtectionLogsRaw((current) => current.filter((item) => String(item.id) !== logId));
+      setProtectionLogsMessage({ text: "Log deleted.", type: "success" });
+    } catch (error) {
+      setProtectionLogsMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setDeletingProtectionLogId("");
     }
   }
 
@@ -5308,11 +5497,77 @@ export default function AdminPage() {
                               })}
                             </div>
                           </div>
+
+                          <div className={styles.protectionLogIgnoreBox}>
+                            <span className={styles.protectionLogColumnsLabel}>Ignored user IDs</span>
+                            <p className={styles.protectionLogIgnoreHint}>
+                              These Discord user IDs are skipped by log-auth and hidden from this feed.
+                            </p>
+                            <div className={styles.protectionLogIgnoreRow}>
+                              <input
+                                type="text"
+                                className={styles.protectionLogIgnoreInput}
+                                placeholder="Discord user ID"
+                                value={protectionLogIgnoredDraft}
+                                onChange={(event) => setProtectionLogIgnoredDraft(event.target.value)}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter") {
+                                    event.preventDefault();
+                                    void addIgnoredProtectionLogUserId();
+                                  }
+                                }}
+                                disabled={protectionLogIgnoredBusy}
+                                aria-label="Ignored Discord user ID"
+                              />
+                              <button
+                                type="button"
+                                className={styles.secondaryButton}
+                                disabled={protectionLogIgnoredBusy || !protectionLogIgnoredDraft.trim()}
+                                onClick={() => void addIgnoredProtectionLogUserId()}
+                              >
+                                <Plus size={14} />
+                                Add
+                              </button>
+                            </div>
+                            {protectionLogIgnoredUserIds.length ? (
+                              <ul className={styles.protectionLogIgnoreList}>
+                                {protectionLogIgnoredUserIds.map((userId) => (
+                                  <li key={userId} className={styles.protectionLogIgnoreItem}>
+                                    <span className={styles.protectionLogMono}>{userId}</span>
+                                    <button
+                                      type="button"
+                                      className={styles.protectionLogIconButton}
+                                      title="Remove ignored user ID"
+                                      aria-label={`Remove ignored user ${userId}`}
+                                      disabled={protectionLogIgnoredBusy}
+                                      onClick={() => void removeIgnoredProtectionLogUserId(userId)}
+                                    >
+                                      <X size={13} strokeWidth={2.25} />
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className={styles.protectionLogIgnoreEmpty}>No ignored users yet.</p>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </aside>
 
                     <div className={styles.protectionLogsFeed}>
+                      <label className={`${styles.licenseSearchWrap} ${styles.protectionLogsSearch}`}>
+                        <Search size={16} className={styles.licenseSearchIcon} aria-hidden="true" />
+                        <input
+                          type="search"
+                          className={styles.licenseSearchInput}
+                          placeholder="Search user, ID, license, application…"
+                          value={protectionLogSearchQuery}
+                          onChange={(event) => setProtectionLogSearchQuery(event.target.value)}
+                          aria-label="Search protection logs"
+                        />
+                      </label>
+
                       {protectionLogsMessage.text ? (
                         <div
                           className={`${styles.message} ${
@@ -5331,7 +5586,9 @@ export default function AdminPage() {
 
                       {!protectionLogsBusy && !protectionLogs.length ? (
                         <div className={styles.protectionLogsEmpty}>
-                          No protection logs for this filter yet.
+                          {protectionLogSearchQuery.trim()
+                            ? "No protection logs match this search."
+                            : "No protection logs for this filter yet."}
                         </div>
                       ) : null}
 
@@ -5340,10 +5597,12 @@ export default function AdminPage() {
                           styles[`protectionLogsListCols${protectionLogDensity}`] || ""
                         }`}
                       >
-                        {protectionLogs.map((entry, entryIndex) => {
+                        {pagedProtectionLogs.map((entry, entryIndex) => {
                           const fields = [];
                           const variantLabel = getProtectionLogVariantLabel(entry);
-                          const isNewestLog = entryIndex === 0;
+                          const absoluteIndex =
+                            (protectionLogsPageSafe - 1) * PROTECTION_LOGS_PAGE_SIZE + entryIndex;
+                          const isNewestLog = absoluteIndex === 0;
 
                           if (protectionLogColumns.application || protectionLogColumns.product_variant) {
                             fields.push({
@@ -5447,6 +5706,16 @@ export default function AdminPage() {
                                       )}
                                       {entry.success ? "Authenticated" : "Rejected"}
                                     </span>
+                                    <button
+                                      type="button"
+                                      className={`${styles.protectionLogIconButton} ${styles.protectionLogDeleteBtn}`}
+                                      title="Delete this log"
+                                      aria-label="Delete this log"
+                                      disabled={deletingProtectionLogId === entry.id || protectionLogsBusy}
+                                      onClick={() => void deleteProtectionLogEntry(entry)}
+                                    >
+                                      <Trash2 size={12} strokeWidth={2.25} />
+                                    </button>
                                   </div>
                                   <time className={styles.protectionLogTime} dateTime={entry.created_at || undefined}>
                                     {entry.created_at
@@ -5569,33 +5838,19 @@ export default function AdminPage() {
                                           : `Screen ${index + 1}`;
                                       const size = formatScreenshotResolution(shot);
                                       return (
-                                        <button
+                                        <ProtectionLogScreenshotThumb
                                           key={`${entry.id}-${shot.path || index}`}
-                                          type="button"
-                                          className={styles.protectionLogScreenshot}
-                                          onClick={() =>
+                                          shot={shot}
+                                          label={label}
+                                          size={size}
+                                          onOpen={() =>
                                             openScreenshotPreview(
                                               entry.screenshots,
                                               index,
                                               entry.discord_username || entry.application || "Session"
                                             )
                                           }
-                                          title={[label, size].filter(Boolean).join(" · ")}
-                                        >
-                                          {shot.url ? (
-                                            <img src={shot.url} alt={label} loading="lazy" />
-                                          ) : (
-                                            <span className={styles.protectionLogScreenshotPlaceholder}>
-                                              {label}
-                                            </span>
-                                          )}
-                                          <span className={styles.protectionLogScreenshotMeta}>
-                                            <span>{label}</span>
-                                            {size ? (
-                                              <span className={styles.protectionLogScreenshotRes}>{size}</span>
-                                            ) : null}
-                                          </span>
-                                        </button>
+                                        />
                                       );
                                     })}
                                   </div>
@@ -5605,6 +5860,36 @@ export default function AdminPage() {
                           );
                         })}
                       </div>
+
+                      {protectionLogs.length > PROTECTION_LOGS_PAGE_SIZE ? (
+                        <nav className={styles.protectionLogsPagination} aria-label="Protection logs pages">
+                          <button
+                            type="button"
+                            className={styles.protectionLogsPageBtn}
+                            disabled={protectionLogsPageSafe <= 1}
+                            onClick={() => setProtectionLogsPage((page) => Math.max(1, page - 1))}
+                            aria-label="Previous page"
+                          >
+                            <ChevronLeft size={16} strokeWidth={2.25} />
+                          </button>
+                          <span className={styles.protectionLogsPageLabel}>
+                            {protectionLogsPageSafe} / {protectionLogsTotalPages}
+                          </span>
+                          <button
+                            type="button"
+                            className={styles.protectionLogsPageBtn}
+                            disabled={protectionLogsPageSafe >= protectionLogsTotalPages}
+                            onClick={() =>
+                              setProtectionLogsPage((page) =>
+                                Math.min(protectionLogsTotalPages, page + 1)
+                              )
+                            }
+                            aria-label="Next page"
+                          >
+                            <ChevronRight size={16} strokeWidth={2.25} />
+                          </button>
+                        </nav>
+                      ) : null}
                     </div>
                   </div>
                 </section>
