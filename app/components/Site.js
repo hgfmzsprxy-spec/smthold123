@@ -3286,6 +3286,12 @@ const apexShowcaseChapters = [
   { time: 177, label: "Game" },
 ];
 
+const callOfDutyShowcaseChapters = [
+  { time: 1, label: "Clip 1" },
+  { time: 72, label: "Clip 2" },
+  { time: 169, label: "Clip 3" },
+];
+
 const loaderGuideChapters = [
   { time: 2, label: "Login" },
   { time: 14, label: "Redeem License" },
@@ -3294,6 +3300,10 @@ const loaderGuideChapters = [
 ];
 
 const productShowcaseBySlug = {
+  "call-of-duty": {
+    streamableId: "of6gbj",
+    chapters: callOfDutyShowcaseChapters,
+  },
   "apex-legends": {
     streamableId: "wvgyc8",
     chapters: apexShowcaseChapters,
