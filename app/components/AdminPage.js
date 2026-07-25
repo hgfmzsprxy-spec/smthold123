@@ -1198,6 +1198,7 @@ export default function AdminPage() {
   const [protectionLogIgnoredUserIds, setProtectionLogIgnoredUserIds] = useState([]);
   const [protectionLogIgnoredDraft, setProtectionLogIgnoredDraft] = useState("");
   const [protectionLogIgnoredBusy, setProtectionLogIgnoredBusy] = useState(false);
+  const protectionLogIgnoredSavedAtRef = useRef(0);
   const [deletingProtectionLogId, setDeletingProtectionLogId] = useState("");
   const [protectionLogColumns, setProtectionLogColumns] = useState(() => {
     if (typeof window === "undefined") return defaultProtectionLogColumns();
@@ -2103,10 +2104,23 @@ export default function AdminPage() {
       setProtectionLogsScreenshotsSigned(Boolean(result.screenshotsSigned));
     }
     if (Array.isArray(result.protectionLogIgnoredUserIds)) {
-      setProtectionLogIgnoredUserIds(
-        result.protectionLogIgnoredUserIds.map((id) => String(id || "").trim()).filter(Boolean)
-      );
+      applyProtectionLogIgnoredUserIds(result.protectionLogIgnoredUserIds);
     }
+  }
+
+  function applyProtectionLogIgnoredUserIds(nextIds, options = {}) {
+    const fromSave = options.fromSave === true;
+    const normalized = (Array.isArray(nextIds) ? nextIds : [])
+      .map((id) => String(id || "").trim())
+      .filter(Boolean);
+    // Avoid briefly restored stale CDN reads overwriting a fresh local save.
+    if (!fromSave && Date.now() - protectionLogIgnoredSavedAtRef.current < 15_000) {
+      return;
+    }
+    if (fromSave) {
+      protectionLogIgnoredSavedAtRef.current = Date.now();
+    }
+    setProtectionLogIgnoredUserIds(normalized);
   }
 
   function refreshDashboardSilently() {
@@ -2601,7 +2615,7 @@ export default function AdminPage() {
         setProtectionLogSources(result.sources);
       }
       if (Array.isArray(result.ignored_user_ids)) {
-        setProtectionLogIgnoredUserIds(result.ignored_user_ids.map((id) => String(id || "").trim()).filter(Boolean));
+        applyProtectionLogIgnoredUserIds(result.ignored_user_ids);
       }
     } catch (error) {
       setProtectionLogsMessage({ text: error?.message || String(error), type: "error" });
@@ -2620,6 +2634,8 @@ export default function AdminPage() {
 
     setProtectionLogIgnoredBusy(true);
     setProtectionLogsMessage({ text: "", type: "" });
+    // Optimistic UI so remove doesn't visually bounce back while the request finishes.
+    applyProtectionLogIgnoredUserIds(ignored_user_ids, { fromSave: true });
     try {
       const response = await fetch("/api/admin/protection-logs", {
         method: "PUT",
@@ -2635,7 +2651,7 @@ export default function AdminPage() {
         throw new Error(result.error || "Failed to update ignored user IDs.");
       }
       const saved = Array.isArray(result.ignored_user_ids) ? result.ignored_user_ids : ignored_user_ids;
-      setProtectionLogIgnoredUserIds(saved);
+      applyProtectionLogIgnoredUserIds(saved, { fromSave: true });
       setProtectionLogsRaw((current) =>
         current.filter((entry) => !saved.includes(String(entry.discord_user_id || "").trim()))
       );
