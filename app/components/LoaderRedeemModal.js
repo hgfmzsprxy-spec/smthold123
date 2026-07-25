@@ -131,10 +131,10 @@ export function LoaderRedeemModal({
   const setMessageState = (setter, text, tone = "") => setter({ text: text || "", tone: tone || "" });
 
   const revokeDownloadUrl = useCallback(() => {
-    if (downloadUrlRef.current) {
+    if (downloadUrlRef.current?.startsWith("blob:")) {
       URL.revokeObjectURL(downloadUrlRef.current);
-      downloadUrlRef.current = "";
     }
+    downloadUrlRef.current = "";
     setDownloadUrl((current) => (current ? "" : current));
     setDownloadFileName((current) => (current ? "" : current));
     setDownloadFileMeta("No file uploaded yet.");
@@ -184,10 +184,10 @@ export function LoaderRedeemModal({
       }
     }
 
-    if (downloadUrlRef.current) {
+    if (downloadUrlRef.current?.startsWith("blob:")) {
       URL.revokeObjectURL(downloadUrlRef.current);
-      downloadUrlRef.current = "";
     }
+    downloadUrlRef.current = "";
 
     if (profile?.authUserId && appMeta) {
       const url = buildApplicationDownloadUrl(appMeta);

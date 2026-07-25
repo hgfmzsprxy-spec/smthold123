@@ -158,11 +158,16 @@ function consumePendingReadThrough(readKey, pendingKey) {
   return next;
 }
 
-function markFeedVisited(pendingKey, entries) {
+function markFeedVisited(pendingKey, entries, currentPending = "") {
   const maxMs = maxEntryCreatedAtMs(entries);
-  if (!maxMs) return;
-  const existing = Number(readStorageValue(window.sessionStorage, pendingKey)) || 0;
-  writeStorageValue(window.sessionStorage, pendingKey, String(Math.max(existing, maxMs)));
+  if (!maxMs) return String(currentPending || "").trim();
+  const existing = Math.max(
+    Number(readStorageValue(window.sessionStorage, pendingKey)) || 0,
+    Number(currentPending) || 0
+  );
+  const next = String(Math.max(existing, maxMs));
+  writeStorageValue(window.sessionStorage, pendingKey, next);
+  return next;
 }
 
 function isEntryUnread(entry, readThroughMs) {
@@ -1458,14 +1463,25 @@ function ResellDashboard({ reseller, onLogout }) {
   const [transactionsReadThrough, setTransactionsReadThrough] = useState(() =>
     consumePendingReadThrough(RESELL_TX_READ_KEY, RESELL_TX_PENDING_KEY)
   );
+  const [notificationsPendingReadThrough, setNotificationsPendingReadThrough] = useState("");
+  const [transactionsPendingReadThrough, setTransactionsPendingReadThrough] = useState("");
+
+  const effectiveNotificationsReadThrough = useMemo(
+    () => String(Math.max(Number(notificationsReadThrough) || 0, Number(notificationsPendingReadThrough) || 0)),
+    [notificationsPendingReadThrough, notificationsReadThrough]
+  );
+  const effectiveTransactionsReadThrough = useMemo(
+    () => String(Math.max(Number(transactionsReadThrough) || 0, Number(transactionsPendingReadThrough) || 0)),
+    [transactionsPendingReadThrough, transactionsReadThrough]
+  );
 
   const hasUnreadNotifications = useMemo(
-    () => notifications.some((entry) => isEntryUnread(entry, notificationsReadThrough)),
-    [notifications, notificationsReadThrough]
+    () => notifications.some((entry) => isEntryUnread(entry, effectiveNotificationsReadThrough)),
+    [effectiveNotificationsReadThrough, notifications]
   );
   const hasUnreadTransactions = useMemo(
-    () => transactions.some((entry) => isEntryUnread(entry, transactionsReadThrough)),
-    [transactions, transactionsReadThrough]
+    () => transactions.some((entry) => isEntryUnread(entry, effectiveTransactionsReadThrough)),
+    [effectiveTransactionsReadThrough, transactions]
   );
 
   function changeView(nextView) {
@@ -1473,22 +1489,22 @@ function ResellDashboard({ reseller, onLogout }) {
     setView(viewName);
     if (viewName !== "applications") setFeaturesApp(null);
     if (viewName === "notifications") {
-      markFeedVisited(RESELL_NOTIF_PENDING_KEY, notifications);
+      setNotificationsPendingReadThrough((current) => markFeedVisited(RESELL_NOTIF_PENDING_KEY, notifications, current));
     }
     if (viewName === "transactions") {
-      markFeedVisited(RESELL_TX_PENDING_KEY, transactions);
+      setTransactionsPendingReadThrough((current) => markFeedVisited(RESELL_TX_PENDING_KEY, transactions, current));
     }
   }
 
   useEffect(() => {
     if (view === "notifications" && notifications.length) {
-      markFeedVisited(RESELL_NOTIF_PENDING_KEY, notifications);
+      setNotificationsPendingReadThrough((current) => markFeedVisited(RESELL_NOTIF_PENDING_KEY, notifications, current));
     }
   }, [view, notifications]);
 
   useEffect(() => {
     if (view === "transactions" && transactions.length) {
-      markFeedVisited(RESELL_TX_PENDING_KEY, transactions);
+      setTransactionsPendingReadThrough((current) => markFeedVisited(RESELL_TX_PENDING_KEY, transactions, current));
     }
   }, [view, transactions]);
 

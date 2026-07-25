@@ -5124,16 +5124,19 @@ function LoaderDetailContent({ slug }) {
       subscriptionPollRef.current = null;
     }
 
-    if (downloadUrlRef.current) {
+    if (downloadUrlRef.current?.startsWith("blob:")) {
       URL.revokeObjectURL(downloadUrlRef.current);
-      downloadUrlRef.current = "";
     }
+    downloadUrlRef.current = "";
 
     setDownloadAccess({ downloadUrl: "", fileName: "", fileMeta: "No file uploaded yet.", fileSha: "" });
   }, []);
 
   const applyDownloadAccess = useCallback((result, { ready = true } = {}) => {
-    if (downloadUrlRef.current && downloadUrlRef.current !== result.downloadUrl) {
+    if (
+      downloadUrlRef.current?.startsWith("blob:") &&
+      downloadUrlRef.current !== result.downloadUrl
+    ) {
       URL.revokeObjectURL(downloadUrlRef.current);
     }
 
@@ -5163,7 +5166,7 @@ function LoaderDetailContent({ slug }) {
     let cancelled = false;
 
     void resolveLoaderDownloadAccess(supabase, appId, profile).then((result) => {
-      if (result.downloadUrl) {
+      if (result.downloadUrl?.startsWith("blob:")) {
         URL.revokeObjectURL(result.downloadUrl);
       }
     });
@@ -5232,7 +5235,10 @@ function LoaderDetailContent({ slug }) {
   const handleOpenDownloadFromRedeem = useCallback((access) => {
     if (!access?.downloadUrl) return;
 
-    if (downloadUrlRef.current && downloadUrlRef.current !== access.downloadUrl) {
+    if (
+      downloadUrlRef.current?.startsWith("blob:") &&
+      downloadUrlRef.current !== access.downloadUrl
+    ) {
       URL.revokeObjectURL(downloadUrlRef.current);
     }
 
@@ -5262,10 +5268,10 @@ function LoaderDetailContent({ slug }) {
       subscriptionPollRef.current = null;
     }
 
-    if (downloadUrlRef.current) {
+    if (downloadUrlRef.current?.startsWith("blob:")) {
       URL.revokeObjectURL(downloadUrlRef.current);
-      downloadUrlRef.current = "";
     }
+    downloadUrlRef.current = "";
 
     setDownloadAccess({ downloadUrl: "", fileName: "", fileMeta: "No file uploaded yet.", fileSha: "" });
     setDownloadAccessReady(false);
@@ -5376,10 +5382,10 @@ function LoaderDetailContent({ slug }) {
     if (!authReady || !appId) return undefined;
 
     if (!hasRedeemedKey) {
-      if (downloadUrlRef.current) {
+      if (downloadUrlRef.current?.startsWith("blob:")) {
         URL.revokeObjectURL(downloadUrlRef.current);
-        downloadUrlRef.current = "";
       }
+      downloadUrlRef.current = "";
       setDownloadAccess({ downloadUrl: "", fileName: "", fileMeta: "No file uploaded yet.", fileSha: "" });
       setDownloadAccessReady(false);
       return undefined;
@@ -5399,7 +5405,7 @@ function LoaderDetailContent({ slug }) {
 
     void resolveLoaderDownloadAccess(supabase, appId, profile).then((result) => {
       if (cancelled) {
-        if (result.downloadUrl) URL.revokeObjectURL(result.downloadUrl);
+        if (result.downloadUrl?.startsWith("blob:")) URL.revokeObjectURL(result.downloadUrl);
         return;
       }
 
@@ -5413,7 +5419,7 @@ function LoaderDetailContent({ slug }) {
 
   useEffect(
     () => () => {
-      if (downloadUrlRef.current) URL.revokeObjectURL(downloadUrlRef.current);
+      if (downloadUrlRef.current?.startsWith("blob:")) URL.revokeObjectURL(downloadUrlRef.current);
     },
     [],
   );

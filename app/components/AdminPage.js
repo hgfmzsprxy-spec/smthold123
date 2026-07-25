@@ -49,10 +49,10 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { SkeletonBlock } from "./Skeleton";
 import { CloudflareTurnstileWidget } from "./CloudflareTurnstileWidget";
-import { arrayBufferToBase64, triggerBase64FileDownload } from "../../lib/base64-file";
 import { DISCORD_INVITE_URL } from "../../lib/discord";
 import { LOGIN_GUEST_FAQ_ITEMS } from "../../lib/login-faq";
-import { extractDiscordProfile } from "../../lib/loader-redeem";
+import { buildApplicationDownloadUrl, extractDiscordProfile } from "../../lib/loader-redeem";
+import { APPLICATION_PACKAGE_BUCKET } from "../../lib/application-package-storage";
 import {
   defaultProtectionFlags,
   PROTECTION_OPTIONS,
@@ -573,22 +573,15 @@ function durationToMs(value, unit) {
 
 async function preparePackageUpload(file, onProgress) {
   const buffer = await file.arrayBuffer();
-  if (onProgress) onProgress(0.12);
+  if (onProgress) onProgress(0.35);
 
   const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
   const sha256 = Array.from(new Uint8Array(hashBuffer))
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
 
-  if (onProgress) onProgress(0.22);
-
-  const base64 = arrayBufferToBase64(buffer, (ratio) => {
-    if (onProgress) onProgress(0.22 + ratio * 0.38);
-  });
-
   if (onProgress) onProgress(0.6);
-
-  return { base64, sha256 };
+  return { sha256 };
 }
 
 function formatPackageSize(bytes) {
@@ -4001,7 +3994,7 @@ export default function AdminPage() {
     }, 5000);
   }
 
-  function buildPackagePayload(app, file, base64Data, sha256) {
+  function buildPackagePayload(app, file, storageRef, sha256) {
     const nextVersion = packageForm.version.trim() || app.version || "1.0.0";
 
     return {
@@ -4010,10 +4003,40 @@ export default function AdminPage() {
       download_file_name: String(file.name || "").trim() || null,
       download_file_type: String(file.type || "application/octet-stream").trim() || "application/octet-stream",
       download_file_size: Number(file.size || 0) || 0,
-      download_file_data_base64: base64Data,
+      download_file_data_base64: storageRef || null,
       download_file_sha256: sha256 || null,
       download_updated_at: new Date().toISOString(),
     };
+  }
+
+  async function createPackageUploadTarget(app, file, sha256) {
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) throw new Error("Not signed in.");
+
+    const response = await fetch("/api/admin/application-package", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        appId: app.id,
+        fileName: file.name,
+        fileType: file.type || "application/octet-stream",
+        sha256,
+      }),
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(extractErrorMessage(result) || "Could not prepare the package upload.");
+    }
+
+    if (!result?.path || !result?.token || !result?.storageRef) {
+      throw new Error("Package upload target is incomplete.");
+    }
+
+    return result;
   }
 
   async function uploadPackageFile(file) {
@@ -4031,16 +4054,34 @@ export default function AdminPage() {
     setPackageMessage({ text: "", type: "" });
 
     try {
-      const { base64, sha256 } = await preparePackageUpload(file, (progress) => {
+      const { sha256 } = await preparePackageUpload(file, (progress) => {
         setPackageUploadProgress(Math.round(progress * 60));
       });
-      const payload = buildPackagePayload(activePackageApp, file, base64, sha256);
+      const uploadTarget = await createPackageUploadTarget(activePackageApp, file, sha256);
+
+      setPackageUploadProgress(68);
+
+      const uploadResult = await supabase.storage.from(APPLICATION_PACKAGE_BUCKET).uploadToSignedUrl(
+        uploadTarget.path,
+        uploadTarget.token,
+        file,
+        {
+          upsert: true,
+          contentType: file.type || "application/octet-stream",
+        }
+      );
+
+      if (uploadResult.error) {
+        throw new Error(uploadResult.error.message || String(uploadResult.error));
+      }
+
+      const payload = buildPackagePayload(activePackageApp, file, uploadTarget.storageRef, sha256);
 
       patchApplicationLocal(activePackageApp.id, payload);
-      setPackageUploadProgress(62);
+      setPackageUploadProgress(76);
 
       await updateApplicationRecordWithProgress(activePackageApp, payload, (progress) => {
-        setPackageUploadProgress(Math.round(62 + progress * 38));
+        setPackageUploadProgress(Math.round(76 + progress * 24));
       });
 
       setPackageUploadProgress(100);
@@ -4108,6 +4149,21 @@ export default function AdminPage() {
     };
 
     try {
+      const accessToken = getAdminAccessToken();
+      if (!accessToken) throw new Error("Not signed in.");
+      const removeResponse = await fetch("/api/admin/application-package", {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ appId: activePackageApp.id }),
+      });
+      const removeResult = await removeResponse.json().catch(() => ({}));
+      if (!removeResponse.ok) {
+        throw new Error(extractErrorMessage(removeResult) || "Could not remove package from storage.");
+      }
+
       patchApplicationLocal(activePackageApp.id, payload);
       await updateApplicationRecord(activePackageApp, payload);
       notifyPackageAction(`Package "${packageName}" removed.`, "success");
@@ -4158,15 +4214,41 @@ export default function AdminPage() {
     setExtendModalOpen(true);
   }
 
-  function handlePackageDownload(app) {
+  async function handlePackageDownload(app) {
     if (!app?.download_file_data_base64 || !app?.download_file_name) return;
 
     try {
-      triggerBase64FileDownload({
-        base64: app.download_file_data_base64,
-        fileName: app.download_file_name,
-        mimeType: app.download_file_type || "application/octet-stream",
-      });
+      const downloadUrl = buildApplicationDownloadUrl(app);
+      if (!downloadUrl) {
+        throw new Error("Could not prepare package download.");
+      }
+
+      if (downloadUrl.startsWith("blob:")) {
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = app.download_file_name;
+        link.rel = "noopener";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        return;
+      }
+
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        throw new Error("Could not fetch package from storage.");
+      }
+
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = app.download_file_name;
+      link.rel = "noopener";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
     } catch (error) {
       notifyPackageAction(error?.message || "Could not download package.", "error");
     }
