@@ -259,10 +259,48 @@ async function readJsonResponse(response) {
   }
 }
 
-function extractErrorMessage(payload) {
+function extractErrorMessage(payload, seen = new Set()) {
   if (!payload) return "";
-  if (typeof payload === "string") return payload;
-  return payload.msg || payload.message || payload.error_description || payload.error || "";
+  if (typeof payload === "string") return payload.trim();
+  if (payload instanceof Error) return String(payload.message || "").trim();
+  if (typeof payload !== "object") return String(payload).trim();
+  if (seen.has(payload)) return "";
+
+  seen.add(payload);
+
+  if (Array.isArray(payload)) {
+    for (const entry of payload) {
+      const nested = extractErrorMessage(entry, seen);
+      if (nested) return nested;
+    }
+    return "";
+  }
+
+  const directCandidates = [
+    payload.msg,
+    payload.message,
+    payload.error_description,
+    payload.description,
+    payload.hint,
+    payload.details,
+    payload.error,
+  ];
+
+  for (const candidate of directCandidates) {
+    const nested = extractErrorMessage(candidate, seen);
+    if (nested) return nested;
+  }
+
+  for (const value of Object.values(payload)) {
+    const nested = extractErrorMessage(value, seen);
+    if (nested) return nested;
+  }
+
+  try {
+    return JSON.stringify(payload);
+  } catch {
+    return "";
+  }
 }
 
 function randomHex(length) {
@@ -1841,7 +1879,7 @@ export default function AdminPage() {
 
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(result.error || extractErrorMessage(result) || `HTTP ${response.status}`);
+      throw new Error(extractErrorMessage(result) || `HTTP ${response.status}`);
     }
 
     return result.data ?? null;
@@ -1879,7 +1917,7 @@ export default function AdminPage() {
   async function updateApplicationRecord(app, payload) {
     const updated = await restRequest(`applications?id=eq.${encodeURIComponent(app.id)}`, {
       method: "PATCH",
-      headers: { Prefer: "return=representation" },
+      headers: { Prefer: "return=minimal" },
       body: JSON.stringify(payload),
     });
     void syncLicenseAppMetadata(app, payload);
