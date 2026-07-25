@@ -104,6 +104,79 @@ const RESELL_CACHE_DEPOSIT_COUNT = "unbanhwid.resell-panel.depositCount";
 const RESELL_CACHE_STORE_COUNT = "unbanhwid.resell-panel.storeCount";
 const RESELL_CACHE_REDEEMED_COUNT = "unbanhwid.resell-panel.redeemedCount";
 const RESELL_CACHE_RESELLER_KEY = "unbanhwid.resell-panel.reseller";
+const RESELL_NOTIF_READ_KEY = "unbanhwid.resell-panel.notifications.readThrough";
+const RESELL_NOTIF_PENDING_KEY = "unbanhwid.resell-panel.notifications.pendingReadThrough";
+const RESELL_TX_READ_KEY = "unbanhwid.resell-panel.transactions.readThrough";
+const RESELL_TX_PENDING_KEY = "unbanhwid.resell-panel.transactions.pendingReadThrough";
+
+function entryCreatedAtMs(entry) {
+  const raw = entry?.created_at || entry?.createdAt || entry?.id || "";
+  const ms = new Date(raw).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function maxEntryCreatedAtMs(entries) {
+  let max = 0;
+  (Array.isArray(entries) ? entries : []).forEach((entry) => {
+    const ms = entryCreatedAtMs(entry);
+    if (ms > max) max = ms;
+  });
+  return max;
+}
+
+function readStorageValue(storage, key) {
+  if (typeof window === "undefined") return "";
+  try {
+    return String(storage.getItem(key) || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function writeStorageValue(storage, key, value) {
+  if (typeof window === "undefined") return;
+  try {
+    const next = String(value || "").trim();
+    if (!next) storage.removeItem(key);
+    else storage.setItem(key, next);
+  } catch {
+    // ignore
+  }
+}
+
+/** Promote tab-visit pending markers so a page refresh clears unread dots/badges. */
+function consumePendingReadThrough(readKey, pendingKey) {
+  if (typeof window === "undefined") return readStorageValue(window.localStorage, readKey);
+  const pending = readStorageValue(window.sessionStorage, pendingKey);
+  const current = readStorageValue(window.localStorage, readKey);
+  if (!pending) return current;
+  const pendingMs = Number(pending) || 0;
+  const currentMs = Number(current) || 0;
+  const next = String(Math.max(pendingMs, currentMs));
+  writeStorageValue(window.localStorage, readKey, next);
+  writeStorageValue(window.sessionStorage, pendingKey, "");
+  return next;
+}
+
+function markFeedVisited(pendingKey, entries) {
+  const maxMs = maxEntryCreatedAtMs(entries);
+  if (!maxMs) return;
+  const existing = Number(readStorageValue(window.sessionStorage, pendingKey)) || 0;
+  writeStorageValue(window.sessionStorage, pendingKey, String(Math.max(existing, maxMs)));
+}
+
+function isEntryUnread(entry, readThroughMs) {
+  const created = entryCreatedAtMs(entry);
+  if (!created) return false;
+  return created > (Number(readThroughMs) || 0);
+}
+
+function seedReadThroughIfNeeded(current, entries, readKey) {
+  if (current) return current;
+  const next = String(maxEntryCreatedAtMs(entries) || Date.now());
+  writeStorageValue(window.localStorage, readKey, next);
+  return next;
+}
 
 function readCachedReseller() {
   if (typeof window === "undefined") return null;
@@ -1379,12 +1452,60 @@ function ResellDashboard({ reseller, onLogout }) {
   const [notifications, setNotifications] = useState([]);
   const [notificationsBusy, setNotificationsBusy] = useState(false);
   const [notificationsMessage, setNotificationsMessage] = useState({ text: "", type: "" });
+  const [notificationsReadThrough, setNotificationsReadThrough] = useState(() =>
+    consumePendingReadThrough(RESELL_NOTIF_READ_KEY, RESELL_NOTIF_PENDING_KEY)
+  );
+  const [transactionsReadThrough, setTransactionsReadThrough] = useState(() =>
+    consumePendingReadThrough(RESELL_TX_READ_KEY, RESELL_TX_PENDING_KEY)
+  );
+
+  const hasUnreadNotifications = useMemo(
+    () => notifications.some((entry) => isEntryUnread(entry, notificationsReadThrough)),
+    [notifications, notificationsReadThrough]
+  );
+  const hasUnreadTransactions = useMemo(
+    () => transactions.some((entry) => isEntryUnread(entry, transactionsReadThrough)),
+    [transactions, transactionsReadThrough]
+  );
 
   function changeView(nextView) {
     const viewName = persistResellView(nextView);
     setView(viewName);
     if (viewName !== "applications") setFeaturesApp(null);
+    if (viewName === "notifications") {
+      markFeedVisited(RESELL_NOTIF_PENDING_KEY, notifications);
+    }
+    if (viewName === "transactions") {
+      markFeedVisited(RESELL_TX_PENDING_KEY, transactions);
+    }
   }
+
+  useEffect(() => {
+    if (view === "notifications" && notifications.length) {
+      markFeedVisited(RESELL_NOTIF_PENDING_KEY, notifications);
+    }
+  }, [view, notifications]);
+
+  useEffect(() => {
+    if (view === "transactions" && transactions.length) {
+      markFeedVisited(RESELL_TX_PENDING_KEY, transactions);
+    }
+  }, [view, transactions]);
+
+  // First visit: baseline the cursor so historic items are not all "NEW".
+  useLayoutEffect(() => {
+    if (notificationsReadThrough || notificationsBusy) return;
+    setNotificationsReadThrough((current) =>
+      seedReadThroughIfNeeded(current, notifications, RESELL_NOTIF_READ_KEY)
+    );
+  }, [notifications, notificationsBusy, notificationsReadThrough]);
+
+  useLayoutEffect(() => {
+    if (transactionsReadThrough || transactionsBusy) return;
+    setTransactionsReadThrough((current) =>
+      seedReadThroughIfNeeded(current, transactions, RESELL_TX_READ_KEY)
+    );
+  }, [transactions, transactionsBusy, transactionsReadThrough]);
 
   function openAppFeatures(app) {
     setFeaturesCopied(false);
@@ -2246,9 +2367,15 @@ function ResellDashboard({ reseller, onLogout }) {
     if (Array.isArray(result.notifications)) {
       setNotifications(result.notifications);
       setNotificationsBusy(false);
+      setNotificationsReadThrough((current) =>
+        seedReadThroughIfNeeded(current, result.notifications, RESELL_NOTIF_READ_KEY)
+      );
     }
     if (Array.isArray(result.transactions)) {
       setTransactions(result.transactions);
+      setTransactionsReadThrough((current) =>
+        seedReadThroughIfNeeded(current, result.transactions, RESELL_TX_READ_KEY)
+      );
       setTransactionsBusy(false);
     }
   }
@@ -2526,7 +2653,12 @@ function ResellDashboard({ reseller, onLogout }) {
                   className={`${styles.adminNavItem}${view === "notifications" ? ` ${styles.adminNavItemActive}` : ""}`}
                   onClick={() => changeView("notifications")}
                 >
-                  <Bell size={14} />
+                  <span className={styles.adminNavIconWrap}>
+                    <Bell size={14} />
+                    {hasUnreadNotifications ? (
+                      <span className={styles.adminNavUnreadDot} aria-label="Unread notifications" />
+                    ) : null}
+                  </span>
                   <span className={styles.adminNavItemLabel}>Notifications</span>
                 </button>
                 <button
@@ -2542,7 +2674,12 @@ function ResellDashboard({ reseller, onLogout }) {
                   className={`${styles.adminNavItem}${view === "transactions" ? ` ${styles.adminNavItemActive}` : ""}`}
                   onClick={() => changeView("transactions")}
                 >
-                  <ArrowLeftRight size={14} />
+                  <span className={styles.adminNavIconWrap}>
+                    <ArrowLeftRight size={14} />
+                    {hasUnreadTransactions ? (
+                      <span className={styles.adminNavUnreadDot} aria-label="Unread transactions" />
+                    ) : null}
+                  </span>
                   <span className={styles.adminNavItemLabel}>Transactions</span>
                 </button>
               </div>
@@ -2868,11 +3005,13 @@ function ResellDashboard({ reseller, onLogout }) {
                         : entry.badge_label
                           ? [{ label: entry.badge_label, color: entry.badge_color }]
                           : [];
+                      const isNew = isEntryUnread(entry, notificationsReadThrough);
                       return (
                       <article key={entry.id} className={styles.notificationCard}>
                         <div className={styles.notificationCardBody}>
                           <div className={styles.notificationCardHeading}>
                             <h3 className={styles.notificationCardTitle}>{entry.title}</h3>
+                            {isNew ? <span className={styles.feedItemNewBadge}>NEW</span> : null}
                             {badges.length ? (
                               <div className={styles.notificationBadgeRow}>
                                 {badges.map((badge, index) => (
@@ -2953,16 +3092,18 @@ function ResellDashboard({ reseller, onLogout }) {
                                 : amount < 0
                                   ? styles.transactionAmountNegative
                                   : styles.transactionAmountNeutral;
+                            const isNew = isEntryUnread(entry, transactionsReadThrough);
                             return (
                               <div
                                 className={`${styles.licenseTableRow} ${styles.transactionsColumns}`}
                                 key={entry.id}
                               >
                                 <div>{formatDisplayDateTime(entry.created_at)}</div>
-                                <div>
+                                <div className={styles.transactionTypeCell}>
                                   <span className={styles.transactionTypeBadge}>
                                     {entry.type_label || entry.type}
                                   </span>
+                                  {isNew ? <span className={styles.feedItemNewBadge}>NEW</span> : null}
                                 </div>
                                 <div className={styles.transactionDescription}>{entry.description || "—"}</div>
                                 <div className={amountClass}>

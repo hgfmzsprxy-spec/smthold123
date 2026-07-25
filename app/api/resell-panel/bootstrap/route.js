@@ -1,7 +1,7 @@
 import { listVariantsForApplications } from "../../../../lib/application-variants";
 import {
   RESELL_APPLICATION_SELECT,
-  RESELL_LICENSE_SELECT,
+  fetchResellLicensesByIds,
 } from "../../../../lib/panel-bootstrap-selects";
 import { readNotificationStore } from "../../../../lib/panel-notifications";
 import { readDepositVariantsStore } from "../../../../lib/reseller-deposit-variants";
@@ -11,14 +11,6 @@ import { touchResellerSession } from "../../../../lib/reseller-sessions";
 import { listTransactions } from "../../../../lib/transactions";
 
 export const dynamic = "force-dynamic";
-
-function chunkArray(items, size) {
-  const chunks = [];
-  for (let index = 0; index < items.length; index += size) {
-    chunks.push(items.slice(index, index + size));
-  }
-  return chunks;
-}
 
 function computeLicenseMetrics(licenses) {
   const now = Date.now();
@@ -55,30 +47,6 @@ function computeLicenseMetrics(licenses) {
     expired,
     banned,
   };
-}
-
-async function fetchLicensesByIds(admin, ids) {
-  if (!ids.length) return [];
-  const rows = [];
-  for (const chunk of chunkArray(ids, 80)) {
-    let result = await admin
-      .from("licenses")
-      .select(RESELL_LICENSE_SELECT)
-      .in("id", chunk)
-      .order("created_at", { ascending: false });
-    if (result.error && /column|schema cache/i.test(result.error.message || "")) {
-      result = await admin
-        .from("licenses")
-        .select(
-          "id, license_key, application_id, app_id, app_name, status, expires_at, activated_at, duration_value, duration_unit, reseller_id, created_at, discord_username, discord_user_id, discord_avatar_url, hwid"
-        )
-        .in("id", chunk)
-        .order("created_at", { ascending: false });
-    }
-    if (result.error) throw result.error;
-    rows.push(...(result.data || []));
-  }
-  return rows.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 }
 
 async function fetchAllApplications(admin) {
@@ -127,7 +95,7 @@ export async function GET(request) {
     const [allApplications, licenses, productsStore, depositStore, notificationStore, transactions] =
       await Promise.all([
         fetchAllApplications(auth.admin),
-        fetchLicensesByIds(auth.admin, licenseIds),
+        fetchResellLicensesByIds(auth.admin, licenseIds),
         safe(readResellerProductsStore(auth.admin), { products: [] }),
         safe(readDepositVariantsStore(auth.admin), { variants: [] }),
         safe(readNotificationStore(auth.admin), { entries: [] }),

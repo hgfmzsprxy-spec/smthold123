@@ -5393,13 +5393,26 @@ export default function AdminPage() {
                 </section>
               ) : adminView === "protection-logs" ? (
                 <section className={styles.settingsPanel}>
+                  <div className={styles.protectionLogsTop}>
+                    <div className={styles.protectionLogsTitleBlock}>
+                      <h2>Protections-Logs</h2>
+                      <p>Filter loader auth logs by application and source.</p>
+                    </div>
+                    <label className={`${styles.licenseSearchWrap} ${styles.protectionLogsSearch}`}>
+                      <Search size={16} className={styles.licenseSearchIcon} aria-hidden="true" />
+                      <input
+                        type="search"
+                        className={styles.licenseSearchInput}
+                        placeholder="Search user, ID, license, application…"
+                        value={protectionLogSearchQuery}
+                        onChange={(event) => setProtectionLogSearchQuery(event.target.value)}
+                        aria-label="Search protection logs"
+                      />
+                    </label>
+                  </div>
                   <div className={styles.protectionLogsLayout}>
                     <aside className={styles.protectionLogsSidebar}>
                       <div className={styles.settingsCard}>
-                        <div className={styles.settingsCardHeader}>
-                          <h2>Protections-Logs</h2>
-                          <p>Filter loader auth logs by application and source.</p>
-                        </div>
                         <div className={styles.settingsCardBody}>
                           <label className={styles.settingsField}>
                             <span className={styles.settingsFieldLabel}>Application</span>
@@ -5443,7 +5456,7 @@ export default function AdminPage() {
                               return (
                                 <label
                                   key={column.id}
-                                  className={`checkout-terms${checked ? " is-checked" : ""} ${styles.resellerPermissionItem}`}
+                                  className={`checkout-terms${checked ? " is-checked" : ""} ${styles.resellerPermissionItem} ${styles.protectionLogColumnItem}`}
                                 >
                                   <input
                                     type="checkbox"
@@ -5453,7 +5466,7 @@ export default function AdminPage() {
                                     }
                                   />
                                   <span className="checkout-terms-box" aria-hidden="true">
-                                    {checked ? <Check size={14} strokeWidth={3} /> : null}
+                                    {checked ? <Check size={12} strokeWidth={3} /> : null}
                                   </span>
                                   <span className="checkout-terms-text">{column.label}</span>
                                 </label>
@@ -5572,18 +5585,6 @@ export default function AdminPage() {
                     </aside>
 
                     <div className={styles.protectionLogsFeed}>
-                      <label className={`${styles.licenseSearchWrap} ${styles.protectionLogsSearch}`}>
-                        <Search size={16} className={styles.licenseSearchIcon} aria-hidden="true" />
-                        <input
-                          type="search"
-                          className={styles.licenseSearchInput}
-                          placeholder="Search user, ID, license, application…"
-                          value={protectionLogSearchQuery}
-                          onChange={(event) => setProtectionLogSearchQuery(event.target.value)}
-                          aria-label="Search protection logs"
-                        />
-                      </label>
-
                       {protectionLogsMessage.text ? (
                         <div
                           className={`${styles.message} ${
