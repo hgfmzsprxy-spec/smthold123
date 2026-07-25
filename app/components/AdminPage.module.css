@@ -1,11 +1,12 @@
 .page {
+  --panel-radius: 4px;
   min-height: 100vh;
   box-sizing: border-box;
   font-family: "Plus Jakarta Sans", system-ui, sans-serif;
   font-weight: 300;
   font-size: 13px;
   line-height: 1.45;
-  background: #0b0d11;
+  background: #121212;
   padding: 24px 20px 40px;
   scrollbar-width: thin;
   scrollbar-color: rgba(163, 46, 59, 0.55) rgba(255, 255, 255, 0.04);
@@ -128,7 +129,7 @@
 .loginGateCardSlot > :global(.redeem-panel),
 .loginGateCardSlot .loginAuthPanel {
   height: 100%;
-  border-radius: 10px;
+  border-radius: var(--panel-radius);
   border: 0;
   background: rgba(255, 255, 255, 0.02);
   box-shadow: none;
@@ -527,7 +528,7 @@
 }
 
 .card {
-  border-radius: 12px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.07);
   background: #101318;
   box-shadow: none;
@@ -855,6 +856,32 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
+.dangerButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(229, 72, 77, 0.45);
+  background: rgba(229, 72, 77, 0.14);
+  color: #ff8b8f;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.dangerButton:hover:not(:disabled) {
+  background: rgba(229, 72, 77, 0.24);
+}
+
+.dangerButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .rowActionButton {
   width: 31px;
   height: 31px;
@@ -892,7 +919,7 @@
   width: 100%;
   min-width: 0;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.07);
   background: rgba(255, 255, 255, 0.02);
 }
@@ -946,7 +973,7 @@
 }
 
 .tableModule {
-  border-radius: 10px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.07);
   overflow: hidden;
   background: rgba(255, 255, 255, 0.02);
@@ -1169,19 +1196,21 @@
 }
 
 .tableRowLocked {
+  cursor: not-allowed;
+}
+
+.tableRowLocked > *:not(.tableActionsCell) {
   filter: blur(4px);
   opacity: 0.72;
   pointer-events: none;
   user-select: none;
-  cursor: not-allowed;
 }
 
-.tableRowLocked:hover {
+.tableRowLocked:hover > *:not(.tableActionsCell) {
   filter: blur(4px);
-  background: inherit;
 }
 
-.themeLight .tableRowLocked {
+.themeLight .tableRowLocked > *:not(.tableActionsCell) {
   opacity: 0.78;
 }
 
@@ -1307,7 +1336,7 @@
   justify-content: space-between;
   gap: 16px;
   padding: 12px 16px;
-  border-radius: 10px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.07);
   background: rgba(255, 255, 255, 0.02);
 }
@@ -1657,7 +1686,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(0, 0, 0, 0.22);
   color: #d7dbe1;
@@ -1854,7 +1883,7 @@
 
 .adminModalPanel {
   width: min(720px, 96vw);
-  border-radius: 10px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: #191919;
   color: #fff;
@@ -1937,7 +1966,7 @@
   gap: 10px;
   padding: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  border-radius: var(--panel-radius);
   background: rgba(255, 255, 255, 0.03);
 }
 
@@ -2396,7 +2425,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
 }
@@ -2435,7 +2464,7 @@
   display: grid;
   gap: 8px;
   padding: 12px;
-  border-radius: 10px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
   margin-bottom: 8px;
@@ -2780,6 +2809,16 @@
   color: #7c7c7c;
 }
 
+.adminNavItemIcon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  object-fit: contain;
+  display: block;
+  background: rgba(255, 255, 255, 0.04);
+}
+
 .adminNavItem:hover {
   color: #ffffff;
   background: rgba(255, 255, 255, 0.04);
@@ -2808,6 +2847,110 @@
   white-space: nowrap;
 }
 
+.guideNavGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.guideNavParent.adminNavItemActive {
+  background: rgba(163, 46, 59, 0.16);
+  border-left-color: #a32e3b;
+  color: #ffffff;
+}
+
+.guideNavParent.adminNavItemActive .guideNavChevron {
+  color: #a32e3b;
+}
+
+.guideNavChevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: #7c7c7c;
+  transition: transform 0.22s ease, color 0.15s ease;
+}
+
+.guideNavChevronOpen {
+  transform: rotate(180deg);
+}
+
+.guideNavChildrenWrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.24s ease,
+    opacity 0.18s ease;
+}
+
+.guideNavChildrenOpen {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.guideNavChildrenInner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.guideNavChildren {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 4px 0 6px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  margin-left: 16px;
+}
+
+.guideNavChild {
+  padding-top: 5px;
+  padding-bottom: 5px;
+  font-size: 12.5px;
+  transform: translateY(-4px);
+  opacity: 0.35;
+  transition:
+    transform 0.22s ease,
+    opacity 0.22s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.guideNavChildrenOpen .guideNavChild {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.guideNavChildrenOpen .guideNavChild:nth-child(1) {
+  transition-delay: 0.02s;
+}
+
+.guideNavChildrenOpen .guideNavChild:nth-child(2) {
+  transition-delay: 0.05s;
+}
+
+.guideNavChildrenOpen .guideNavChild:nth-child(3) {
+  transition-delay: 0.08s;
+}
+
+.themeLight .guideNavParent.adminNavItemActive {
+  background: rgba(163, 46, 59, 0.12);
+  color: #121417;
+}
+
+.themeLight .guideNavParent.adminNavItemActive .guideNavChevron,
+.themeLight .guideNavChevron {
+  color: #5f6875;
+}
+
+.themeLight .guideNavParent.adminNavItemActive .guideNavChevron {
+  color: #a32e3b;
+}
+
+.themeLight .guideNavChildren {
+  border-left-color: rgba(15, 18, 22, 0.12);
+}
+
 .adminSidebarFooter {
   margin-top: auto;
   padding: 12px;
@@ -2823,7 +2966,7 @@
   align-items: center;
   gap: 10px;
   padding: 8px 8px 8px 10px;
-  border-radius: 12px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
   min-width: 0;
@@ -2925,7 +3068,7 @@
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: var(--panel-radius);
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
@@ -3097,7 +3240,7 @@
   flex-direction: column;
   gap: 4px;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
 }
@@ -3119,7 +3262,7 @@
 
 .responseChartWrap {
   width: 100%;
-  border-radius: 10px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(0, 0, 0, 0.2);
   padding: 10px;
@@ -3235,7 +3378,7 @@
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  border-radius: 12px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(0, 0, 0, 0.22);
 }
@@ -3285,7 +3428,7 @@
 }
 
 .welcomeQuickLinks {
-  border-radius: 10px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.07);
   background: rgba(255, 255, 255, 0.02);
   overflow: hidden;
@@ -3432,7 +3575,7 @@
 .settingsCard {
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.02);
-  border-radius: 12px;
+  border-radius: var(--panel-radius);
   overflow: hidden;
 }
 
@@ -3482,7 +3625,7 @@
   align-items: center;
   gap: 12px;
   padding: 12px;
-  border-radius: 10px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(255, 255, 255, 0.03);
   filter: blur(2.5px);
@@ -3540,9 +3683,15 @@
 .panelBootLoading {
   display: grid;
   place-items: center;
-  width: 100%;
+  width: calc(100% + 40px);
   min-height: 100vh;
+  margin: -24px -20px -40px;
   padding: 28px 16px;
+  background: #121212;
+}
+
+.themeLight .panelBootLoading {
+  background: #e8eaee;
 }
 
 .storePanelLoading {
@@ -3602,7 +3751,7 @@
   align-items: center;
   gap: 12px;
   padding: 12px;
-  border-radius: 10px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(0, 0, 0, 0.18);
 }
@@ -3737,7 +3886,7 @@
   gap: 6px;
   min-width: 0;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(0, 0, 0, 0.18);
 }
@@ -3755,6 +3904,835 @@
   font-weight: 500;
   color: #eceff3;
   word-break: break-all;
+}
+
+.protectionOptionsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 900px) {
+  .protectionOptionsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.protectionLogsLayout {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  width: 100%;
+}
+
+.protectionLogsSidebar {
+  min-width: 0;
+  position: sticky;
+  top: 12px;
+}
+
+.protectionLogsSidebar .settingsCard {
+  margin: 0;
+}
+
+.protectionLogColumns {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.protectionLogColumnsLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #7c7c7c;
+}
+
+.protectionLogsFeed {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.protectionLogsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.protectionLogsListCols1 {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.protectionLogsEmpty {
+  padding: 28px 18px;
+  border-radius: var(--panel-radius);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  color: #9aa3ad;
+  font-size: 13px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.protectionLogCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--panel-radius);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.protectionLogsListCols2,
+.protectionLogsListCols3 {
+  display: grid;
+  gap: 10px;
+  align-items: start;
+}
+
+.protectionLogsListCols2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.protectionLogsListCols3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.protectionLogsListCols2 .protectionLogCard,
+.protectionLogsListCols3 .protectionLogCard {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Scale entire card (typography, paddings, thumbs) with the layout density. */
+.protectionLogsListCols2 .protectionLogCard {
+  zoom: 0.78;
+}
+
+.protectionLogsListCols3 .protectionLogCard {
+  zoom: 0.62;
+}
+
+.protectionLogDensity {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.protectionLogReloadBtn {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0;
+  justify-content: center;
+}
+
+.protectionLogReloadSpin {
+  animation: protectionLogSpin 0.9s linear infinite;
+}
+
+@keyframes protectionLogSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.protectionLogDensityBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #8b929c;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.protectionLogDensityBtn:hover {
+  color: #e8ecf1;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.protectionLogDensityBtnActive {
+  color: #f3f5f7;
+  background: rgba(163, 46, 59, 0.35);
+}
+
+.themeLight .protectionLogDensity {
+  border-color: rgba(15, 18, 22, 0.1);
+  background: #ffffff;
+}
+
+.themeLight .protectionLogDensityBtn {
+  color: #64748b;
+}
+
+.themeLight .protectionLogDensityBtn:hover {
+  color: #0f172a;
+  background: rgba(15, 18, 22, 0.06);
+}
+
+.themeLight .protectionLogDensityBtnActive {
+  color: #fff;
+  background: rgba(163, 46, 59, 0.85);
+}
+
+@media (max-width: 1280px) {
+  .protectionLogsListCols3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .protectionLogsListCols3 .protectionLogCard {
+    zoom: 0.78;
+  }
+}
+
+@media (max-width: 980px) {
+  .protectionLogsListCols2,
+  .protectionLogsListCols3 {
+    grid-template-columns: 1fr;
+  }
+
+  .protectionLogsListCols2 .protectionLogCard,
+  .protectionLogsListCols3 .protectionLogCard {
+    zoom: 1;
+  }
+}
+
+.protectionLogCardFailed {
+  border-color: rgba(196, 68, 78, 0.42);
+  background: linear-gradient(180deg, rgba(90, 24, 30, 0.22), rgba(255, 255, 255, 0.02) 42%);
+}
+
+.protectionLogHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: transparent;
+}
+
+.protectionLogIdentity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.protectionLogAvatar,
+.protectionLogAvatarFallback {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  flex: 0 0 auto;
+  object-fit: cover;
+  background: #1a1f28;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.protectionLogAvatarFallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #c9d1db;
+}
+
+.protectionLogIdentityText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.protectionLogTitle {
+  font-size: 14px;
+  font-weight: 650;
+  color: #f4f6f8;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.protectionLogSubtitle {
+  font-size: 12px;
+  color: #7a8491;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.protectionLogHeaderAside {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.protectionLogBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+
+.protectionLogBadgeRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.protectionLogBadgeNew {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: #c43a46;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.protectionLogBadgeOk {
+  color: #8fd4a6;
+  background: rgba(56, 140, 84, 0.14);
+  border-color: rgba(80, 170, 110, 0.24);
+}
+
+.protectionLogBadgeFail {
+  color: #f0a0a4;
+  background: rgba(168, 52, 62, 0.16);
+  border-color: rgba(196, 68, 78, 0.3);
+}
+
+.protectionLogTime {
+  font-size: 11px;
+  color: #6b7480;
+  white-space: nowrap;
+}
+
+.protectionLogGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  background: transparent;
+}
+
+.protectionLogCell {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px 16px;
+  border-right: 1px solid rgba(255, 255, 255, 0.045);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+}
+
+.protectionLogCell:nth-child(2n) {
+  border-right: 0;
+}
+
+.protectionLogCell:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.protectionLogFieldLabel {
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #5f6874;
+}
+
+.protectionLogFieldValue {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #e6ebf1;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.protectionLogFieldValueActions {
+  width: 100%;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.protectionLogFieldText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.protectionLogFieldButtons {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.protectionLogIconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #8b929c;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.protectionLogIconButton:hover {
+  color: #f3f5f7;
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.themeLight .protectionLogIconButton {
+  border-color: rgba(15, 18, 22, 0.1);
+  background: #fff;
+  color: #64748b;
+}
+
+.themeLight .protectionLogIconButton:hover {
+  color: #0f172a;
+  background: rgba(15, 18, 22, 0.06);
+}
+
+.protectionLogFieldSuffix {
+  color: #5a636f;
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.protectionLogMono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  color: #c5ced8;
+}
+
+.protectionLogFieldSuffix.protectionLogMono {
+  color: #555e6a;
+  font-size: 12px;
+}
+
+.protectionLogAccent {
+  color: #8fd4a6;
+  font-variant-numeric: tabular-nums;
+}
+
+.protectionLogProfile {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.protectionLogProfile img {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  object-fit: cover;
+  flex: 0 0 auto;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.protectionLogMessage {
+  margin: 0;
+  padding: 10px 16px 12px;
+  font-size: 12px;
+  color: #8a93a0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  background: transparent;
+}
+
+.protectionLogScreenshots {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px 14px;
+  background: transparent;
+}
+
+.protectionLogScreenshotsHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.protectionLogScreenshotCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #c9d0d8;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.protectionLogScreenshotGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.protectionLogScreenshot {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.protectionLogScreenshot:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.protectionLogScreenshot img,
+.protectionLogScreenshotPlaceholder {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.protectionLogScreenshotPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #8b949e;
+}
+
+.protectionLogScreenshotMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px 8px;
+  font-size: 11px;
+  color: #8b949e;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.protectionLogScreenshotRes {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  color: #c2cad3;
+  font-variant-numeric: tabular-nums;
+}
+
+.screenshotLightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(4, 6, 10, 0.78);
+  backdrop-filter: blur(8px);
+}
+
+.screenshotLightboxPanel {
+  width: min(1200px, 100%);
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(14, 16, 20, 0.96);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+}
+
+.screenshotLightboxTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.screenshotLightboxMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.screenshotLightboxMeta strong {
+  font-size: 14px;
+  color: #f2f4f7;
+}
+
+.screenshotLightboxMeta span {
+  font-size: 12px;
+  color: #8b949e;
+}
+
+.screenshotLightboxClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: #d7dde5;
+  cursor: pointer;
+}
+
+.screenshotLightboxClose:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.screenshotLightboxStage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  max-height: calc(100vh - 220px);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.screenshotLightboxImage {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100vh - 220px);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.screenshotLightboxNav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(12, 14, 18, 0.72);
+  color: #f2f4f7;
+  cursor: pointer;
+}
+
+.screenshotLightboxNav:hover {
+  background: rgba(20, 24, 30, 0.9);
+}
+
+.screenshotLightboxNavPrev {
+  left: 12px;
+}
+
+.screenshotLightboxNavNext {
+  right: 12px;
+}
+
+.screenshotLightboxThumbs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.screenshotLightboxThumb {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 92px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  color: #9aa3ad;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.screenshotLightboxThumb img {
+  display: block;
+  width: 100%;
+  height: 56px;
+  object-fit: cover;
+}
+
+.screenshotLightboxThumb span {
+  padding: 0 6px 5px;
+  font-size: 10px;
+  text-align: center;
+}
+
+.screenshotLightboxThumbActive {
+  border-color: rgba(121, 216, 151, 0.55);
+  color: #d7ffe4;
+}
+
+.themeLight .screenshotLightbox {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.themeLight .screenshotLightboxPanel {
+  background: #fff;
+  border-color: rgba(15, 23, 42, 0.1);
+}
+
+.themeLight .screenshotLightboxMeta strong {
+  color: #0f172a;
+}
+
+.themeLight .screenshotLightboxMeta span,
+.themeLight .protectionLogScreenshotRes {
+  color: #64748b;
+}
+
+@media (max-width: 980px) {
+  .protectionLogsLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .protectionLogsSidebar {
+    position: static;
+  }
+
+  .protectionLogHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .protectionLogHeaderAside {
+    align-items: flex-start;
+    flex-direction: row;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .protectionLogGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .protectionLogCell {
+    border-right: 0;
+  }
+
+  .protectionLogCell:nth-last-child(-n + 2) {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .protectionLogCell:last-child {
+    border-bottom: 0;
+  }
+}
+
+.themeLight .protectionLogsEmpty,
+.themeLight .protectionLogCard {
+  border-color: rgba(15, 23, 42, 0.1);
+  background: #fff;
+}
+
+.themeLight .protectionLogHeader,
+.themeLight .protectionLogScreenshots {
+  background: transparent;
+}
+
+.themeLight .protectionLogTitle,
+.themeLight .protectionLogFieldValue {
+  color: #0f172a;
+}
+
+.themeLight .protectionLogFieldSuffix,
+.themeLight .protectionLogFieldSuffix.protectionLogMono {
+  color: #94a3b8;
+}
+
+.themeLight .protectionLogTime,
+.themeLight .protectionLogMessage,
+.themeLight .protectionLogColumnsLabel,
+.themeLight .protectionLogFieldLabel,
+.themeLight .protectionLogSubtitle,
+.themeLight .protectionLogScreenshotMeta {
+  color: #64748b;
+}
+
+.themeLight .protectionLogScreenshot {
+  border-color: rgba(15, 23, 42, 0.1);
+  background: #f8fafc;
+}
+
+.themeLight .protectionLogMono {
+  color: #334155;
 }
 
 .settingsOptionRow {
@@ -3843,7 +4821,7 @@
   flex-direction: column;
   gap: 10px;
   padding: 12px;
-  border-radius: 10px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(0, 0, 0, 0.18);
 }
@@ -4064,6 +5042,27 @@
 .themeLight .sideDrawerPanel .closeButton:hover {
   color: #121417;
   background: rgba(15, 18, 22, 0.06);
+}
+
+.themeLight .licenseInfoSection h3 {
+  color: #5f6875;
+}
+
+.themeLight .licenseInfoSection p {
+  color: #3a424d;
+}
+
+.themeLight .hwidItem,
+.themeLight .hwidItem span {
+  color: #3a424d;
+}
+
+.themeLight .hwidItem strong {
+  color: #121417;
+}
+
+.themeLight .licenseInfoDivider {
+  background: rgba(15, 18, 22, 0.1);
 }
 
 .themeLight .sideDrawerPanel::-webkit-scrollbar-track,
@@ -4411,7 +5410,7 @@
   flex-direction: column;
   gap: 10px;
   padding: 18px;
-  border-radius: 12px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.02);
 }
@@ -4495,7 +5494,7 @@
   flex-direction: column;
   gap: 12px;
   padding: 16px;
-  border-radius: 12px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.02);
 }
@@ -4701,7 +5700,7 @@
 .depositDiscountLegend {
   margin-top: 0;
   padding: 16px;
-  border-radius: 12px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.02);
   display: flex;
@@ -4747,7 +5746,7 @@
   min-width: 0;
   padding: 14px 12px;
   margin: 0 4px;
-  border-radius: 12px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(0, 0, 0, 0.22);
   transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
@@ -4941,7 +5940,7 @@
 
 /* Same look as site .loader-note — sits outside the title/table card */
 .transactionsAnnounce {
-  border-radius: 12px;
+  border-radius: var(--panel-radius);
   background: rgba(163, 46, 59, 0.1);
   border: 1px dashed rgba(163, 46, 59, 0.45);
   color: #e6c7cb;
@@ -5003,7 +6002,7 @@
   align-items: flex-start;
   gap: 10px;
   padding: 22px 22px 20px;
-  border-radius: 14px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background:
     radial-gradient(120% 90% at 0% 0%, rgba(163, 46, 59, 0.18), transparent 55%),
@@ -5048,7 +6047,7 @@
 }
 
 .faqItem {
-  border-radius: 12px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.07);
   background: rgba(0, 0, 0, 0.22);
   overflow: hidden;
@@ -5204,7 +6203,7 @@
   justify-content: space-between;
   gap: 16px;
   padding: 16px 18px;
-  border-radius: 14px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(201, 75, 88, 0.28);
   background:
     linear-gradient(135deg, rgba(163, 46, 59, 0.16), rgba(0, 0, 0, 0.2));
@@ -5387,7 +6386,7 @@
   flex-direction: column;
   gap: 12px;
   padding: 16px;
-  border-radius: 12px;
+  border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.02);
 }
@@ -5513,7 +6512,7 @@
 .notificationCard {
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.02);
-  border-radius: 12px;
+  border-radius: var(--panel-radius);
   overflow: hidden;
 }
 
@@ -5675,5 +6674,2371 @@
 
   .sessionItem .secondaryButton {
     width: 100%;
+  }
+}
+
+.featuresPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  /* Intentionally NOT a tableModule — free layout like product pages. */
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  overflow: visible;
+  padding: 0;
+  box-shadow: none;
+}
+
+.featuresPanelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.featuresPanelHeader h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 560;
+  line-height: 1.15;
+  color: #fff;
+}
+
+.featuresPanelKicker {
+  display: block;
+  margin-bottom: 8px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 450;
+}
+
+.themeLight .featuresPanelHeader h2 {
+  color: #121417;
+}
+
+.themeLight .featuresPanelKicker {
+  color: rgba(15, 18, 22, 0.5);
+}
+
+/* Reuse product-page feature card markup; recolor checks for dashboard. */
+.featuresPanel :global(.product-feature-card li svg) {
+  color: #a32e3b;
+}
+
+.themeLight .featuresPanel :global(.product-feature-card) {
+  background: #ffffff;
+  border-color: rgba(15, 18, 22, 0.1);
+}
+
+.themeLight .featuresPanel :global(.product-feature-card h3) {
+  color: #121417;
+}
+
+.themeLight .featuresPanel :global(.product-feature-group-title) {
+  color: rgba(15, 18, 22, 0.45);
+}
+
+.themeLight .featuresPanel :global(.product-feature-card li) {
+  color: rgba(15, 18, 22, 0.68);
+}
+
+/* ——— Guide article (Antivirus / future chapters) ——— */
+.guideDashboard {
+  width: 100%;
+  max-width: none;
+}
+
+.guideArticle {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 10px 8px 80px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.guideArticleIntro {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 760px;
+}
+
+.guideArticleKicker {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.guideArticleTitle {
+  margin: 0;
+  font-size: 38px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: #fff;
+}
+
+.guideArticleLead {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.guideTimeline {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  padding-left: 4px;
+  width: 100%;
+}
+
+.guideTimelineTrack {
+  position: absolute;
+  width: 2px;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(163, 46, 59, 0.34) 0 5px,
+    transparent 5px 9px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.guideTimelineTrackFill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2px;
+  background: #a32e3b;
+  transition: height 0.08s linear;
+}
+
+/* Dashed tail after the last step — fades out toward the next-step separator */
+.guideTimelineTrackFade {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(163, 46, 59, 0.42) 0 5px,
+    transparent 5px 9px
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(0, 0, 0, 0.45) 55%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(0, 0, 0, 0.45) 55%,
+    transparent 100%
+  );
+}
+
+.guideStep {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+  width: 100%;
+}
+
+.guideStepIndex {
+  position: relative;
+  z-index: 2;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015));
+  color: rgba(255, 255, 255, 0.38);
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition:
+    border-color 0.25s ease,
+    background 0.25s ease,
+    color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.2s ease;
+}
+
+.guideStepIndex:hover {
+  transform: translateY(-1px);
+  color: rgba(255, 255, 255, 0.62);
+  border-color: rgba(255, 255, 255, 0.18);
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025));
+}
+
+.guideStepActive .guideStepIndex {
+  border: 1.5px solid #a32e3b;
+  background: linear-gradient(160deg, rgba(163, 46, 59, 0.22), rgba(20, 20, 20, 0.95));
+  color: #ff6b78;
+  box-shadow: 0 0 0 4px rgba(163, 46, 59, 0.12);
+}
+
+.guideStepDone .guideStepIndex {
+  border: 1.5px solid #a32e3b;
+  background: linear-gradient(160deg, rgba(163, 46, 59, 0.22), rgba(20, 20, 20, 0.95));
+  color: #ff6b78;
+  box-shadow: 0 0 0 4px rgba(163, 46, 59, 0.12);
+}
+
+.guideStepDone.guideStepActive .guideStepIndex {
+  border: 1.5px solid #a32e3b;
+  background: linear-gradient(160deg, rgba(163, 46, 59, 0.22), rgba(20, 20, 20, 0.95));
+  color: #ff6b78;
+  box-shadow: 0 0 0 4px rgba(163, 46, 59, 0.12);
+}
+
+.guideStepBody {
+  display: grid;
+  grid-template-columns: minmax(0, 0.88fr) minmax(360px, 1.12fr);
+  gap: 28px;
+  align-items: start;
+  padding-top: 2px;
+  width: 100%;
+}
+
+.guideStepCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.guideStepTitle {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 620;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  color: #fff;
+}
+
+.guideStepText {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.guideStepList {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  counter-reset: guide-step-item;
+}
+
+.guideStepList li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 14px 16px 14px 48px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.025);
+  counter-increment: guide-step-item;
+}
+
+.guideStepList li::before {
+  content: counter(guide-step-item);
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: rgba(163, 46, 59, 0.18);
+  color: #ff8a94;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.guideStepList strong {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.guideStepList span {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.guideStepList kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  margin: 0 2px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  font-family: inherit;
+  font-size: 11px;
+  color: #fff;
+}
+
+.guideStepList em {
+  font-style: normal;
+  color: rgba(255, 255, 255, 0.88);
+  font-weight: 550;
+}
+
+.guideToggleGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.guideToggleChip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(163, 46, 59, 0.22);
+  background: rgba(163, 46, 59, 0.08);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.guideToggleChip svg {
+  flex-shrink: 0;
+  color: #a32e3b;
+}
+
+.guideStepMedia {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.guideVideoFrame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    radial-gradient(ellipse at 30% 0%, rgba(163, 46, 59, 0.18), transparent 55%),
+    #0d0d0d;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  aspect-ratio: 16 / 9;
+  min-height: 400px;
+  width: 100%;
+}
+
+.guideVideo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+}
+
+.guideVideoCaption {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.guideTipsStack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.guideTipsStack .guideTipCard {
+  align-items: flex-start;
+}
+
+.guideErrorCard .guideTipNote {
+  margin-top: 12px;
+}
+
+.guideTipCardContent {
+  min-width: 0;
+  flex: 1;
+}
+
+.guideTipCardMedia {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  max-width: 420px;
+}
+
+.guideTipNote {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(163, 46, 59, 0.22);
+  background: rgba(163, 46, 59, 0.06);
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 12.5px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.guideTipCard .guideTipNote span {
+  display: inline;
+}
+
+.themeLight .guideTipNote {
+  color: rgba(15, 18, 22, 0.62);
+  border-color: rgba(163, 46, 59, 0.2);
+  background: rgba(163, 46, 59, 0.05);
+}
+
+.guideTipCards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.guideTipCardsSingle {
+  grid-template-columns: 1fr;
+}
+
+.guideTipCard {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.guideTipCard svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #a32e3b;
+}
+
+.guideTipCard strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.guideTipCard span {
+  display: block;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.guideStepNote {
+  margin: 2px 0 0;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(163, 46, 59, 0.22);
+  background: rgba(163, 46, 59, 0.06);
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.guideNoteLabel {
+  display: inline;
+  margin-right: 6px;
+  color: #a32e3b;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.guideProgressBar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  z-index: 80;
+  background: rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+
+.guideProgressBarFill {
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  background: linear-gradient(90deg, #8f2a35, #d44a58);
+  transition: transform 0.12s linear;
+}
+
+.themeLight .guideArticleKicker {
+  color: rgba(15, 18, 22, 0.45);
+}
+
+.themeLight .guideArticleTitle,
+.themeLight .guideStepTitle,
+.themeLight .guideStepList strong,
+.themeLight .guideTipCard strong {
+  color: #121417;
+}
+
+.themeLight .guideArticleLead,
+.themeLight .guideStepText,
+.themeLight .guideStepList span,
+.themeLight .guideVideoCaption,
+.themeLight .guideTipCard span,
+.themeLight .guideStepNote {
+  color: rgba(15, 18, 22, 0.62);
+  border-color: rgba(163, 46, 59, 0.2);
+  background: rgba(163, 46, 59, 0.05);
+}
+
+.themeLight .guideNoteLabel {
+  color: #a32e3b;
+}
+
+.themeLight .guideStepIndex {
+  background: linear-gradient(160deg, #ffffff, #f3f5f7);
+  border-color: rgba(15, 18, 22, 0.12);
+  color: rgba(15, 18, 22, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.themeLight .guideStepIndex:hover {
+  color: rgba(15, 18, 22, 0.65);
+  border-color: rgba(15, 18, 22, 0.2);
+}
+
+.themeLight .guideStepActive .guideStepIndex,
+.themeLight .guideStepDone .guideStepIndex,
+.themeLight .guideStepDone.guideStepActive .guideStepIndex {
+  background: rgba(163, 46, 59, 0.1);
+  border-color: #a32e3b;
+  color: #a32e3b;
+  box-shadow: 0 0 0 4px rgba(163, 46, 59, 0.1);
+}
+
+.themeLight .guideStepList li,
+.themeLight .guideTipCard {
+  background: #fff;
+  border-color: rgba(15, 18, 22, 0.1);
+}
+
+.themeLight .guideToggleChip {
+  background: rgba(163, 46, 59, 0.06);
+  border-color: rgba(163, 46, 59, 0.18);
+  color: #121417;
+}
+
+.themeLight .guideStepList kbd {
+  background: #f0f2f5;
+  border-color: rgba(15, 18, 22, 0.12);
+  color: #121417;
+}
+
+.themeLight .guideStepList em {
+  color: #121417;
+}
+
+.themeLight .guideVideoFrame {
+  border-color: rgba(15, 18, 22, 0.12);
+  background: #f4f5f7;
+}
+
+.themeLight .guideProgressBar {
+  background: rgba(15, 18, 22, 0.08);
+}
+
+.themeLight .guideTimelineTrack {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(163, 46, 59, 0.28) 0 5px,
+    transparent 5px 9px
+  );
+}
+
+.themeLight .guideTimelineTrackFade {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(163, 46, 59, 0.34) 0 5px,
+    transparent 5px 9px
+  );
+}
+
+.guideReadyBanner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 8px 0 4px;
+  padding: 28px 16px 24px;
+  text-align: center;
+  overflow: visible;
+}
+
+.guideReadyGlow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(480px, 80%);
+  height: 120px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(ellipse at center, rgba(163, 46, 59, 0.28), transparent 70%);
+  filter: blur(8px);
+  pointer-events: none;
+  animation: guideReadyPulse 3.2s ease-in-out infinite;
+}
+
+.guideReadyEyebrow {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  width: 100%;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-align: center;
+  color: rgba(255, 138, 148, 0.72);
+  animation: guideReadyFadeUp 0.7s ease both;
+}
+
+.guideReadyTitle {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  width: 100%;
+  font-size: clamp(34px, 5vw, 52px);
+  font-weight: 750;
+  letter-spacing: -0.04em;
+  line-height: 1.25;
+  text-align: center;
+  color: #fff;
+  overflow: visible;
+  animation: guideReadyFadeUp 0.85s 0.08s ease both;
+}
+
+.guideReadyShimmer {
+  display: inline-block;
+  padding: 0.08em 0.04em 0.18em;
+  background: linear-gradient(
+    105deg,
+    #ffffff 0%,
+    #ffffff 38%,
+    #ff8a94 48%,
+    #ffffff 58%,
+    #ffffff 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: guideReadyShimmer 3.8s ease-in-out infinite;
+  filter: drop-shadow(0 0 18px rgba(163, 46, 59, 0.35));
+}
+
+.guideReadySub {
+  position: relative;
+  z-index: 1;
+  margin: 2px 0 0;
+  width: 100%;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  animation: guideReadyFadeUp 1s 0.16s ease both;
+}
+
+@keyframes guideReadyShimmer {
+  0%,
+  55% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: -40% 50%;
+  }
+}
+
+@keyframes guideReadyPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+}
+
+@keyframes guideReadyFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.themeLight .guideReadyEyebrow {
+  color: #a32e3b;
+}
+
+.themeLight .guideReadyTitle {
+  color: #121417;
+}
+
+.themeLight .guideReadyShimmer {
+  background: linear-gradient(
+    105deg,
+    #121417 0%,
+    #121417 38%,
+    #a32e3b 48%,
+    #121417 58%,
+    #121417 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 12px rgba(163, 46, 59, 0.2));
+}
+
+.themeLight .guideReadySub {
+  color: rgba(15, 18, 22, 0.55);
+}
+
+.themeLight .guideReadyGlow {
+  background: radial-gradient(ellipse at center, rgba(163, 46, 59, 0.18), transparent 70%);
+}
+
+.guideContinue {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  padding: 8px 0 12px 68px;
+}
+
+.guideContinueWide {
+  padding-left: 0;
+}
+
+.guideContinueRule {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(163, 46, 59, 0.45),
+    rgba(255, 255, 255, 0.1) 40%,
+    transparent 100%
+  );
+}
+
+.guideContinueInner {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: stretch;
+  width: 100%;
+}
+
+.guideContinueLabel {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.guideContinueFullBtn {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.guideContinueArrow {
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.guideProductPickGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.guideProductPickBtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.88);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  text-align: left;
+  text-decoration: none;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.guideProductPickBtn img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 4px;
+}
+
+.guideProductPickBtn svg {
+  flex-shrink: 0;
+  color: #a32e3b;
+}
+
+.guideProductPickBtn .guideContinueArrow {
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.guideProductPickBtn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(163, 46, 59, 0.4);
+  background: rgba(163, 46, 59, 0.1);
+}
+
+.themeLight .guideContinueRule {
+  background: linear-gradient(
+    90deg,
+    rgba(163, 46, 59, 0.4),
+    rgba(15, 18, 22, 0.1) 40%,
+    transparent 100%
+  );
+}
+
+.themeLight .guideContinueLabel {
+  color: rgba(15, 18, 22, 0.42);
+}
+
+.themeLight .guideContinueArrow,
+.themeLight .guideProductPickBtn .guideContinueArrow {
+  color: rgba(15, 18, 22, 0.4);
+}
+
+.themeLight .guideProductPickBtn {
+  background: #fff;
+  border-color: rgba(15, 18, 22, 0.1);
+  color: #121417;
+}
+
+.themeLight .guideProductPickBtn:hover {
+  border-color: rgba(163, 46, 59, 0.35);
+  background: rgba(163, 46, 59, 0.06);
+}
+
+.guideStepBodySingle {
+  grid-template-columns: 1fr;
+}
+
+.guideStepBodyMediaLeft {
+  grid-template-columns: minmax(360px, 1.12fr) minmax(0, 0.88fr);
+}
+
+.guideTipCardButton {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  align-items: center;
+}
+
+.guideTipCardButton:hover {
+  border-color: rgba(163, 46, 59, 0.4);
+  background: rgba(163, 46, 59, 0.1);
+}
+
+.guideTipCardButton .guideContinueArrow {
+  margin-left: auto;
+}
+
+.guideProductTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.guideProductTitleIcon {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.guideTitleLucideIcon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.themeLight .guideTitleLucideIcon {
+  color: rgba(15, 18, 22, 0.72);
+}
+
+.guideErrorToolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 8px 0 22px;
+}
+
+.guideErrorFiltersRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.guideErrorFiltersRow .guideErrorFilters {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.guideErrorHelpBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  padding: 7px 11px;
+  border-radius: 8px;
+  border: 1px solid rgba(163, 46, 59, 0.5);
+  background: rgba(163, 46, 59, 0.2);
+  color: #fff;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.guideErrorHelpBtn:hover,
+.guideErrorHelpBtnPrimary:hover {
+  border-color: rgba(163, 46, 59, 0.7);
+  background: rgba(163, 46, 59, 0.32);
+  color: #fff;
+}
+
+.guideErrorHelpBtnPrimary {
+  color: #fff;
+  border-color: rgba(163, 46, 59, 0.5);
+  background: rgba(163, 46, 59, 0.2);
+}
+
+.guideErrorSearch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.guideErrorSearch input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.88);
+  font: inherit;
+  font-size: 14px;
+}
+
+.guideErrorSearch input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.guideErrorFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.guideErrorFilter {
+  padding: 7px 11px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.55);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.guideErrorFilter:hover {
+  color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.guideErrorFilterActive {
+  color: #fff;
+  border-color: rgba(163, 46, 59, 0.45);
+  background: rgba(163, 46, 59, 0.16);
+}
+
+.guideErrorCount {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 12.5px;
+}
+
+.guideErrorCount strong {
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 650;
+}
+
+.guideErrorSections {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.guideErrorSectionHead {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.guideErrorSectionTitle {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.guideErrorSectionLead {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.guideErrorList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.guideErrorCard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.guideErrorExactRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 12px 10px 14px;
+  border: 0;
+  border-radius: 0 8px 8px 0;
+  border-left: 2px solid #a32e3b;
+  background: rgba(163, 46, 59, 0.16);
+}
+
+.guideErrorBadges {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.guideErrorSeverityBadge,
+.guideErrorFixBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.guideErrorSeverityBadge svg,
+.guideErrorFixBadge svg {
+  flex-shrink: 0;
+}
+
+.guideErrorSeverityLow {
+  border-color: rgba(70, 170, 110, 0.28);
+}
+
+.guideErrorSeverityLow .guideErrorSeverityBadge {
+  color: #7ddea8;
+  background: rgba(70, 170, 110, 0.18);
+  border-color: rgba(70, 170, 110, 0.32);
+}
+
+.guideErrorSeverityLow .guideErrorFixBadge {
+  color: #7ddea8;
+  background: rgba(70, 170, 110, 0.1);
+  border-color: rgba(70, 170, 110, 0.24);
+}
+
+.guideErrorSeverityLow .guideErrorExactRow {
+  border-left-color: #3faf72;
+  background: rgba(70, 170, 110, 0.14);
+}
+
+.guideErrorSeverityMedium {
+  border-color: rgba(210, 160, 50, 0.28);
+}
+
+.guideErrorSeverityMedium .guideErrorSeverityBadge {
+  color: #efc56a;
+  background: rgba(210, 160, 50, 0.18);
+  border-color: rgba(210, 160, 50, 0.34);
+}
+
+.guideErrorSeverityMedium .guideErrorFixBadge {
+  color: #efc56a;
+  background: rgba(210, 160, 50, 0.1);
+  border-color: rgba(210, 160, 50, 0.24);
+}
+
+.guideErrorSeverityMedium .guideErrorExactRow {
+  border-left-color: #d4a017;
+  background: rgba(210, 160, 50, 0.14);
+}
+
+.guideErrorSeverityHigh {
+  border-color: rgba(163, 46, 59, 0.35);
+}
+
+.guideErrorSeverityHigh .guideErrorSeverityBadge {
+  color: #ff9aa3;
+  background: rgba(163, 46, 59, 0.22);
+  border-color: rgba(163, 46, 59, 0.4);
+}
+
+.guideErrorSeverityHigh .guideErrorFixBadge {
+  color: #ff9aa3;
+  background: rgba(163, 46, 59, 0.12);
+  border-color: rgba(163, 46, 59, 0.3);
+}
+
+.guideErrorSeverityHigh .guideErrorExactRow {
+  border-left-color: #a32e3b;
+  background: rgba(163, 46, 59, 0.16);
+}
+
+.guideErrorExact {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #ffffff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media (max-width: 720px) {
+  .guideErrorExactRow {
+    flex-wrap: wrap;
+  }
+
+  .guideErrorExact {
+    flex: 1 1 100%;
+  }
+}
+
+.guideErrorMeta {
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.guideErrorMeta div {
+  display: grid;
+  gap: 4px;
+}
+
+.guideErrorMeta dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.38);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.guideErrorMeta dt svg {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.guideErrorMeta dd {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.guideErrorEmpty {
+  padding: 28px 16px;
+  border-radius: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.45);
+  text-align: center;
+  font-size: 14px;
+}
+
+.themeLight .guideErrorHelpBtn,
+.themeLight .guideErrorHelpBtnPrimary {
+  color: #a32e3b;
+  border-color: rgba(163, 46, 59, 0.35);
+  background: rgba(163, 46, 59, 0.08);
+}
+
+.themeLight .guideErrorHelpBtn:hover,
+.themeLight .guideErrorHelpBtnPrimary:hover {
+  color: #8a2531;
+  border-color: rgba(163, 46, 59, 0.5);
+  background: rgba(163, 46, 59, 0.14);
+}
+
+.themeLight .guideErrorSearch {
+  border-color: rgba(15, 18, 22, 0.1);
+  background: #fff;
+  color: rgba(15, 18, 22, 0.4);
+}
+
+.themeLight .guideErrorSearch input {
+  color: #121417;
+}
+
+.themeLight .guideErrorSearch input::placeholder {
+  color: rgba(15, 18, 22, 0.35);
+}
+
+.themeLight .guideErrorFilter {
+  border-color: rgba(15, 18, 22, 0.1);
+  background: #fff;
+  color: rgba(15, 18, 22, 0.55);
+}
+
+.themeLight .guideErrorFilterActive {
+  color: #a32e3b;
+  border-color: rgba(163, 46, 59, 0.35);
+  background: rgba(163, 46, 59, 0.08);
+}
+
+.themeLight .guideErrorCount {
+  color: rgba(15, 18, 22, 0.45);
+}
+
+.themeLight .guideErrorCount strong,
+.themeLight .guideErrorSectionTitle {
+  color: #121417;
+}
+
+.themeLight .guideErrorSectionLead,
+.themeLight .guideErrorEmpty {
+  color: rgba(15, 18, 22, 0.55);
+}
+
+.themeLight .guideErrorCard {
+  border-color: rgba(15, 18, 22, 0.1);
+  background: #fff;
+}
+
+.themeLight .guideErrorExact {
+  color: #121417;
+}
+
+.themeLight .guideErrorSeverityLow .guideErrorSeverityBadge,
+.themeLight .guideErrorSeverityLow .guideErrorFixBadge {
+  color: #1f7a4a;
+  background: rgba(70, 170, 110, 0.12);
+  border-color: rgba(70, 170, 110, 0.28);
+}
+
+.themeLight .guideErrorSeverityLow .guideErrorExactRow {
+  border-left-color: #2f9d5f;
+  background: rgba(70, 170, 110, 0.12);
+}
+
+.themeLight .guideErrorSeverityMedium .guideErrorSeverityBadge,
+.themeLight .guideErrorSeverityMedium .guideErrorFixBadge {
+  color: #9a6b00;
+  background: rgba(210, 160, 50, 0.12);
+  border-color: rgba(210, 160, 50, 0.3);
+}
+
+.themeLight .guideErrorSeverityMedium .guideErrorExactRow {
+  border-left-color: #c49212;
+  background: rgba(210, 160, 50, 0.12);
+}
+
+.themeLight .guideErrorSeverityHigh .guideErrorSeverityBadge,
+.themeLight .guideErrorSeverityHigh .guideErrorFixBadge {
+  color: #a32e3b;
+  background: rgba(163, 46, 59, 0.1);
+  border-color: rgba(163, 46, 59, 0.28);
+}
+
+.themeLight .guideErrorSeverityHigh .guideErrorExactRow {
+  border-left-color: #a32e3b;
+  background: rgba(163, 46, 59, 0.12);
+}
+
+.themeLight .guideErrorMeta dt {
+  color: rgba(15, 18, 22, 0.4);
+}
+
+.themeLight .guideErrorMeta dd {
+  color: rgba(15, 18, 22, 0.68);
+}
+
+.guideExpandCard {
+  margin-top: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.025);
+  overflow: hidden;
+}
+
+.guideExpandCardSummary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  list-style: none;
+  color: rgba(255, 255, 255, 0.88);
+  user-select: none;
+}
+
+.guideExpandCardSummary::-webkit-details-marker {
+  display: none;
+}
+
+.guideExpandCardSummary::marker {
+  content: "";
+}
+
+.guideExpandCardSummary svg:first-child {
+  flex-shrink: 0;
+  color: #a32e3b;
+}
+
+.guideExpandCardTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.guideExpandCardChevron {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.45);
+  transition: transform 0.18s ease;
+}
+
+.guideExpandCard[open] .guideExpandCardChevron {
+  transform: rotate(180deg);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.guideExpandCardBody {
+  padding: 0 16px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.guideExpandCardBody .guideStepText {
+  margin: 12px 0 0;
+}
+
+.guideExpandCardBody .guideStepList {
+  margin-top: 12px;
+}
+
+.themeLight .guideExpandCard {
+  border-color: rgba(15, 18, 22, 0.1);
+  background: #fff;
+}
+
+.themeLight .guideExpandCardSummary {
+  color: #121417;
+}
+
+.themeLight .guideExpandCardChevron {
+  color: rgba(15, 18, 22, 0.4);
+}
+
+.themeLight .guideExpandCard[open] .guideExpandCardChevron {
+  color: rgba(15, 18, 22, 0.65);
+}
+
+.themeLight .guideExpandCardBody {
+  border-top-color: rgba(15, 18, 22, 0.08);
+}
+
+.guideOptionalBadge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  color: rgba(255, 255, 255, 0.62);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.themeLight .guideOptionalBadge {
+  color: rgba(15, 18, 22, 0.55);
+  background: rgba(15, 18, 22, 0.05);
+  border-color: rgba(15, 18, 22, 0.1);
+}
+
+.guideProductSectionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.guideProductNavCards {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  max-width: 280px;
+}
+
+.guideProductNavCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 0;
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: #bdbdbd;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.guideProductNavCard svg {
+  flex-shrink: 0;
+  color: #7c7c7c;
+}
+
+.guideProductNavCard:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.guideProductNavCardActive {
+  color: #ffffff;
+  background: rgba(163, 46, 59, 0.16);
+  border-left: 2px solid #a32e3b;
+}
+
+.guideProductNavCardActive svg {
+  color: #ffffff;
+}
+
+.guideProductSectionBody {
+  margin-top: 18px;
+  width: 100%;
+}
+
+.guideProductSectionContent {
+  width: 100%;
+  align-items: start;
+}
+
+.guideProductShotFrame {
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #0d0d0d;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+.guideProductShot {
+  display: block;
+  width: 100%;
+  height: auto;
+  vertical-align: top;
+}
+
+.guideProductShotStack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.guideInlineLink {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #ff8a94;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.guideInlineLink:hover {
+  color: #ffb0b7;
+}
+
+.guideKbd {
+  display: inline-block;
+  padding: 2px 8px;
+  margin: 0 2px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  color: #fff;
+}
+
+.themeLight .guideProductShotFrame {
+  border-color: rgba(15, 18, 22, 0.12);
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(15, 18, 22, 0.08);
+}
+
+.themeLight .guideInlineLink {
+  color: #a32e3b;
+}
+
+.themeLight .guideKbd {
+  border-color: rgba(15, 18, 22, 0.12);
+  background: #f0f2f5;
+  color: #121417;
+}
+
+.themeLight .guideProductNavCard {
+  color: rgba(15, 18, 22, 0.62);
+}
+
+.themeLight .guideProductNavCard svg {
+  color: rgba(15, 18, 22, 0.4);
+}
+
+.themeLight .guideProductNavCard:hover {
+  color: #121417;
+  background: rgba(15, 18, 22, 0.04);
+}
+
+.themeLight .guideProductNavCardActive,
+.themeLight .guideProductNavCardActive:hover {
+  color: #121417;
+  background: rgba(163, 46, 59, 0.12);
+  border-left-color: #a32e3b;
+}
+
+.themeLight .guideProductNavCardActive svg {
+  color: #a32e3b;
+}
+
+.guideProductMiniCard {
+  min-height: 72px;
+}
+
+.guideStepList a,
+.guideStepText a {
+  color: #ff8a94;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.guideStepList a:hover,
+.guideStepText a:hover {
+  color: #ffb0b7;
+}
+
+.themeLight .guideTipCardButton:hover {
+  border-color: rgba(163, 46, 59, 0.35);
+  background: rgba(163, 46, 59, 0.06);
+}
+
+.themeLight .guideStepList a,
+.themeLight .guideStepText a {
+  color: #a32e3b;
+}
+
+.guideInlineCode {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.guideDownloadLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(163, 46, 59, 0.35);
+  background: linear-gradient(160deg, rgba(163, 46, 59, 0.22), rgba(163, 46, 59, 0.08));
+  color: #ff8a94;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.guideDownloadLink:hover {
+  transform: translateY(-1px);
+  border-color: rgba(163, 46, 59, 0.55);
+  background: linear-gradient(160deg, rgba(163, 46, 59, 0.3), rgba(163, 46, 59, 0.12));
+}
+
+.guideSubheading {
+  margin: 8px 0 0;
+  font-size: 18px;
+  font-weight: 620;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.guideSearchExample {
+  margin: 0;
+}
+
+.guideWinTables {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+
+.guideWinTableCard {
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+}
+
+.guideWinTableTitle {
+  margin: 0;
+  padding: 14px 16px 10px;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.guideWinTableWrap {
+  overflow-x: auto;
+}
+
+.guideWinTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.guideWinTable th,
+.guideWinTable td {
+  padding: 10px 14px;
+  text-align: left;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.72);
+  white-space: nowrap;
+}
+
+.guideWinTable th:last-child,
+.guideWinTable td:last-child {
+  border-right: none;
+  text-align: center;
+}
+
+.guideWinTable thead th {
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-top: none;
+}
+
+.guideWinTable tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.guideWinSupported {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #3ecf8e;
+  font-weight: 600;
+}
+
+.guideWinDash {
+  display: inline-block;
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.guideBiosPanel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(255, 255, 255, 0.1), transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(163, 46, 59, 0.22), transparent 48%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+  overflow: hidden;
+}
+
+.guideBiosPanel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 85%);
+  pointer-events: none;
+}
+
+.guideBiosPanelHeader {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.guideBiosEyebrow {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #a32e3b;
+}
+
+.guideBiosHeading {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  color: #fff;
+}
+
+.guideBiosLead {
+  margin: 8px 0 0;
+  max-width: 46ch;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.guideBiosLegend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.guideBiosLegendOptional,
+.guideBiosLegendRequired {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.guideBiosLegendOptional i,
+.guideBiosLegendRequired i {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  display: block;
+}
+
+.guideBiosLegendOptional i {
+  background: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
+}
+
+.guideBiosLegendRequired i {
+  background: #a32e3b;
+  box-shadow: 0 0 0 3px rgba(163, 46, 59, 0.2);
+}
+
+.guideBiosSearchBar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.28);
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.guideBiosSearchQuery {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.guideBiosSearchQuery em {
+  font-style: normal;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(163, 46, 59, 0.16);
+  border: 1px solid rgba(163, 46, 59, 0.28);
+  color: #ff8a94;
+}
+
+.guideBiosSearchHint {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.guideBiosList {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.guideBiosRow {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(12, 12, 12, 0.55);
+  transition: border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
+}
+
+.guideBiosRow:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(18, 18, 18, 0.72);
+}
+
+.guideBiosRowRequired {
+  border-color: rgba(163, 46, 59, 0.35);
+  background:
+    linear-gradient(135deg, rgba(163, 46, 59, 0.14), transparent 42%),
+    rgba(12, 12, 12, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(163, 46, 59, 0.1);
+}
+
+.guideBiosRowRequired:hover {
+  border-color: rgba(163, 46, 59, 0.5);
+}
+
+.guideBiosRowIcon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.guideBiosRowRequired .guideBiosRowIcon {
+  border-color: rgba(163, 46, 59, 0.35);
+  background: rgba(163, 46, 59, 0.14);
+  color: #ff6b78;
+}
+
+.guideBiosRowBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.guideBiosRowTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.guideBiosRowTop h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.guideBiosRowMeta {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.guideBiosRowTags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.guideBiosRowBody > p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.guideBiosRowSearch {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.38);
+}
+
+.guideBiosRowSearch code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.55);
+  overflow-wrap: anywhere;
+}
+
+.guideBiosState {
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+}
+
+.guideBiosStateOn {
+  border-color: rgba(62, 207, 142, 0.35);
+  background: rgba(62, 207, 142, 0.12);
+  color: #3ecf8e;
+}
+
+.guideBiosStateOff {
+  border-color: rgba(163, 46, 59, 0.4);
+  background: rgba(163, 46, 59, 0.14);
+  color: #ff6b78;
+}
+
+.guideBiosBadgeOptional,
+.guideBiosBadgeRequired {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.guideBiosBadgeOptional {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.guideBiosBadgeRequired {
+  border: 1px solid rgba(163, 46, 59, 0.4);
+  background: rgba(163, 46, 59, 0.14);
+  color: #ff6b78;
+}
+
+.guideCheckTool {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(135deg, rgba(163, 46, 59, 0.12), transparent 40%),
+    rgba(255, 255, 255, 0.025);
+}
+
+.guideCheckToolCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 280px;
+}
+
+.guideCheckToolCopy h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.guideCheckToolCopy p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.guideCheckToolCopy strong {
+  color: rgba(255, 255, 255, 0.88);
+  font-weight: 600;
+}
+
+.themeLight .guideInlineCode {
+  border-color: rgba(15, 18, 22, 0.12);
+  background: #f0f2f5;
+  color: #121417;
+}
+
+.themeLight .guideDownloadLink {
+  color: #a32e3b;
+  border-color: rgba(163, 46, 59, 0.28);
+  background: rgba(163, 46, 59, 0.08);
+}
+
+.themeLight .guideSubheading,
+.themeLight .guideBiosHeading,
+.themeLight .guideBiosRowTop h4,
+.themeLight .guideWinTableTitle {
+  color: #121417;
+}
+
+.themeLight .guideWinTableCard {
+  background: #fff;
+  border-color: rgba(15, 18, 22, 0.1);
+  box-shadow: 0 8px 22px rgba(15, 18, 22, 0.06);
+}
+
+.themeLight .guideBiosPanel {
+  border-color: rgba(15, 18, 22, 0.1);
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(255, 255, 255, 0.95), transparent 52%),
+    radial-gradient(ellipse at 100% 100%, rgba(163, 46, 59, 0.12), transparent 48%),
+    linear-gradient(180deg, #fff, #f7f8fa);
+}
+
+.themeLight .guideBiosPanel::before {
+  background-image:
+    linear-gradient(rgba(15, 18, 22, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 18, 22, 0.04) 1px, transparent 1px);
+}
+
+.themeLight .guideBiosLead,
+.themeLight .guideBiosRowBody > p,
+.themeLight .guideBiosRowMeta,
+.themeLight .guideBiosLegendOptional,
+.themeLight .guideBiosLegendRequired {
+  color: rgba(15, 18, 22, 0.58);
+}
+
+.themeLight .guideBiosSearchBar,
+.themeLight .guideBiosRow {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(15, 18, 22, 0.1);
+}
+
+.themeLight .guideBiosRowRequired {
+  background:
+    linear-gradient(135deg, rgba(163, 46, 59, 0.1), transparent 42%),
+    #fff;
+  border-color: rgba(163, 46, 59, 0.28);
+}
+
+.themeLight .guideBiosRowRequired .guideBiosRowIcon {
+  border-color: rgba(163, 46, 59, 0.28);
+  background: rgba(163, 46, 59, 0.08);
+  color: #a32e3b;
+}
+
+.themeLight .guideBiosBadgeRequired,
+.themeLight .guideBiosStateOff {
+  border-color: rgba(163, 46, 59, 0.3);
+  background: rgba(163, 46, 59, 0.08);
+  color: #a32e3b;
+}
+
+.themeLight .guideBiosRowIcon {
+  background: #f4f5f7;
+  border-color: rgba(15, 18, 22, 0.1);
+  color: #121417;
+}
+
+.themeLight .guideBiosSearchQuery {
+  color: rgba(15, 18, 22, 0.4);
+}
+
+.themeLight .guideBiosSearchHint {
+  color: rgba(15, 18, 22, 0.32);
+}
+
+.themeLight .guideCheckTool {
+  border-color: rgba(15, 18, 22, 0.1);
+  background:
+    linear-gradient(135deg, rgba(163, 46, 59, 0.08), transparent 40%),
+    #fff;
+}
+
+.themeLight .guideCheckToolCopy h4 {
+  color: #121417;
+}
+
+.themeLight .guideCheckToolCopy p {
+  color: rgba(15, 18, 22, 0.58);
+}
+
+.themeLight .guideCheckToolCopy strong {
+  color: #121417;
+}
+
+.themeLight .guideBiosRowSearch {
+  border-color: rgba(15, 18, 22, 0.12);
+  background: #f4f5f7;
+  color: rgba(15, 18, 22, 0.4);
+}
+
+.themeLight .guideBiosRowSearch code {
+  color: rgba(15, 18, 22, 0.62);
+}
+
+.themeLight .guideWinTable th,
+.themeLight .guideWinTable td {
+  border-color: rgba(15, 18, 22, 0.08);
+  color: rgba(15, 18, 22, 0.72);
+}
+
+.themeLight .guideWinTable thead th {
+  background: #f4f5f7;
+  color: rgba(15, 18, 22, 0.48);
+}
+
+.themeLight .guideWinTable tbody tr:hover td {
+  background: rgba(15, 18, 22, 0.02);
+}
+
+.themeLight .guideWinDash {
+  color: rgba(15, 18, 22, 0.28);
+}
+
+.themeLight .guideBiosBadgeOptional,
+.themeLight .guideBiosState {
+  border-color: rgba(15, 18, 22, 0.12);
+  background: #f4f5f7;
+  color: rgba(15, 18, 22, 0.55);
+}
+
+@media (max-width: 980px) {
+  .guideStepBody,
+  .guideStepBodyMediaLeft {
+    grid-template-columns: 1fr;
+  }
+
+  .guideStepMedia {
+    position: static;
+  }
+
+  .guideTipCards,
+  .guideToggleGrid,
+  .guideWinTables {
+    grid-template-columns: 1fr;
+  }
+
+  .guideProductSectionGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .guideBiosPanelHeader {
+    flex-direction: column;
+  }
+
+  .guideBiosRow {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .guideBiosRowTop {
+    flex-direction: column;
+  }
+
+  .guideBiosRowTags {
+    justify-content: flex-start;
+  }
+
+  .guideContinue {
+    padding-left: 0;
+  }
+
+  .guideProductPickGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .guideArticleTitle {
+    font-size: 28px;
+  }
+
+  .guideStepTitle {
+    font-size: 20px;
+  }
+
+  .guideStep {
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .guideStepIndex {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+    border-radius: 8px;
+  }
+
+  .guideProductPickGrid {
+    grid-template-columns: 1fr;
   }
 }

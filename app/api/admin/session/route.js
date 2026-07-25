@@ -1,4 +1,4 @@
-import { requireAdmin } from "../../../../lib/admin-auth";
+import { isMainAdminDiscordId, requireAdmin } from "../../../../lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +15,7 @@ export async function GET(request) {
         discord_user_id: auth.discord.discordUserId || null,
         discord_username: auth.discord.username || null,
         discord_avatar_url: auth.discord.avatarUrl || null,
+        is_main_admin: isMainAdminDiscordId(auth.discord.discordUserId),
       },
     });
   } catch (error) {

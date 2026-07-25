@@ -1,4 +1,8 @@
 import { listVariantsForApplications } from "../../../../lib/application-variants";
+import {
+  RESELL_APPLICATION_SELECT,
+  RESELL_LICENSE_SELECT,
+} from "../../../../lib/panel-bootstrap-selects";
 import { requireReseller } from "../../../../lib/resell-panel-auth";
 import { touchResellerSession } from "../../../../lib/reseller-sessions";
 
@@ -54,32 +58,30 @@ async function fetchLicensesByIds(admin, ids) {
   if (!ids.length) return [];
   const rows = [];
   for (const chunk of chunkArray(ids, 80)) {
-    const { data, error } = await admin
+    let result = await admin
       .from("licenses")
-      .select("*")
+      .select(RESELL_LICENSE_SELECT)
       .in("id", chunk)
       .order("created_at", { ascending: false });
-    if (error) throw error;
-    rows.push(...(data || []));
+    if (result.error && /column|schema cache/i.test(result.error.message || "")) {
+      result = await admin
+        .from("licenses")
+        .select(
+          "id, license_key, application_id, app_id, app_name, status, expires_at, activated_at, duration_value, duration_unit, reseller_id, created_at, discord_username, discord_user_id, discord_avatar_url, hwid"
+        )
+        .in("id", chunk)
+        .order("created_at", { ascending: false });
+    }
+    if (result.error) throw result.error;
+    rows.push(...(result.data || []));
   }
   return rows.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-}
-
-async function fetchApplicationsByIds(admin, ids) {
-  if (!ids.length) return [];
-  const { data, error } = await admin
-    .from("applications")
-    .select("id, app_id, name, description, version, status, webhook, created_at, download_updated_at")
-    .in("id", ids)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return data || [];
 }
 
 async function fetchAllApplications(admin) {
   const { data, error } = await admin
     .from("applications")
-    .select("id, app_id, name, description, version, status, webhook, created_at, download_updated_at")
+    .select(RESELL_APPLICATION_SELECT)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data || [];

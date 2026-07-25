@@ -3,13 +3,16 @@
 import Link from "next/link";
 import {
   ArrowLeftRight,
+  ArrowLeft,
   Ban,
   Check,
   ChevronLeft,
   CircleCheck,
   Clock3,
+  Copy,
   ChevronDown,
   Download,
+  Eye,
   FileText,
   Globe,
   HelpCircle,
@@ -33,9 +36,13 @@ import {
   Zap,
   Plus,
   Package,
+  Shield,
   Users,
   Wallet,
   Bell,
+  Columns2,
+  Columns3,
+  Square,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -45,8 +52,31 @@ import { arrayBufferToBase64, triggerBase64FileDownload } from "../../lib/base64
 import { DISCORD_INVITE_URL } from "../../lib/discord";
 import { LOGIN_GUEST_FAQ_ITEMS } from "../../lib/login-faq";
 import { extractDiscordProfile } from "../../lib/loader-redeem";
+import {
+  defaultProtectionFlags,
+  PROTECTION_OPTIONS,
+} from "../../lib/panel-protection-options";
+import {
+  defaultProtectionLogColumns,
+  getProtectionLogVariantLabel,
+  LOCAL_PROTECTION_SOURCE_ID,
+  LOCAL_PROTECTION_SOURCE_LABEL,
+  PROTECTION_LOG_COLUMNS,
+} from "../../lib/panel-protection-log-columns";
+import {
+  adminBootstrapCacheKey,
+  readBootstrapCache,
+  slimBootstrapForCache,
+  writeBootstrapCache,
+} from "../../lib/panel-bootstrap-cache";
 import { NOTIFICATION_BADGE_COLORS, NOTIFICATION_BADGE_MAX, emptyNotificationBadgeDraft } from "../../lib/panel-notification-badges";
 import { runAccessChecks } from "../../lib/site-access";
+import {
+  formatFeaturesAsText,
+  getFeaturesByAppId,
+  getProductNameBySlug,
+  getSlugByAppId,
+} from "../../lib/product-features";
 import { resolveOAuthReturnSession } from "../../lib/supabase-oauth";
 import { supabase } from "../../lib/supabase";
 import {
@@ -186,19 +216,8 @@ function cleanAdminPanelUrl() {
   if (typeof window === "undefined") return;
   let nextPath = ADMIN_PANEL_PATH;
   try {
-    const allowed = [
-      "welcome",
-      "applications",
-      "licenses",
-      "transactions",
-      "changelogs",
-      "notifications",
-      "resellers",
-      "products",
-      "settings",
-    ];
     const stored = window.localStorage.getItem("unbanhwid.admin-panel.view");
-    if (allowed.includes(stored) && stored !== "welcome") {
+    if (ADMIN_PANEL_VIEWS.includes(stored) && stored !== "welcome") {
       nextPath = `${ADMIN_PANEL_PATH}?view=${encodeURIComponent(stored)}`;
     }
   } catch {
@@ -283,7 +302,22 @@ const EMPTY_ADMIN_SESSION = {
   discordUserId: "",
   discordUsername: "",
   discordAvatarUrl: "",
+  isMainAdmin: false,
 };
+
+const ADMIN_PANEL_VIEWS = [
+  "welcome",
+  "applications",
+  "licenses",
+  "transactions",
+  "changelogs",
+  "notifications",
+  "resellers",
+  "products",
+  "security",
+  "protection-logs",
+  "settings",
+];
 
 function readStoredAdminSession() {
   if (typeof window === "undefined") return EMPTY_ADMIN_SESSION;
@@ -300,6 +334,7 @@ function readStoredAdminSession() {
       discordUserId: parsed.discordUserId || "",
       discordUsername: parsed.discordUsername || "",
       discordAvatarUrl: parsed.discordAvatarUrl || "",
+      isMainAdmin: Boolean(parsed.isMainAdmin),
     };
   } catch {
     return EMPTY_ADMIN_SESSION;
@@ -1060,21 +1095,10 @@ export default function AdminPage() {
   const [adminView, setAdminViewState] = useState(() => {
     if (typeof window === "undefined") return "welcome";
     try {
-      const allowed = [
-        "welcome",
-        "applications",
-        "licenses",
-        "transactions",
-        "changelogs",
-        "notifications",
-        "resellers",
-        "products",
-        "settings",
-      ];
       const fromUrl = new URLSearchParams(window.location.search).get("view");
-      if (allowed.includes(fromUrl)) return fromUrl;
+      if (ADMIN_PANEL_VIEWS.includes(fromUrl)) return fromUrl;
       const stored = window.localStorage.getItem("unbanhwid.admin-panel.view");
-      if (allowed.includes(stored)) return stored;
+      if (ADMIN_PANEL_VIEWS.includes(stored)) return stored;
     } catch {
       // ignore
     }
@@ -1086,20 +1110,46 @@ export default function AdminPage() {
   const [loginCfStatus, setLoginCfStatus] = useState("idle");
   const [loginFaqOpenIndex, setLoginFaqOpenIndex] = useState(0);
   const loginCfTimeoutRef = useRef(null);
+  const [protectionFlags, setProtectionFlags] = useState(() => defaultProtectionFlags());
+  const [protectionBusy, setProtectionBusy] = useState(false);
+  const [protectionLoaded, setProtectionLoaded] = useState(false);
+  const [protectionCanEdit, setProtectionCanEdit] = useState(false);
+  const [protectionMessage, setProtectionMessage] = useState({ text: "", type: "" });
+  const [protectionMeta, setProtectionMeta] = useState({ updatedAt: "", updatedBy: "" });
+  const [protectionLogs, setProtectionLogs] = useState([]);
+  const [protectionLogsRaw, setProtectionLogsRaw] = useState([]);
+  const [protectionLogsScreenshotsSigned, setProtectionLogsScreenshotsSigned] = useState(false);
+  const [protectionLogSources, setProtectionLogSources] = useState([
+    { id: LOCAL_PROTECTION_SOURCE_ID, label: LOCAL_PROTECTION_SOURCE_LABEL, type: "local" },
+  ]);
+  const [protectionLogsBusy, setProtectionLogsBusy] = useState(false);
+  const [protectionLogsMessage, setProtectionLogsMessage] = useState({ text: "", type: "" });
+  const [protectionLogAppFilter, setProtectionLogAppFilter] = useState("all");
+  const [protectionLogSourceFilter, setProtectionLogSourceFilter] = useState("all");
+  const [protectionLogColumns, setProtectionLogColumns] = useState(() => {
+    if (typeof window === "undefined") return defaultProtectionLogColumns();
+    try {
+      const raw = window.localStorage.getItem("unbanhwid.admin-panel.protection-log-columns");
+      if (!raw) return defaultProtectionLogColumns();
+      const parsed = JSON.parse(raw);
+      return { ...defaultProtectionLogColumns(), ...(parsed && typeof parsed === "object" ? parsed : {}) };
+    } catch {
+      return defaultProtectionLogColumns();
+    }
+  });
+  const [protectionLogDensity, setProtectionLogDensity] = useState(() => {
+    if (typeof window === "undefined") return 1;
+    try {
+      const raw = Number(window.localStorage.getItem("unbanhwid.admin-panel.protection-log-density"));
+      return raw === 2 || raw === 3 ? raw : 1;
+    } catch {
+      return 1;
+    }
+  });
+  const [screenshotPreview, setScreenshotPreview] = useState(null);
 
   function setAdminView(nextView) {
-    const allowed = [
-      "welcome",
-      "applications",
-      "licenses",
-      "transactions",
-      "changelogs",
-      "notifications",
-      "resellers",
-      "products",
-      "settings",
-    ];
-    const viewName = allowed.includes(nextView) ? nextView : "welcome";
+    const viewName = ADMIN_PANEL_VIEWS.includes(nextView) ? nextView : "welcome";
     setAdminViewState(viewName);
     try {
       window.localStorage.setItem("unbanhwid.admin-panel.view", viewName);
@@ -1125,6 +1175,8 @@ export default function AdminPage() {
   const [selectedLicenses, setSelectedLicenses] = useState([]);
   const [licenseSearchQuery, setLicenseSearchQuery] = useState("");
   const preFreezeStatusRef = useRef(new Map());
+  const copiedLicenseTimerRef = useRef(null);
+  const [copiedLicenseId, setCopiedLicenseId] = useState("");
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -1212,6 +1264,15 @@ export default function AdminPage() {
   const [editBalanceAmount, setEditBalanceAmount] = useState("");
   const [editResellerMessage, setEditResellerMessage] = useState({ text: "", type: "" });
   const [editResellerBusy, setEditResellerBusy] = useState(false);
+  const [resellerLicensesOpen, setResellerLicensesOpen] = useState(false);
+  const [resellerLicensesReseller, setResellerLicensesReseller] = useState(null);
+  const [resellerLicenses, setResellerLicenses] = useState([]);
+  const [resellerLicensesBusy, setResellerLicensesBusy] = useState(false);
+  const [resellerLicensesMessage, setResellerLicensesMessage] = useState({ text: "", type: "" });
+  const [resellerLicensesAppFilter, setResellerLicensesAppFilter] = useState("all");
+  const [resellerLicensesSearch, setResellerLicensesSearch] = useState("");
+  const [featuresApp, setFeaturesApp] = useState(null);
+  const [featuresCopied, setFeaturesCopied] = useState(false);
   const [variantsDrawerOpen, setVariantsDrawerOpen] = useState(false);
   const [variantsApp, setVariantsApp] = useState(null);
   const [variantsList, setVariantsList] = useState([]);
@@ -1373,6 +1434,41 @@ export default function AdminPage() {
     [selectedLicenses, licenseSearchQuery]
   );
 
+  const resellerLicenseAppOptions = useMemo(() => {
+    const accessIds = Array.isArray(resellerLicensesReseller?.application_access)
+      ? resellerLicensesReseller.application_access
+      : [];
+    const options = [{ value: "all", label: "All applications" }];
+    accessIds.forEach((id) => {
+      const app = applications.find((entry) => entry.id === id);
+      if (app) options.push({ value: app.id, label: app.name || app.app_id || app.id });
+    });
+    return options;
+  }, [resellerLicensesReseller, applications]);
+
+  const visibleResellerLicenses = useMemo(() => {
+    void expiresTick;
+    const query = resellerLicensesSearch.trim().toLowerCase();
+    const filterAppId = resellerLicensesAppFilter !== "all" ? resellerLicensesAppFilter : null;
+    const filterApp = filterAppId
+      ? applications.find((entry) => entry.id === filterAppId)
+      : null;
+    return resellerLicenses.filter((license) => {
+      if (filterApp) {
+        const matchesApp =
+          license.application_id === filterApp.id ||
+          (Boolean(filterApp.app_id) && license.app_id === filterApp.app_id);
+        if (!matchesApp) return false;
+      }
+      return licenseMatchesSearch(license, query);
+    });
+  }, [resellerLicenses, resellerLicensesAppFilter, resellerLicensesSearch, applications, expiresTick]);
+
+  useEffect(() => {
+    if (adminView !== "resellers") setResellerLicensesOpen(false);
+    if (adminView !== "applications") setFeaturesApp(null);
+  }, [adminView]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -1422,6 +1518,7 @@ export default function AdminPage() {
         discordUserId: result.admin?.discord_user_id || nextSession.discordUserId || "",
         discordUsername: result.admin?.discord_username || nextSession.discordUsername || "",
         discordAvatarUrl: result.admin?.discord_avatar_url || nextSession.discordAvatarUrl || "",
+        isMainAdmin: Boolean(result.admin?.is_main_admin),
       });
       return true;
     }
@@ -1505,6 +1602,7 @@ export default function AdminPage() {
                 discordUserId: result.admin?.discord_user_id || parsed.discordUserId || "",
                 discordUsername: result.admin?.discord_username || parsed.discordUsername || "",
                 discordAvatarUrl: result.admin?.discord_avatar_url || parsed.discordAvatarUrl || "",
+                isMainAdmin: Boolean(result.admin?.is_main_admin),
               });
             } else {
               localStorage.removeItem(sessionStorageKey());
@@ -1592,6 +1690,7 @@ export default function AdminPage() {
       if (!accessToken) return false;
 
       persistSession({
+        ...session,
         email: session.email,
         accessToken,
         refreshToken,
@@ -1858,20 +1957,20 @@ export default function AdminPage() {
     }
 
     try {
-      const [apps, licenses, resellerResult] = await Promise.all([
-        restRequest("applications?select=*&order=created_at.desc"),
-        restRequest("licenses?select=*&order=created_at.desc"),
-        adminResellerRequest("GET").catch(() => ({ resellers: [] })),
-      ]);
+      const accessToken = getAdminAccessToken();
+      if (!accessToken) throw new Error("Not signed in.");
 
-      const resellerList = Array.isArray(resellerResult?.resellers) ? resellerResult.resellers : [];
-      if (resellerList.length || resellerResult?.metrics) {
-        applyResellerPayload(resellerResult);
-      }
+      const response = await fetch("/api/admin/bootstrap", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Failed to load dashboard.");
 
-      applyDashboardData(
-        Array.isArray(apps) ? apps : [],
-        filterAdminOwnedLicenses(Array.isArray(licenses) ? licenses : [], resellerList)
+      applyBootstrapPayload(result);
+      writeBootstrapCache(
+        adminBootstrapCacheKey(session.discordUserId || session.email || ""),
+        slimBootstrapForCache(result)
       );
     } catch (error) {
       reportActionError(error);
@@ -1881,20 +1980,87 @@ export default function AdminPage() {
     }
   }
 
+  function applyBootstrapPayload(result) {
+    if (!result || typeof result !== "object") return;
+
+    const resellerList = Array.isArray(result.resellers) ? result.resellers : [];
+    applyResellerPayload({
+      resellers: resellerList,
+      metrics: result.resellerMetrics || result.metrics || null,
+    });
+
+    applyDashboardData(
+      Array.isArray(result.applications) ? result.applications : [],
+      filterAdminOwnedLicenses(Array.isArray(result.licenses) ? result.licenses : [], resellerList)
+    );
+
+    const protections = result.protections || {};
+    if (protections.flags || protections.can_edit != null) {
+      setProtectionFlags({ ...defaultProtectionFlags(), ...(protections.flags || {}) });
+      setProtectionCanEdit(Boolean(protections.can_edit));
+      setProtectionMeta({
+        updatedAt: protections.updated_at || "",
+        updatedBy: protections.updated_by || "",
+      });
+      setProtectionLoaded(true);
+    }
+
+    if (Array.isArray(result.notifications)) {
+      setNotifications(result.notifications);
+    }
+    if (Array.isArray(result.storeProducts)) {
+      setStoreProducts(result.storeProducts);
+      setStoreProductsLoaded(true);
+    }
+    if (Array.isArray(result.depositVariants)) {
+      setDepositVariants(result.depositVariants);
+    }
+    if (Array.isArray(result.transactions)) {
+      setTransactions(result.transactions);
+    }
+    if (result.changelogSummaries && typeof result.changelogSummaries === "object") {
+      setChangelogSummaries(result.changelogSummaries);
+    }
+
+    if (Array.isArray(result.protectionLogSources) && result.protectionLogSources.length) {
+      setProtectionLogSources(result.protectionLogSources);
+    }
+    if (Array.isArray(result.protectionLogs)) {
+      setProtectionLogsRaw(result.protectionLogs);
+      setProtectionLogsScreenshotsSigned(Boolean(result.screenshotsSigned));
+    }
+  }
+
   function refreshDashboardSilently() {
     void loadDashboard({ silent: true });
   }
 
+  function filterProtectionLogsLocal(entries) {
+    let next = Array.isArray(entries) ? entries : [];
+    if (protectionLogAppFilter && protectionLogAppFilter !== "all") {
+      next = next.filter((entry) => String(entry.app_id || "") === protectionLogAppFilter);
+    }
+    if (protectionLogSourceFilter && protectionLogSourceFilter !== "all") {
+      if (protectionLogSourceFilter === LOCAL_PROTECTION_SOURCE_ID) {
+        next = next.filter((entry) => !String(entry.reseller_id || "").trim());
+      } else {
+        next = next.filter((entry) => String(entry.reseller_id || "") === protectionLogSourceFilter);
+      }
+    }
+    return next;
+  }
+
+  useEffect(() => {
+    setProtectionLogs(filterProtectionLogsLocal(protectionLogsRaw));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [protectionLogsRaw, protectionLogAppFilter, protectionLogSourceFilter]);
+
   useEffect(() => {
     if (adminView !== "changelogs") {
       closeChangelogEditor();
-      return;
-    }
-    if (!changelogEditorApp) {
-      void loadChangelogSummaries(applications);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminView, applications, changelogEditorApp]);
+  }, [adminView]);
 
   async function loadTransactions() {
     setTransactionsBusy(true);
@@ -1915,12 +2081,6 @@ export default function AdminPage() {
       setTransactionsBusy(false);
     }
   }
-
-  useEffect(() => {
-    if (adminView !== "transactions" || !signedIn) return;
-    void loadTransactions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminView, signedIn]);
 
   async function loadNotifications() {
     setNotificationsBusy(true);
@@ -2016,23 +2176,18 @@ export default function AdminPage() {
     }
   }
 
-  useEffect(() => {
-    if (adminView !== "notifications" || !signedIn) return;
-    void loadNotifications();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminView, signedIn]);
-
-  useEffect(() => {
-    if ((adminView !== "resellers" && adminView !== "products") || !signedIn) return;
-    void loadResellers();
-    void loadStoreProducts();
-    if (adminView === "products") void loadDepositVariants();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminView, signedIn]);
-
+  // Bootstrap hydrates all primary views; avoid per-tab refetch.
   useEffect(() => {
     if (!signedIn || !config.url || !config.anonKey) return;
-    loadDashboard();
+
+    const cacheKey = adminBootstrapCacheKey(session.discordUserId || session.email || "");
+    const cached = readBootstrapCache(cacheKey);
+    if (cached?.data) {
+      applyBootstrapPayload(cached.data);
+      setDashboardInitialized(true);
+    }
+
+    void loadDashboard({ silent: Boolean(cached?.data) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn, config.url, config.anonKey]);
 
@@ -2085,9 +2240,38 @@ export default function AdminPage() {
   function selectApplication(appId, options = {}) {
     setSelectedAppId(appId);
     writeLastUsedAppId(appId);
-    setLicenseSearchQuery("");
+    setLicenseSearchQuery(typeof options.search === "string" ? options.search : "");
     setGenerateMessage({ text: "", type: "" });
     if (options.switchView !== false) setAdminView("licenses");
+  }
+
+  function resolveApplicationFromProtectionLog(entry) {
+    const appIdField = String(entry?.app_id || "").trim();
+    const appName = String(entry?.application || "").trim().toLowerCase();
+    if (appIdField) {
+      const byId = applications.find(
+        (app) => app.app_id === appIdField || app.id === appIdField
+      );
+      if (byId) return byId;
+    }
+    if (appName) {
+      return (
+        applications.find((app) => String(app.name || "").trim().toLowerCase() === appName) || null
+      );
+    }
+    return null;
+  }
+
+  function openLicenseFromProtectionLog(entry) {
+    const key = String(entry?.license_key || "").trim();
+    if (!key) return;
+    const app = resolveApplicationFromProtectionLog(entry);
+    if (app?.id) {
+      selectApplication(app.id, { search: key });
+      return;
+    }
+    setLicenseSearchQuery(key);
+    setAdminView("licenses");
   }
 
   function openEditApplication(app) {
@@ -2211,6 +2395,247 @@ export default function AdminPage() {
   function getAdminAccessToken() {
     return JSON.parse(localStorage.getItem(sessionStorageKey()) || "{}")?.accessToken || session.accessToken || "";
   }
+
+  async function loadProtectionSettings() {
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) return;
+    setProtectionBusy(true);
+    setProtectionMessage({ text: "", type: "" });
+    try {
+      const response = await fetch("/api/admin/protections", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to load protection settings.");
+      }
+      setProtectionFlags({ ...defaultProtectionFlags(), ...(result.flags || {}) });
+      setProtectionCanEdit(Boolean(result.can_edit));
+      setProtectionMeta({
+        updatedAt: result.updated_at || "",
+        updatedBy: result.updated_by || "",
+      });
+      setProtectionLoaded(true);
+    } catch (error) {
+      setProtectionMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setProtectionBusy(false);
+    }
+  }
+
+  async function saveProtectionSettings() {
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) return;
+    if (!protectionCanEdit && !session.isMainAdmin) {
+      setProtectionMessage({
+        text: "Only the main administrator can change protection settings.",
+        type: "error",
+      });
+      return;
+    }
+    setProtectionBusy(true);
+    setProtectionMessage({ text: "", type: "" });
+    try {
+      const response = await fetch("/api/admin/protections", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ flags: protectionFlags }),
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to save protection settings.");
+      }
+      setProtectionFlags({ ...defaultProtectionFlags(), ...(result.flags || {}) });
+      setProtectionCanEdit(Boolean(result.can_edit));
+      setProtectionMeta({
+        updatedAt: result.updated_at || "",
+        updatedBy: result.updated_by || "",
+      });
+      setProtectionMessage({ text: "Protection settings saved.", type: "success" });
+    } catch (error) {
+      setProtectionMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setProtectionBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!signedIn || adminView !== "security") return;
+    if (protectionLoaded) return;
+    void loadProtectionSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signedIn, adminView, protectionLoaded]);
+
+  async function loadProtectionLogs(options = {}) {
+    const forceNetwork = options.force === true;
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) return;
+
+    // Fast path: local filter from bootstrap payload.
+    if (!forceNetwork && protectionLogsRaw.length && protectionLogsScreenshotsSigned) {
+      setProtectionLogs(filterProtectionLogsLocal(protectionLogsRaw));
+      return;
+    }
+
+    setProtectionLogsBusy(true);
+    setProtectionLogsMessage({ text: "", type: "" });
+    try {
+      const response = await fetch("/api/admin/protection-logs", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to load protection logs.");
+      }
+      const entries = Array.isArray(result.entries) ? result.entries : [];
+      setProtectionLogsRaw(entries);
+      setProtectionLogsScreenshotsSigned(true);
+      if (Array.isArray(result.sources) && result.sources.length) {
+        setProtectionLogSources(result.sources);
+      }
+    } catch (error) {
+      setProtectionLogsMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setProtectionLogsBusy(false);
+    }
+  }
+
+  async function deleteFilteredProtectionLogs() {
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) return;
+
+    const count = protectionLogs.length;
+    const confirmed = window.confirm(
+      count
+        ? `Delete ${count} protection log(s) in the current filter permanently?`
+        : "No logs in the current filter. Continue anyway?"
+    );
+    if (!confirmed) return;
+
+    setProtectionLogsBusy(true);
+    setProtectionLogsMessage({ text: "", type: "" });
+    try {
+      const params = new URLSearchParams();
+      if (protectionLogAppFilter && protectionLogAppFilter !== "all") {
+        params.set("appId", protectionLogAppFilter);
+      }
+      if (protectionLogSourceFilter && protectionLogSourceFilter !== "all") {
+        params.set("sourceId", protectionLogSourceFilter);
+      }
+      const query = params.toString();
+      const response = await fetch(`/api/admin/protection-logs${query ? `?${query}` : ""}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to delete protection logs.");
+      }
+      setProtectionLogsRaw([]);
+      setProtectionLogs([]);
+      setProtectionLogsScreenshotsSigned(false);
+      setProtectionLogsMessage({
+        text: `Deleted ${Number(result.deleted) || 0} log(s).`,
+        type: "success",
+      });
+      await loadProtectionLogs({ force: true });
+    } catch (error) {
+      setProtectionLogsMessage({ text: error?.message || String(error), type: "error" });
+      setProtectionLogsBusy(false);
+    }
+  }
+
+  function updateProtectionLogColumn(columnId, checked) {
+    setProtectionLogColumns((current) => {
+      const next = { ...current, [columnId]: Boolean(checked) };
+      try {
+        window.localStorage.setItem("unbanhwid.admin-panel.protection-log-columns", JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }
+
+  function updateProtectionLogDensity(nextDensity) {
+    const density = nextDensity === 2 || nextDensity === 3 ? nextDensity : 1;
+    setProtectionLogDensity(density);
+    try {
+      window.localStorage.setItem("unbanhwid.admin-panel.protection-log-density", String(density));
+    } catch {
+      // ignore
+    }
+  }
+
+  function formatScreenshotResolution(shot) {
+    const width = Number(shot?.width);
+    const height = Number(shot?.height);
+    if (Number.isFinite(width) && width > 0 && Number.isFinite(height) && height > 0) {
+      return `${Math.round(width)}×${Math.round(height)}`;
+    }
+    return "";
+  }
+
+  function openScreenshotPreview(shots, index, title = "") {
+    const list = (Array.isArray(shots) ? shots : []).filter((shot) => shot?.url);
+    if (!list.length) return;
+    const safeIndex = Math.max(0, Math.min(Number(index) || 0, list.length - 1));
+    setScreenshotPreview({ shots: list, index: safeIndex, title: String(title || "").trim() });
+  }
+
+  function closeScreenshotPreview() {
+    setScreenshotPreview(null);
+  }
+
+  function stepScreenshotPreview(delta) {
+    setScreenshotPreview((current) => {
+      if (!current?.shots?.length) return current;
+      const count = current.shots.length;
+      const nextIndex = (current.index + delta + count) % count;
+      return { ...current, index: nextIndex };
+    });
+  }
+
+  useEffect(() => {
+    if (!screenshotPreview) return undefined;
+
+    function onKeyDown(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeScreenshotPreview();
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        stepScreenshotPreview(-1);
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        stepScreenshotPreview(1);
+      }
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [screenshotPreview]);
+
+  useEffect(() => {
+    if (!signedIn || adminView !== "protection-logs") return;
+    // Filters are applied locally; fetch signed screenshots when missing.
+    if (!protectionLogsScreenshotsSigned) {
+      void loadProtectionLogs({ force: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signedIn, adminView, protectionLogsScreenshotsSigned]);
 
   function toChangelogDateInputValue(value) {
     const date = value ? new Date(value) : new Date();
@@ -2502,6 +2927,144 @@ export default function AdminPage() {
     setEditBalanceAmount("");
     setEditResellerMessage({ text: "", type: "" });
     setEditResellerOpen(true);
+  }
+
+  async function loadResellerLicenses(reseller) {
+    if (!reseller) return;
+    const ids = Array.from(
+      new Set(
+        (Array.isArray(reseller.generated_license_ids) ? reseller.generated_license_ids : [])
+          .map((id) => String(id || "").trim())
+          .filter(Boolean)
+      )
+    );
+    if (!ids.length) {
+      setResellerLicenses([]);
+      return;
+    }
+    setResellerLicensesBusy(true);
+    setResellerLicensesMessage({ text: "", type: "" });
+    try {
+      const rows = [];
+      for (let i = 0; i < ids.length; i += 50) {
+        const chunk = ids.slice(i, i + 50);
+        const part = await restRequest(
+          `licenses?id=in.(${chunk.join(",")})&order=created_at.desc`
+        );
+        if (Array.isArray(part)) rows.push(...part);
+      }
+      setResellerLicenses(rows);
+    } catch (error) {
+      setResellerLicensesMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setResellerLicensesBusy(false);
+    }
+  }
+
+  function openResellerLicensesDrawer(reseller) {
+    setResellerLicensesReseller(reseller);
+    setResellerLicenses([]);
+    setResellerLicensesMessage({ text: "", type: "" });
+    setResellerLicensesAppFilter("all");
+    setResellerLicensesSearch("");
+    setResellerLicensesOpen(true);
+    void loadResellerLicenses(reseller);
+  }
+
+  function patchResellerLicenseLocal(licenseId, patch) {
+    setResellerLicenses((prev) =>
+      prev.map((entry) => (entry.id === licenseId ? { ...entry, ...patch } : entry))
+    );
+  }
+
+  function removeResellerLicenseLocal(licenseId) {
+    setResellerLicenses((prev) => prev.filter((entry) => entry.id !== licenseId));
+  }
+
+  function handleResellerLicenseResetHwid(license) {
+    const previousHwid = license.hwid ?? null;
+    patchResellerLicenseLocal(license.id, { hwid: null });
+    void updateLicenseRecord(license.id, { hwid: null }).catch((error) => {
+      patchResellerLicenseLocal(license.id, { hwid: previousHwid });
+      reportActionError(error);
+    });
+  }
+
+  function handleResellerLicenseToggleBan(license) {
+    const isCurrentlyBanned = String(license.status || "").toLowerCase() === "banned";
+    const patch = isCurrentlyBanned ? buildUnbanLicensePatch(license) : buildBanLicensePatch(license);
+    patchResellerLicenseLocal(license.id, patch);
+    void updateLicenseRecord(license.id, patch).catch((error) => {
+      patchResellerLicenseLocal(license.id, { status: license.status });
+      reportActionError(error);
+    });
+  }
+
+  function handleResellerLicenseDelete(license) {
+    if (!window.confirm(`Delete license "${license.license_key || license.id}"?`)) return;
+    removeResellerLicenseLocal(license.id);
+    void restRequest(`licenses?id=eq.${encodeURIComponent(license.id)}`, {
+      method: "DELETE",
+    }).catch((error) => {
+      reportActionError(error);
+      void loadResellerLicenses(resellerLicensesReseller);
+    });
+  }
+
+  function openAppFeatures(app) {
+    setFeaturesCopied(false);
+    setFeaturesApp(app);
+  }
+
+  function closeAppFeatures() {
+    setFeaturesApp(null);
+    setFeaturesCopied(false);
+  }
+
+  function getFeaturesForApp(app) {
+    const features = getFeaturesByAppId(app?.app_id);
+    const slug = getSlugByAppId(app?.app_id);
+    const productName = getProductNameBySlug(slug) || app?.name || "Product";
+    return { features, productName, slug };
+  }
+
+  async function copyFeaturesToClipboard(app) {
+    const { features, productName } = getFeaturesForApp(app);
+    if (!features) return;
+    const text = formatFeaturesAsText(features, productName);
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      setFeaturesCopied(true);
+      window.setTimeout(() => setFeaturesCopied(false), 2000);
+    } catch {
+      setFeaturesCopied(false);
+    }
+  }
+
+  function downloadFeaturesAsText(app) {
+    const { features, productName } = getFeaturesForApp(app);
+    if (!features) return;
+    const text = formatFeaturesAsText(features, productName);
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(productName || "features").replace(/[^a-z0-9\-_ ]+/gi, "").trim() || "features"}-features.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   function emptyVariantForm() {
@@ -3126,7 +3689,7 @@ export default function AdminPage() {
     return reseller?.discord_username || reseller?.email?.split("@")[0] || reseller?.email || "-";
   }
 
-  function openPackageManager(app) {
+  async function openPackageManager(app) {
     setActivePackageApp(app);
     setPackageForm({
       version: app.version || "1.0.0",
@@ -3141,6 +3704,42 @@ export default function AdminPage() {
     setPackageModalOpen(true);
     if (packageFileInputRef.current) {
       packageFileInputRef.current.value = "";
+    }
+
+    // Package blobs are excluded from bootstrap — fetch on demand for Download.
+    if (app?.id && !app.download_file_data_base64 && app.download_file_name) {
+      try {
+        const accessToken = getAdminAccessToken();
+        if (!accessToken) return;
+        const response = await fetch(
+          `/api/admin/application-package?appId=${encodeURIComponent(app.id)}`,
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            cache: "no-store",
+          }
+        );
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) return;
+        const payload = result.application || {};
+        setActivePackageApp((current) =>
+          current?.id === app.id
+            ? {
+                ...current,
+                ...payload,
+              }
+            : current
+        );
+        patchApplicationLocal(app.id, {
+          download_file_data_base64: payload.download_file_data_base64 || null,
+          download_file_name: payload.download_file_name || app.download_file_name,
+          download_file_type: payload.download_file_type,
+          download_file_size: payload.download_file_size,
+          download_file_sha256: payload.download_file_sha256,
+          download_updated_at: payload.download_updated_at,
+        });
+      } catch {
+        // Download button stays hidden if payload cannot be loaded.
+      }
     }
   }
 
@@ -3280,6 +3879,33 @@ export default function AdminPage() {
   function openLicenseInfo(license) {
     setActiveLicenseInfo(license);
     setLicenseInfoOpen(true);
+  }
+
+  async function handleCopyLicenseKey(license) {
+    const key = String(license?.license_key || license?.id || "").trim();
+    if (!key) return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(key);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = key;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      setCopiedLicenseId(String(license.id || key));
+      if (copiedLicenseTimerRef.current) window.clearTimeout(copiedLicenseTimerRef.current);
+      copiedLicenseTimerRef.current = window.setTimeout(() => {
+        setCopiedLicenseId("");
+        copiedLicenseTimerRef.current = null;
+      }, 1400);
+    } catch {
+      setDashboardMessage({ text: "Could not copy license key.", type: "error" });
+    }
   }
 
   function openExtendLicense(license) {
@@ -4153,6 +4779,30 @@ export default function AdminPage() {
               </div>
 
               <div className={styles.adminNavSection}>
+                <div className={styles.adminNavSectionLabel}>Protections</div>
+                <div className={styles.adminNavItems}>
+                  <button
+                    type="button"
+                    className={`${styles.adminNavItem}${adminView === "security" ? ` ${styles.adminNavItemActive}` : ""}`}
+                    onClick={() => setAdminView("security")}
+                    aria-label="Security"
+                  >
+                    <Shield size={14} />
+                    <span className={styles.adminNavItemLabel}>Security</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.adminNavItem}${adminView === "protection-logs" ? ` ${styles.adminNavItemActive}` : ""}`}
+                    onClick={() => setAdminView("protection-logs")}
+                    aria-label="Protections-Logs"
+                  >
+                    <ScrollText size={14} />
+                    <span className={styles.adminNavItemLabel}>Protections-Logs</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className={styles.adminNavSection}>
                 <div className={styles.adminNavSectionLabel}>Other</div>
                 <div className={styles.adminNavItems}>
                   <button
@@ -4446,6 +5096,518 @@ export default function AdminPage() {
                     </div>
                   </div>
                 </section>
+              ) : adminView === "security" ? (
+                <section className={styles.settingsPanel}>
+                  <div className={styles.settingsCard}>
+                    <div className={styles.settingsCardHeader}>
+                      <h2>Security</h2>
+                      <p>
+                        Build protection flags for loaders. Only the main administrator can edit and
+                        save these options.
+                      </p>
+                    </div>
+                    <div className={styles.settingsCardBody}>
+                      {protectionMessage.text ? (
+                        <div
+                          className={`${styles.message} ${
+                            protectionMessage.type
+                              ? styles[`message${protectionMessage.type}`]
+                              : ""
+                          }`}
+                        >
+                          {protectionMessage.text}
+                        </div>
+                      ) : null}
+
+                      {!(protectionCanEdit || session.isMainAdmin) ? (
+                        <p className={styles.settingsFieldValue}>
+                          View only — ask the main administrator to change protections.
+                        </p>
+                      ) : null}
+
+                      <div className={styles.protectionOptionsGrid}>
+                        {PROTECTION_OPTIONS.map((option) => {
+                          const checked = Boolean(protectionFlags[option.id]);
+                          const canEdit = protectionCanEdit || session.isMainAdmin;
+                          return (
+                            <label
+                              key={option.id}
+                              className={`checkout-terms${checked ? " is-checked" : ""} ${styles.resellerPermissionItem}`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                disabled={protectionBusy || !canEdit}
+                                onChange={(event) =>
+                                  setProtectionFlags((current) => ({
+                                    ...current,
+                                    [option.id]: event.target.checked,
+                                  }))
+                                }
+                              />
+                              <span className="checkout-terms-box" aria-hidden="true">
+                                {checked ? <Check size={14} strokeWidth={3} /> : null}
+                              </span>
+                              <span className="checkout-terms-text">{option.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+
+                      {protectionMeta.updatedAt ? (
+                        <p className={styles.settingsFieldValue}>
+                          Last saved{" "}
+                          {new Date(protectionMeta.updatedAt).toLocaleString()}
+                          {protectionMeta.updatedBy ? ` by ${protectionMeta.updatedBy}` : ""}
+                        </p>
+                      ) : null}
+
+                      <div className={styles.formActions}>
+                        <button
+                          type="button"
+                          className={styles.secondaryButton}
+                          disabled={protectionBusy}
+                          onClick={() => void loadProtectionSettings()}
+                        >
+                          <RefreshCw size={14} />
+                          {protectionBusy && !protectionLoaded ? "Loading…" : "Reload"}
+                        </button>
+                        {(protectionCanEdit || session.isMainAdmin) ? (
+                          <button
+                            type="button"
+                            className={styles.primaryButton}
+                            disabled={protectionBusy}
+                            onClick={() => void saveProtectionSettings()}
+                          >
+                            {protectionBusy && protectionLoaded ? "Saving…" : "Save protections"}
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              ) : adminView === "protection-logs" ? (
+                <section className={styles.settingsPanel}>
+                  <div className={styles.protectionLogsLayout}>
+                    <aside className={styles.protectionLogsSidebar}>
+                      <div className={styles.settingsCard}>
+                        <div className={styles.settingsCardHeader}>
+                          <h2>Protections-Logs</h2>
+                          <p>Filter loader auth logs by application and source.</p>
+                        </div>
+                        <div className={styles.settingsCardBody}>
+                          <label className={styles.settingsField}>
+                            <span className={styles.settingsFieldLabel}>Application</span>
+                            <AdminSelect
+                              value={protectionLogAppFilter}
+                              onChange={setProtectionLogAppFilter}
+                              placeholder="Select application"
+                              options={[
+                                { value: "all", label: "All applications" },
+                                ...applications.map((app) => ({
+                                  value: app.app_id || app.id,
+                                  label: app.name || app.app_id || app.id,
+                                })),
+                              ]}
+                            />
+                          </label>
+
+                          <label className={styles.settingsField}>
+                            <span className={styles.settingsFieldLabel}>Reseller / Local</span>
+                            <AdminSelect
+                              value={protectionLogSourceFilter}
+                              onChange={setProtectionLogSourceFilter}
+                              placeholder="Select source"
+                              options={[
+                                { value: "all", label: "All sources" },
+                                ...protectionLogSources.map((source) => ({
+                                  value: source.id,
+                                  label:
+                                    source.type === "local"
+                                      ? `Local — ${source.label}`
+                                      : source.label || source.id,
+                                })),
+                              ]}
+                            />
+                          </label>
+
+                          <div className={styles.protectionLogColumns}>
+                            <span className={styles.protectionLogColumnsLabel}>Visible fields</span>
+                            {PROTECTION_LOG_COLUMNS.map((column) => {
+                              const checked = Boolean(protectionLogColumns[column.id]);
+                              return (
+                                <label
+                                  key={column.id}
+                                  className={`checkout-terms${checked ? " is-checked" : ""} ${styles.resellerPermissionItem}`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={(event) =>
+                                      updateProtectionLogColumn(column.id, event.target.checked)
+                                    }
+                                  />
+                                  <span className="checkout-terms-box" aria-hidden="true">
+                                    {checked ? <Check size={14} strokeWidth={3} /> : null}
+                                  </span>
+                                  <span className="checkout-terms-text">{column.label}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+
+                          <div className={styles.formActions}>
+                            <button
+                              type="button"
+                              className={`${styles.secondaryButton} ${styles.protectionLogReloadBtn}`}
+                              disabled={protectionLogsBusy}
+                              onClick={() => void loadProtectionLogs({ force: true })}
+                              title={protectionLogsBusy ? "Loading…" : "Reload"}
+                              aria-label={protectionLogsBusy ? "Loading" : "Reload"}
+                            >
+                              <RefreshCw
+                                size={14}
+                                className={protectionLogsBusy ? styles.protectionLogReloadSpin : undefined}
+                              />
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.dangerButton}
+                              disabled={protectionLogsBusy || !protectionLogs.length}
+                              onClick={() => void deleteFilteredProtectionLogs()}
+                            >
+                              <Trash2 size={14} />
+                              Delete
+                            </button>
+                            <div
+                              className={styles.protectionLogDensity}
+                              role="group"
+                              aria-label="Log card layout"
+                            >
+                              {[
+                                { cols: 1, label: "1 card per row", Icon: Square },
+                                { cols: 2, label: "2 cards per row", Icon: Columns2 },
+                                { cols: 3, label: "3 cards per row", Icon: Columns3 },
+                              ].map(({ cols, label, Icon }) => {
+                                const active = protectionLogDensity === cols;
+                                return (
+                                  <button
+                                    key={cols}
+                                    type="button"
+                                    className={`${styles.protectionLogDensityBtn}${
+                                      active ? ` ${styles.protectionLogDensityBtnActive}` : ""
+                                    }`}
+                                    title={label}
+                                    aria-label={label}
+                                    aria-pressed={active}
+                                    onClick={() => updateProtectionLogDensity(cols)}
+                                  >
+                                    <Icon size={13} strokeWidth={2.25} />
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </aside>
+
+                    <div className={styles.protectionLogsFeed}>
+                      {protectionLogsMessage.text ? (
+                        <div
+                          className={`${styles.message} ${
+                            protectionLogsMessage.type
+                              ? styles[`message${protectionLogsMessage.type}`]
+                              : ""
+                          }`}
+                        >
+                          {protectionLogsMessage.text}
+                        </div>
+                      ) : null}
+
+                      {protectionLogsBusy && !protectionLogs.length ? (
+                        <div className={styles.protectionLogsEmpty}>Loading logs…</div>
+                      ) : null}
+
+                      {!protectionLogsBusy && !protectionLogs.length ? (
+                        <div className={styles.protectionLogsEmpty}>
+                          No protection logs for this filter yet.
+                        </div>
+                      ) : null}
+
+                      <div
+                        className={`${styles.protectionLogsList} ${
+                          styles[`protectionLogsListCols${protectionLogDensity}`] || ""
+                        }`}
+                      >
+                        {protectionLogs.map((entry, entryIndex) => {
+                          const fields = [];
+                          const variantLabel = getProtectionLogVariantLabel(entry);
+                          const isNewestLog = entryIndex === 0;
+
+                          if (protectionLogColumns.application || protectionLogColumns.product_variant) {
+                            fields.push({
+                              label: "Application",
+                              value: entry.application || "—",
+                              suffix:
+                                protectionLogColumns.product_variant && variantLabel ? variantLabel : "",
+                            });
+                          }
+                          if (protectionLogColumns.reseller) {
+                            fields.push({ label: "Reseller", value: entry.reseller || "—" });
+                          }
+                          if (protectionLogColumns.username_profile || protectionLogColumns.discord_user_id) {
+                            fields.push({
+                              label: "Discord",
+                              value: entry.discord_username || "—",
+                              avatar: entry.discord_avatar_url || "",
+                              suffix:
+                                protectionLogColumns.discord_user_id && entry.discord_user_id
+                                  ? entry.discord_user_id
+                                  : "",
+                              suffixMono: true,
+                            });
+                          }
+                          if (protectionLogColumns.license) {
+                            fields.push({
+                              label: "License",
+                              value: entry.license_key || "—",
+                              mono: true,
+                              copyValue: entry.license_key || "",
+                              lookupEntry: entry.license_key ? entry : null,
+                            });
+                          }
+                          if (protectionLogColumns.expiration) {
+                            fields.push({ label: "Expires", value: entry.expiration || "—" });
+                          }
+                          if (protectionLogColumns.time_left) {
+                            fields.push({
+                              label: "Time left",
+                              value: entry.time_left || "—",
+                              accent: true,
+                            });
+                          }
+
+                          const showMessage =
+                            entry.message &&
+                            !/^license (validated|activated) successfully\.?$/i.test(
+                              String(entry.message).trim()
+                            );
+
+                          const titleName =
+                            entry.discord_username ||
+                            entry.application ||
+                            entry.license_key ||
+                            "Session";
+
+                          return (
+                            <article
+                              key={entry.id}
+                              className={`${styles.protectionLogCard}${
+                                entry.success ? "" : ` ${styles.protectionLogCardFailed}`
+                              }`}
+                            >
+                              <header className={styles.protectionLogHeader}>
+                                <div className={styles.protectionLogIdentity}>
+                                  {entry.discord_avatar_url ? (
+                                    <img
+                                      className={styles.protectionLogAvatar}
+                                      src={entry.discord_avatar_url}
+                                      alt=""
+                                    />
+                                  ) : (
+                                    <span className={styles.protectionLogAvatarFallback} aria-hidden="true">
+                                      {(titleName || "?").slice(0, 1).toUpperCase()}
+                                    </span>
+                                  )}
+                                  <div className={styles.protectionLogIdentityText}>
+                                    <strong className={styles.protectionLogTitle}>{titleName}</strong>
+                                    <span className={styles.protectionLogSubtitle}>
+                                      {entry.application || "—"}
+                                      {entry.reseller ? ` · ${entry.reseller}` : ""}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className={styles.protectionLogHeaderAside}>
+                                  <div className={styles.protectionLogBadgeRow}>
+                                    {isNewestLog ? (
+                                      <span className={styles.protectionLogBadgeNew}>NEW</span>
+                                    ) : null}
+                                    <span
+                                      className={`${styles.protectionLogBadge}${
+                                        entry.success
+                                          ? ` ${styles.protectionLogBadgeOk}`
+                                          : ` ${styles.protectionLogBadgeFail}`
+                                      }`}
+                                    >
+                                      {entry.success ? (
+                                        <CircleCheck size={13} strokeWidth={2.5} />
+                                      ) : (
+                                        <X size={13} strokeWidth={2.5} />
+                                      )}
+                                      {entry.success ? "Authenticated" : "Rejected"}
+                                    </span>
+                                  </div>
+                                  <time className={styles.protectionLogTime} dateTime={entry.created_at || undefined}>
+                                    {entry.created_at
+                                      ? new Date(entry.created_at).toLocaleString()
+                                      : "—"}
+                                  </time>
+                                </div>
+                              </header>
+
+                              {fields.length ? (
+                                <div className={styles.protectionLogGrid}>
+                                  {fields.map((field) => (
+                                    <div key={field.label} className={styles.protectionLogCell}>
+                                      <span className={styles.protectionLogFieldLabel}>{field.label}</span>
+                                      <span
+                                        className={`${styles.protectionLogFieldValue}${
+                                          field.mono ? ` ${styles.protectionLogMono}` : ""
+                                        }${field.accent ? ` ${styles.protectionLogAccent}` : ""}${
+                                          field.copyValue || field.lookupEntry
+                                            ? ` ${styles.protectionLogFieldValueActions}`
+                                            : ""
+                                        }`}
+                                      >
+                                        {field.avatar ? (
+                                          <span className={styles.protectionLogProfile}>
+                                            <img src={field.avatar} alt="" />
+                                            <span>{field.value}</span>
+                                            {field.suffix ? (
+                                              <span
+                                                className={`${styles.protectionLogFieldSuffix}${
+                                                  field.suffixMono ? ` ${styles.protectionLogMono}` : ""
+                                                }`}
+                                              >
+                                                ({field.suffix})
+                                              </span>
+                                            ) : null}
+                                          </span>
+                                        ) : (
+                                          <>
+                                            <span className={styles.protectionLogFieldText}>{field.value}</span>
+                                            {field.suffix ? (
+                                              <span
+                                                className={`${styles.protectionLogFieldSuffix}${
+                                                  field.suffixMono ? ` ${styles.protectionLogMono}` : ""
+                                                }`}
+                                              >
+                                                ({field.suffix})
+                                              </span>
+                                            ) : null}
+                                          </>
+                                        )}
+                                        {field.copyValue || field.lookupEntry ? (
+                                          <span className={styles.protectionLogFieldButtons}>
+                                            {field.copyValue ? (
+                                              <button
+                                                type="button"
+                                                className={styles.protectionLogIconButton}
+                                                title={
+                                                  copiedLicenseId === `plog:${field.copyValue}`
+                                                    ? "Copied"
+                                                    : "Copy license key"
+                                                }
+                                                aria-label={
+                                                  copiedLicenseId === `plog:${field.copyValue}`
+                                                    ? "License key copied"
+                                                    : "Copy license key"
+                                                }
+                                                onClick={() =>
+                                                  void handleCopyLicenseKey({
+                                                    id: `plog:${field.copyValue}`,
+                                                    license_key: field.copyValue,
+                                                  })
+                                                }
+                                              >
+                                                {copiedLicenseId === `plog:${field.copyValue}` ? (
+                                                  <Check size={13} strokeWidth={2.5} />
+                                                ) : (
+                                                  <Copy size={13} strokeWidth={2.25} />
+                                                )}
+                                              </button>
+                                            ) : null}
+                                            {field.lookupEntry ? (
+                                              <button
+                                                type="button"
+                                                className={styles.protectionLogIconButton}
+                                                title="Open in Licenses"
+                                                aria-label="Open license in dashboard"
+                                                onClick={() => openLicenseFromProtectionLog(field.lookupEntry)}
+                                              >
+                                                <Search size={13} strokeWidth={2.25} />
+                                              </button>
+                                            ) : null}
+                                          </span>
+                                        ) : null}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : null}
+
+                              {showMessage ? (
+                                <p className={styles.protectionLogMessage}>{entry.message}</p>
+                              ) : null}
+
+                              {protectionLogColumns.screenshots &&
+                              Array.isArray(entry.screenshots) &&
+                              entry.screenshots.length ? (
+                                <div className={styles.protectionLogScreenshots}>
+                                  <div className={styles.protectionLogScreenshotsHead}>
+                                    <span className={styles.protectionLogFieldLabel}>Screenshots</span>
+                                    <span className={styles.protectionLogScreenshotCount}>
+                                      {entry.screenshots.length}
+                                    </span>
+                                  </div>
+                                  <div className={styles.protectionLogScreenshotGrid}>
+                                    {entry.screenshots.map((shot, index) => {
+                                      const label =
+                                        shot.monitor != null
+                                          ? `Monitor ${Number(shot.monitor) + 1}`
+                                          : `Screen ${index + 1}`;
+                                      const size = formatScreenshotResolution(shot);
+                                      return (
+                                        <button
+                                          key={`${entry.id}-${shot.path || index}`}
+                                          type="button"
+                                          className={styles.protectionLogScreenshot}
+                                          onClick={() =>
+                                            openScreenshotPreview(
+                                              entry.screenshots,
+                                              index,
+                                              entry.discord_username || entry.application || "Session"
+                                            )
+                                          }
+                                          title={[label, size].filter(Boolean).join(" · ")}
+                                        >
+                                          {shot.url ? (
+                                            <img src={shot.url} alt={label} loading="lazy" />
+                                          ) : (
+                                            <span className={styles.protectionLogScreenshotPlaceholder}>
+                                              {label}
+                                            </span>
+                                          )}
+                                          <span className={styles.protectionLogScreenshotMeta}>
+                                            <span>{label}</span>
+                                            {size ? (
+                                              <span className={styles.protectionLogScreenshotRes}>{size}</span>
+                                            ) : null}
+                                          </span>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ) : null}
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </section>
               ) : adminView === "settings" ? (
                 <section className={styles.settingsPanel}>
                   <div className={styles.settingsCard}>
@@ -4551,7 +5713,8 @@ export default function AdminPage() {
                 <AdminDashboardSkeleton />
               ) : (
                 <>
-              {(adminView === "applications" || adminView === "licenses") && (
+              {(adminView === "applications" || adminView === "licenses") &&
+                !(adminView === "applications" && featuresApp) && (
               <div className={styles.metrics}>
                 <div className={styles.metricCard}>
                   <span className={styles.metricIcon} aria-hidden="true">
@@ -4682,7 +5845,96 @@ export default function AdminPage() {
               </div>
 
               <div className={styles.mainGrid}>
-                {adminView === "applications" ? (
+                {adminView === "applications" && featuresApp ? (
+                  <section className={styles.featuresPanel} id="admin-application-features">
+                    <div className={styles.featuresPanelHeader}>
+                      <div>
+                        <span className={styles.featuresPanelKicker}>Features</span>
+                        <h2 className={styles.noSpaceBottom}>{featuresApp.name}</h2>
+                      </div>
+                      <div className={styles.headerActions}>
+                        <button
+                          className={styles.secondaryButton}
+                          type="button"
+                          onClick={closeAppFeatures}
+                        >
+                          <ArrowLeft size={16} />
+                          Back to applications
+                        </button>
+                        <button
+                          className={styles.primaryButton}
+                          type="button"
+                          onClick={() => copyFeaturesToClipboard(featuresApp)}
+                        >
+                          {featuresCopied ? <Check size={16} /> : <Copy size={16} />}
+                          {featuresCopied ? "Copied" : "Copy all"}
+                        </button>
+                        <button
+                          className={styles.secondaryButton}
+                          type="button"
+                          onClick={() => downloadFeaturesAsText(featuresApp)}
+                        >
+                          <Download size={16} />
+                          Download .txt
+                        </button>
+                      </div>
+                    </div>
+
+                    {(() => {
+                      const { features } = getFeaturesForApp(featuresApp);
+                      if (!features) {
+                        return (
+                          <div className={styles.emptyState}>
+                            No feature list is defined for this product in the site code.
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="product-feature-grid">
+                          {features.map((section, sIdx) => (
+                            <article
+                              className="product-feature-card"
+                              key={`${section.title || "section"}-${sIdx}`}
+                            >
+                              <h3>{section.title}</h3>
+                              {section.groups?.length ? (
+                                section.groups.map((group, gIdx) => (
+                                  <div
+                                    className="product-feature-group"
+                                    key={`${group.title || "group"}-${gIdx}`}
+                                  >
+                                    {group.title ? (
+                                      <h4 className="product-feature-group-title">{group.title}</h4>
+                                    ) : null}
+                                    <ul>
+                                      {(group.items || []).map((item, iIdx) => (
+                                        <li key={`${iIdx}-${item}`}>
+                                          <Check size={16} />
+                                          {item}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                ))
+                              ) : (
+                                <ul>
+                                  {(section.items || []).map((item, iIdx) => (
+                                    <li key={`${iIdx}-${item}`}>
+                                      <Check size={16} />
+                                      {item}
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </article>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </section>
+                ) : null}
+
+                {adminView === "applications" && !featuresApp ? (
                 <section className={styles.tableModule} id="admin-applications">
                   <div className={styles.tableHeader}>
                     <h2 className={styles.noSpaceBottom}>Application List</h2>
@@ -4792,6 +6044,18 @@ export default function AdminPage() {
                                     }}
                                   >
                                     <KeyRound size={15} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={styles.rowActionButton}
+                                    title="View Features"
+                                    aria-label="View Features"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      openAppFeatures(app);
+                                    }}
+                                  >
+                                    <FileText size={15} />
                                   </button>
                                   <button
                                     type="button"
@@ -4935,7 +6199,35 @@ export default function AdminPage() {
                                     )}
                                     <span className={styles.licenseDiscordName}>{displayUser}</span>
                                   </div>
-                                  <div className={styles.tableEllipsis}>{license.license_key || license.id}</div>
+                                  <div className={styles.licenseKeyCell}>
+                                    <button
+                                      type="button"
+                                      className={styles.licenseKeyCopyButton}
+                                      onClick={() => void handleCopyLicenseKey(license)}
+                                      title={
+                                        copiedLicenseId === String(license.id)
+                                          ? "Copied"
+                                          : "Copy license key"
+                                      }
+                                      aria-label={
+                                        copiedLicenseId === String(license.id)
+                                          ? "License key copied"
+                                          : "Copy license key"
+                                      }
+                                    >
+                                      <span className={styles.licenseKeyCopyText}>
+                                        {license.license_key || license.id}
+                                      </span>
+                                      {copiedLicenseId === String(license.id) ? (
+                                        <Check
+                                          size={14}
+                                          className={`${styles.licenseKeyCopyIcon} ${styles.licenseKeyCopyIconCopied}`}
+                                        />
+                                      ) : (
+                                        <Copy size={14} className={styles.licenseKeyCopyIcon} />
+                                      )}
+                                    </button>
+                                  </div>
                                   <div className={styles.licenseDurationCell}>
                                     {license.duration_unit === "unlimited"
                                       ? "Unlimited"
@@ -5619,101 +6911,312 @@ export default function AdminPage() {
 
                 {adminView === "resellers" ? (
                 <section className={styles.tableModule} id="admin-reselling">
-                  <div className={styles.tableHeader}>
-                    <h2 className={styles.noSpaceBottom}>Active Resellers</h2>
-                    <button
-                      className={styles.primaryButton}
-                      type="button"
-                      onClick={openAddResellerDrawer}
-                      disabled={resellersBusy}
-                    >
-                      <Plus size={16} />
-                      Add Reseller
-                    </button>
-                  </div>
-
-                  <div className={styles.tableContent}>
-                    <div className={styles.tableList}>
-                      <div className={styles.resellerTableHeaders}>
-                        <div>Username</div>
-                        <div>Role</div>
-                        <div>Discount</div>
-                        <div>Apps</div>
-                        <div>Balance</div>
-                        <div>Action</div>
+                  {resellerLicensesOpen && resellerLicensesReseller ? (
+                    <>
+                      <div className={styles.tableHeader}>
+                        <h2 className={styles.noSpaceBottom}>
+                          Reseller Licenses · {getResellerUsername(resellerLicensesReseller)}
+                        </h2>
+                        <div className={styles.headerActions}>
+                          <button
+                            className={styles.secondaryButton}
+                            type="button"
+                            onClick={() => setResellerLicensesOpen(false)}
+                          >
+                            <ArrowLeft size={16} />
+                            Back to resellers
+                          </button>
+                        </div>
                       </div>
 
-                      {resellersBusy && !resellers.length ? (
-                        <div className={styles.emptyState}>Loading resellers…</div>
-                      ) : resellers.filter((entry) => entry.status === "active").length ? (
-                        resellers
-                          .filter((entry) => entry.status === "active")
-                          .map((reseller) => {
-                            const displayUser = getResellerUsername(reseller);
-                            return (
-                              <div className={styles.resellerTableRow} key={reseller.id}>
-                                <div className={styles.licenseDiscordUser}>
-                                  {reseller.discord_avatar_url ? (
-                                    <img
-                                      className={styles.licenseAvatar}
-                                      src={reseller.discord_avatar_url}
-                                      alt={displayUser}
-                                    />
-                                  ) : (
-                                    <div className={styles.licenseAvatarPlaceholder} />
-                                  )}
-                                  <span className={styles.licenseDiscordName}>{displayUser}</span>
-                                </div>
-                                <div>
-                                  {reseller.role === "panel_access" ? "Panel Access" : "Reseller"}
-                                </div>
-                                <div>
-                                  {reseller.role === "panel_access"
-                                    ? "−100%"
-                                    : `−${Number(reseller.discount_percent || 0)}%`}
-                                </div>
-                                <div>
-                                  {Array.isArray(reseller.application_access)
-                                    ? reseller.application_access.length
-                                    : 0}
-                                </div>
-                                <div>{formatMoney(reseller.balance)}</div>
-                                <div className={styles.tableActionsCell}>
-                                  <div className={styles.adminInlineActions}>
+                      <div className={styles.tableContent}>
+                        <div className={styles.tableHeader}>
+                          <div className={styles.headerActions}>
+                            <AdminSelect
+                              options={resellerLicenseAppOptions}
+                              value={resellerLicensesAppFilter}
+                              onChange={setResellerLicensesAppFilter}
+                              placeholder="All applications"
+                            />
+                            <label className={styles.licenseSearchWrap}>
+                              <Search size={16} className={styles.licenseSearchIcon} aria-hidden="true" />
+                              <input
+                                type="search"
+                                className={styles.licenseSearchInput}
+                                placeholder="Search license or Discord username"
+                                value={resellerLicensesSearch}
+                                onChange={(event) => setResellerLicensesSearch(event.target.value)}
+                                aria-label="Search license or Discord username"
+                              />
+                            </label>
+                            <button
+                              className={styles.secondaryButton}
+                              type="button"
+                              disabled={resellerLicensesBusy}
+                              onClick={() => void loadResellerLicenses(resellerLicensesReseller)}
+                            >
+                              <RefreshCw size={16} />
+                              Refresh
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className={styles.tableList}>
+                          <div className={styles.licenseTableHeaders}>
+                            <div>Discord User</div>
+                            <div>License Key</div>
+                            <div>Duration</div>
+                            <div>Status</div>
+                            <div>Expires</div>
+                            <div>Action</div>
+                          </div>
+
+                          {resellerLicensesBusy && !resellerLicenses.length ? (
+                            <div className={styles.emptyState}>Loading reseller licenses…</div>
+                          ) : visibleResellerLicenses.length ? (
+                            visibleResellerLicenses.map((license) => {
+                              void expiresTick;
+                              const tone = getStatusTone(license.status);
+                              const displayUser = getLicenseDiscordDisplayName(license) || "-";
+                              const avatarUrl = getDiscordAvatarUrl(license);
+                              return (
+                                <div className={styles.licenseTableRow} key={license.id}>
+                                  <div className={styles.licenseDiscordUser}>
+                                    {avatarUrl ? (
+                                      <img className={styles.licenseAvatar} src={avatarUrl} alt={displayUser} />
+                                    ) : (
+                                      <div className={styles.licenseAvatarPlaceholder} />
+                                    )}
+                                    <span className={styles.licenseDiscordName}>{displayUser}</span>
+                                  </div>
+                                  <div className={styles.licenseKeyCell}>
                                     <button
                                       type="button"
-                                      className={styles.rowActionButton}
-                                      title="Edit reseller"
-                                      aria-label="Edit reseller"
-                                      disabled={resellersBusy}
-                                      onClick={() => openEditResellerDrawer(reseller)}
+                                      className={styles.licenseKeyCopyButton}
+                                      onClick={() => void handleCopyLicenseKey(license)}
+                                      title={
+                                        copiedLicenseId === String(license.id)
+                                          ? "Copied"
+                                          : "Copy license key"
+                                      }
+                                      aria-label={
+                                        copiedLicenseId === String(license.id)
+                                          ? "License key copied"
+                                          : "Copy license key"
+                                      }
                                     >
-                                      <Pencil size={15} />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className={styles.rowActionButton}
-                                      title="Remove reseller"
-                                      aria-label="Remove reseller"
-                                      disabled={resellersBusy}
-                                      onClick={() => handleDeleteReseller(reseller)}
-                                    >
-                                      <Trash2 size={15} />
+                                      <span className={styles.licenseKeyCopyText}>
+                                        {license.license_key || license.id}
+                                      </span>
+                                      {copiedLicenseId === String(license.id) ? (
+                                        <Check
+                                          size={14}
+                                          className={`${styles.licenseKeyCopyIcon} ${styles.licenseKeyCopyIconCopied}`}
+                                        />
+                                      ) : (
+                                        <Copy size={14} className={styles.licenseKeyCopyIcon} />
+                                      )}
                                     </button>
                                   </div>
+                                  <div className={styles.licenseDurationCell}>
+                                    {license.duration_unit === "unlimited"
+                                      ? "Unlimited"
+                                      : `${license.duration_value || "-"} ${license.duration_unit || ""}`.trim()}
+                                  </div>
+                                  <div>
+                                    <span className={styles.status}>
+                                      <span className={`${styles.indicationColor} ${styles[`tone${tone}`]}`} />
+                                      {formatLicenseStatus(license.status)}
+                                    </span>
+                                  </div>
+                                  <div className={styles.licenseExpiresCell}>{formatLicenseExpiresLabel(license)}</div>
+                                  <div className={styles.tableActionsCell}>
+                                    <div className={styles.adminInlineActions}>
+                                      <button
+                                        type="button"
+                                        className={styles.rowActionButton}
+                                        title="HWID Reset"
+                                        aria-label="HWID Reset"
+                                        onClick={() => handleResellerLicenseResetHwid(license)}
+                                      >
+                                        <RefreshCw size={15} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className={styles.rowActionButton}
+                                        title="Extend Time"
+                                        aria-label="Extend Time"
+                                        onClick={() => openExtendLicense(license)}
+                                      >
+                                        <Clock3 size={15} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className={styles.rowActionButton}
+                                        title="License Information"
+                                        aria-label="License Information"
+                                        onClick={() => openLicenseInfo(license)}
+                                      >
+                                        <Info size={15} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className={styles.rowActionButton}
+                                        title="Ban"
+                                        aria-label="Ban"
+                                        onClick={() => handleResellerLicenseToggleBan(license)}
+                                      >
+                                        <Ban size={15} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className={styles.rowActionButton}
+                                        title="Delete"
+                                        aria-label="Delete"
+                                        onClick={() => handleResellerLicenseDelete(license)}
+                                      >
+                                        <Trash2 size={15} />
+                                      </button>
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
-                            );
-                          })
-                      ) : (
-                        <div className={styles.emptyState}>No active resellers yet.</div>
-                      )}
-                    </div>
-                  </div>
+                              );
+                            })
+                          ) : (
+                            <div className={styles.emptyState}>
+                              {resellerLicenses.length
+                                ? "No licenses match the current filters."
+                                : "This reseller has not generated any licenses yet."}
+                            </div>
+                          )}
+                        </div>
+                      </div>
 
-                  <div className={styles.tableBottomCaption}>
-                    <div>Resellers sign in at /resell-panel with their Discord account.</div>
-                  </div>
+                      <div className={styles.tableBottomCaption}>
+                        <div>
+                          {resellerLicenses.length
+                            ? resellerLicensesSearch.trim() || resellerLicensesAppFilter !== "all"
+                              ? `Showing ${visibleResellerLicenses.length} of ${resellerLicenses.length} license(s).`
+                              : `Loaded ${resellerLicenses.length} license(s).`
+                            : "Licenses generated by this reseller will appear here."}
+                        </div>
+                      </div>
+
+                      <div
+                        className={`${styles.message} ${resellerLicensesMessage.type ? styles[`message${resellerLicensesMessage.type}`] : ""}`}
+                      >
+                        {resellerLicensesMessage.text}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className={styles.tableHeader}>
+                        <h2 className={styles.noSpaceBottom}>Active Resellers</h2>
+                        <button
+                          className={styles.primaryButton}
+                          type="button"
+                          onClick={openAddResellerDrawer}
+                          disabled={resellersBusy}
+                        >
+                          <Plus size={16} />
+                          Add Reseller
+                        </button>
+                      </div>
+
+                      <div className={styles.tableContent}>
+                        <div className={styles.tableList}>
+                          <div className={styles.resellerTableHeaders}>
+                            <div>Username</div>
+                            <div>Role</div>
+                            <div>Discount</div>
+                            <div>Apps</div>
+                            <div>Balance</div>
+                            <div>Action</div>
+                          </div>
+
+                          {resellersBusy && !resellers.length ? (
+                            <div className={styles.emptyState}>Loading resellers…</div>
+                          ) : resellers.filter((entry) => entry.status === "active").length ? (
+                            resellers
+                              .filter((entry) => entry.status === "active")
+                              .map((reseller) => {
+                                const displayUser = getResellerUsername(reseller);
+                                return (
+                                  <div className={styles.resellerTableRow} key={reseller.id}>
+                                    <div className={styles.licenseDiscordUser}>
+                                      {reseller.discord_avatar_url ? (
+                                        <img
+                                          className={styles.licenseAvatar}
+                                          src={reseller.discord_avatar_url}
+                                          alt={displayUser}
+                                        />
+                                      ) : (
+                                        <div className={styles.licenseAvatarPlaceholder} />
+                                      )}
+                                      <span className={styles.licenseDiscordName}>{displayUser}</span>
+                                    </div>
+                                    <div>
+                                      {reseller.role === "panel_access" ? "Panel Access" : "Reseller"}
+                                    </div>
+                                    <div>
+                                      {reseller.role === "panel_access"
+                                        ? "−100%"
+                                        : `−${Number(reseller.discount_percent || 0)}%`}
+                                    </div>
+                                    <div>
+                                      {Array.isArray(reseller.application_access)
+                                        ? reseller.application_access.length
+                                        : 0}
+                                    </div>
+                                    <div>{formatMoney(reseller.balance)}</div>
+                                    <div className={styles.tableActionsCell}>
+                                      <div className={styles.adminInlineActions}>
+                                        <button
+                                          type="button"
+                                          className={styles.rowActionButton}
+                                          title="View reseller licenses"
+                                          aria-label="View reseller licenses"
+                                          disabled={resellersBusy}
+                                          onClick={() => openResellerLicensesDrawer(reseller)}
+                                        >
+                                          <Eye size={15} />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className={styles.rowActionButton}
+                                          title="Edit reseller"
+                                          aria-label="Edit reseller"
+                                          disabled={resellersBusy}
+                                          onClick={() => openEditResellerDrawer(reseller)}
+                                        >
+                                          <Pencil size={15} />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className={styles.rowActionButton}
+                                          title="Remove reseller"
+                                          aria-label="Remove reseller"
+                                          disabled={resellersBusy}
+                                          onClick={() => handleDeleteReseller(reseller)}
+                                        >
+                                          <Trash2 size={15} />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                          ) : (
+                            <div className={styles.emptyState}>No active resellers yet.</div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className={styles.tableBottomCaption}>
+                        <div>Resellers sign in at /resell-panel with their Discord account.</div>
+                      </div>
+                    </>
+                  )}
                 </section>
                 ) : null}
 
@@ -7389,6 +8892,114 @@ export default function AdminPage() {
           </button>
         </div>
       ) : null}
+
+      {screenshotPreview && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className={styles.screenshotLightbox}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Screenshot preview"
+              onClick={closeScreenshotPreview}
+            >
+              <div
+                className={styles.screenshotLightboxPanel}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className={styles.screenshotLightboxTop}>
+                  <div className={styles.screenshotLightboxMeta}>
+                    <strong>
+                      {screenshotPreview.title || "Screenshot"}
+                      {screenshotPreview.shots.length > 1
+                        ? ` · ${screenshotPreview.index + 1}/${screenshotPreview.shots.length}`
+                        : ""}
+                    </strong>
+                    <span>
+                      {(() => {
+                        const shot = screenshotPreview.shots[screenshotPreview.index];
+                        const label =
+                          shot?.monitor != null
+                            ? `Monitor ${Number(shot.monitor) + 1}`
+                            : `Screen ${screenshotPreview.index + 1}`;
+                        const size = formatScreenshotResolution(shot);
+                        return [label, size].filter(Boolean).join(" · ");
+                      })()}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.screenshotLightboxClose}
+                    aria-label="Close preview"
+                    onClick={closeScreenshotPreview}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className={styles.screenshotLightboxStage}>
+                  {screenshotPreview.shots.length > 1 ? (
+                    <button
+                      type="button"
+                      className={`${styles.screenshotLightboxNav} ${styles.screenshotLightboxNavPrev}`}
+                      aria-label="Previous screenshot"
+                      onClick={() => stepScreenshotPreview(-1)}
+                    >
+                      <ChevronLeft size={22} />
+                    </button>
+                  ) : null}
+
+                  <img
+                    className={styles.screenshotLightboxImage}
+                    src={screenshotPreview.shots[screenshotPreview.index]?.url || ""}
+                    alt={`Screenshot ${screenshotPreview.index + 1}`}
+                  />
+
+                  {screenshotPreview.shots.length > 1 ? (
+                    <button
+                      type="button"
+                      className={`${styles.screenshotLightboxNav} ${styles.screenshotLightboxNavNext}`}
+                      aria-label="Next screenshot"
+                      onClick={() => stepScreenshotPreview(1)}
+                    >
+                      <ArrowRight size={22} />
+                    </button>
+                  ) : null}
+                </div>
+
+                {screenshotPreview.shots.length > 1 ? (
+                  <div className={styles.screenshotLightboxThumbs}>
+                    {screenshotPreview.shots.map((shot, index) => {
+                      const active = index === screenshotPreview.index;
+                      const label =
+                        shot.monitor != null
+                          ? `M${Number(shot.monitor) + 1}`
+                          : `S${index + 1}`;
+                      return (
+                        <button
+                          key={`thumb-${index}-${shot.path || shot.url || index}`}
+                          type="button"
+                          className={`${styles.screenshotLightboxThumb}${
+                            active ? ` ${styles.screenshotLightboxThumbActive}` : ""
+                          }`}
+                          onClick={() =>
+                            setScreenshotPreview((current) =>
+                              current ? { ...current, index } : current
+                            )
+                          }
+                          title={[label, formatScreenshotResolution(shot)].filter(Boolean).join(" · ")}
+                        >
+                          <img src={shot.url} alt="" />
+                          <span>{label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </main>
   );
 }

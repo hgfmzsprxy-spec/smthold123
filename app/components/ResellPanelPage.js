@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  ArrowLeft,
   Ban,
   Check,
   ChevronDown,
@@ -10,6 +11,7 @@ import {
   Clock3,
   Copy,
   Download,
+  FileText,
   Globe,
   HelpCircle,
   House,
@@ -50,6 +52,12 @@ import {
   openSellAuthEmbedCheckout,
 } from "../../lib/sellauth";
 import { readStoredAuthUser } from "../../lib/auth-session";
+import {
+  formatFeaturesAsText,
+  getFeaturesByAppId,
+  getProductNameBySlug,
+  getSlugByAppId,
+} from "../../lib/product-features";
 import { resolveOAuthReturnSession } from "../../lib/supabase-oauth";
 import { supabase } from "../../lib/supabase";
 import { useAuthUser, useIsClient } from "../../lib/use-auth-user";
@@ -57,6 +65,12 @@ import styles from "./AdminPage.module.css";
 import { ProductCheckoutModal } from "./ProductCheckoutModal";
 import { CloudflareTurnstileWidget } from "./CloudflareTurnstileWidget";
 import { runAccessChecks } from "../../lib/site-access";
+import {
+  readBootstrapCache,
+  resellBootstrapCacheKey,
+  slimBootstrapForCache,
+  writeBootstrapCache,
+} from "../../lib/panel-bootstrap-cache";
 
 const LOGIN_CF_VERIFY_MS = 1800;
 
@@ -355,6 +369,57 @@ function resellAuthHeaders(token, extra = {}) {
   const publicIp = getCachedPublicIp();
   if (publicIp) headers["X-Resell-Public-Ip"] = publicIp;
   return headers;
+}
+
+function decodeJwtExp(token) {
+  try {
+    const part = String(token || "").split(".")[1];
+    if (!part) return null;
+    const normalized = part.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+    const json = JSON.parse(window.atob(padded));
+    return Number.isFinite(json?.exp) ? Number(json.exp) : null;
+  } catch {
+    return null;
+  }
+}
+
+let activeTokenRefresh = null;
+function refreshSessionOnce() {
+  if (activeTokenRefresh) return activeTokenRefresh;
+  activeTokenRefresh = (async () => {
+    try {
+      const { data } = await supabase.auth.refreshSession();
+      return data?.session?.access_token || "";
+    } catch {
+      return "";
+    } finally {
+      // Allow a later refresh if this one didn't produce a usable token.
+      window.setTimeout(() => {
+        activeTokenRefresh = null;
+      }, 1000);
+    }
+  })();
+  return activeTokenRefresh;
+}
+
+/**
+ * Returns a non-expired access token, refreshing first when the cached one is
+ * stale. Supabase's autoRefreshToken runs on a timer, so getSession() can hand
+ * back an already-expired token during a race — every reseller API call would
+ * then 401 and the panel would lock itself out. This proactively refreshes.
+ */
+async function getFreshAccessToken() {
+  const { data } = await supabase.auth.getSession();
+  const token = data?.session?.access_token || "";
+  if (!token) return "";
+
+  const exp = decodeJwtExp(token);
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (exp && exp - nowSec > 60) return token;
+
+  const refreshed = await refreshSessionOnce();
+  return refreshed || token;
 }
 
 async function handleRevokedResponse(response, result, onLogout) {
@@ -1268,6 +1333,8 @@ function ResellDashboard({ reseller, onLogout }) {
   const [busy, setBusy] = useState(true);
   const [message, setMessage] = useState({ text: "", type: "" });
   const [selectedAppId, setSelectedAppId] = useState("");
+  const [featuresApp, setFeaturesApp] = useState(null);
+  const [featuresCopied, setFeaturesCopied] = useState(false);
   const [licenseSearch, setLicenseSearch] = useState("");
   const [generateOpen, setGenerateOpen] = useState(false);
   const [generateBusy, setGenerateBusy] = useState(false);
@@ -1316,6 +1383,63 @@ function ResellDashboard({ reseller, onLogout }) {
   function changeView(nextView) {
     const viewName = persistResellView(nextView);
     setView(viewName);
+    if (viewName !== "applications") setFeaturesApp(null);
+  }
+
+  function openAppFeatures(app) {
+    setFeaturesCopied(false);
+    setFeaturesApp(app);
+  }
+
+  function closeAppFeatures() {
+    setFeaturesApp(null);
+    setFeaturesCopied(false);
+  }
+
+  function getFeaturesForApp(app) {
+    const features = getFeaturesByAppId(app?.app_id);
+    const slug = getSlugByAppId(app?.app_id);
+    const productName = getProductNameBySlug(slug) || app?.name || "Product";
+    return { features, productName, slug };
+  }
+
+  async function copyFeaturesToClipboard(app) {
+    const { features, productName } = getFeaturesForApp(app);
+    if (!features) return;
+    const text = formatFeaturesAsText(features, productName);
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      setFeaturesCopied(true);
+      window.setTimeout(() => setFeaturesCopied(false), 2000);
+    } catch {
+      setFeaturesCopied(false);
+    }
+  }
+
+  function downloadFeaturesAsText(app) {
+    const { features, productName } = getFeaturesForApp(app);
+    if (!features) return;
+    const text = formatFeaturesAsText(features, productName);
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(productName || "features").replace(/[^a-z0-9\-_ ]+/gi, "").trim() || "features"}-features.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   useEffect(() => {
@@ -1430,8 +1554,7 @@ function ResellDashboard({ reseller, onLogout }) {
   }, [selectedLicenses, licenseSearch, hideExpiredLicenses, expiresTick]);
 
   async function getAccessToken() {
-    const { data } = await supabase.auth.getSession();
-    return data?.session?.access_token || "";
+    return getFreshAccessToken();
   }
 
   async function handleCopyLicenseKey(license) {
@@ -1929,31 +2052,13 @@ function ResellDashboard({ reseller, onLogout }) {
     return null;
   }
 
-  useEffect(() => {
-    if (view !== "store" && view !== "redeem") return;
-    setStoreProductsBusy(true);
-    void loadStoreProducts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view]);
-
-  useEffect(() => {
-    if (view !== "deposit") return;
-    setDepositBusy(true);
-    void loadDepositVariants();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view]);
-
-  useEffect(() => {
-    if (view !== "transactions") return;
-    void loadTransactions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view]);
+  // Store/deposit/transactions/notifications come from bootstrap.
 
   async function loadNotifications() {
     setNotificationsBusy(true);
     setNotificationsMessage({ text: "", type: "" });
     try {
-      await resolvePublicNetworkIp();
+      void resolvePublicNetworkIp();
       const token = await getAccessToken();
       if (!token) throw new Error("Not signed in.");
       const response = await fetch("/api/resell-panel/notifications", {
@@ -1970,12 +2075,6 @@ function ResellDashboard({ reseller, onLogout }) {
       setNotificationsBusy(false);
     }
   }
-
-  useEffect(() => {
-    if (view !== "notifications") return;
-    void loadNotifications();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view]);
 
   const redeemedProducts = useMemo(() => {
     const snapshots = Array.isArray(profile?.purchased_store_products) ? profile.purchased_store_products : [];
@@ -2085,14 +2184,19 @@ function ResellDashboard({ reseller, onLogout }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view]);
 
-  async function loadDashboard() {
-    setBusy(true);
-    setMessage({ text: "", type: "" });
+  async function loadDashboard(options = {}) {
+    const silent = options.silent === true;
+    const hasCache = options.hasCache === true;
+    if (!silent) {
+      setBusy(!hasCache);
+      setMessage({ text: "", type: "" });
+    }
     try {
-      await resolvePublicNetworkIp();
+      // Resolve public IP in parallel — do not block the dashboard request.
+      void resolvePublicNetworkIp();
       const token = await getAccessToken();
       if (!token) throw new Error("Not signed in.");
-      const response = await fetch("/api/resell-panel/dashboard", {
+      const response = await fetch("/api/resell-panel/bootstrap", {
         headers: resellAuthHeaders(token),
         cache: "no-store",
       });
@@ -2100,17 +2204,11 @@ function ResellDashboard({ reseller, onLogout }) {
       if (await handleRevokedResponse(response, result, onLogout)) return;
       if (!response.ok) throw new Error(result.error || "Failed to load dashboard.");
 
-      const apps = Array.isArray(result.applications) ? result.applications : [];
-      const keys = Array.isArray(result.licenses) ? result.licenses : [];
-      setApplications(apps);
-      setLicenses(keys);
-      setMetrics(result.metrics || { total: 0, active: 0, expired: 0, banned: 0 });
-      if (result.reseller) setProfile((current) => mergeResellerProfile(current, result.reseller));
-      setSelectedAppId((current) => {
-        const accessible = apps.filter((app) => app.has_access !== false && !app.locked);
-        if (current && accessible.some((app) => app.id === current)) return current;
-        return accessible[0]?.id || "";
-      });
+      applyResellBootstrapPayload(result);
+      writeBootstrapCache(
+        resellBootstrapCacheKey(reseller?.discord_auth_user_id || reseller?.id || ""),
+        slimBootstrapForCache(result)
+      );
     } catch (error) {
       setMessage({ text: error?.message || String(error), type: "error" });
     } finally {
@@ -2118,8 +2216,51 @@ function ResellDashboard({ reseller, onLogout }) {
     }
   }
 
+  function applyResellBootstrapPayload(result) {
+    if (!result || typeof result !== "object") return;
+
+    const apps = Array.isArray(result.applications) ? result.applications : [];
+    const keys = Array.isArray(result.licenses) ? result.licenses : [];
+    setApplications(apps);
+    setLicenses(keys);
+    setMetrics(result.metrics || { total: 0, active: 0, expired: 0, banned: 0 });
+    if (result.reseller) setProfile((current) => mergeResellerProfile(current, result.reseller));
+    setSelectedAppId((current) => {
+      const accessible = apps.filter((app) => app.has_access !== false && !app.locked);
+      if (current && accessible.some((app) => app.id === current)) return current;
+      return accessible[0]?.id || "";
+    });
+
+    if (Array.isArray(result.storeProducts)) {
+      setStoreProducts(result.storeProducts);
+      setStoreProductsBusy(false);
+      writeCachedCount(RESELL_CACHE_STORE_COUNT, result.storeProducts.length);
+      setStoreCountHint(result.storeProducts.length || 0);
+    }
+    if (Array.isArray(result.depositVariants)) {
+      setDepositVariants(result.depositVariants);
+      setDepositBusy(false);
+      writeCachedCount(RESELL_CACHE_DEPOSIT_COUNT, result.depositVariants.length);
+      setDepositCountHint(result.depositVariants.length || 0);
+    }
+    if (Array.isArray(result.notifications)) {
+      setNotifications(result.notifications);
+      setNotificationsBusy(false);
+    }
+    if (Array.isArray(result.transactions)) {
+      setTransactions(result.transactions);
+      setTransactionsBusy(false);
+    }
+  }
+
   useEffect(() => {
-    void loadDashboard();
+    const cacheKey = resellBootstrapCacheKey(reseller?.discord_auth_user_id || reseller?.id || "");
+    const cached = readBootstrapCache(cacheKey);
+    if (cached?.data) {
+      applyResellBootstrapPayload(cached.data);
+      setBusy(false);
+    }
+    void loadDashboard({ silent: Boolean(cached?.data), hasCache: Boolean(cached?.data) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -3437,7 +3578,8 @@ function ResellDashboard({ reseller, onLogout }) {
                 </section>
               ) : (
                 <>
-                  {(view === "applications" || view === "licenses") && (
+                  {(view === "applications" || view === "licenses") &&
+                    !(view === "applications" && featuresApp) && (
                     <div className={styles.metrics}>
                       <div className={styles.metricCard}>
                         <span className={styles.metricIcon} aria-hidden="true">
@@ -3483,7 +3625,95 @@ function ResellDashboard({ reseller, onLogout }) {
                   </div>
 
                   <div className={styles.mainGrid}>
-                    {view === "applications" ? (
+                    {view === "applications" && featuresApp ? (
+                        <section className={styles.featuresPanel}>
+                          <div className={styles.featuresPanelHeader}>
+                            <div>
+                              <span className={styles.featuresPanelKicker}>Features</span>
+                              <h2 className={styles.noSpaceBottom}>{featuresApp.name}</h2>
+                            </div>
+                            <div className={styles.headerActions}>
+                              <button
+                                className={styles.secondaryButton}
+                                type="button"
+                                onClick={closeAppFeatures}
+                              >
+                                <ArrowLeft size={16} />
+                                Back to applications
+                              </button>
+                              <button
+                                className={styles.primaryButton}
+                                type="button"
+                                onClick={() => copyFeaturesToClipboard(featuresApp)}
+                              >
+                                {featuresCopied ? <Check size={16} /> : <Copy size={16} />}
+                                {featuresCopied ? "Copied" : "Copy all"}
+                              </button>
+                              <button
+                                className={styles.secondaryButton}
+                                type="button"
+                                onClick={() => downloadFeaturesAsText(featuresApp)}
+                              >
+                                <Download size={16} />
+                                Download .txt
+                              </button>
+                            </div>
+                          </div>
+                          {(() => {
+                            const { features } = getFeaturesForApp(featuresApp);
+                            if (!features) {
+                              return (
+                                <div className={styles.emptyState}>
+                                  No feature list is defined for this product in the site code.
+                                </div>
+                              );
+                            }
+                            return (
+                              <div className="product-feature-grid">
+                                {features.map((section, sIdx) => (
+                                  <article
+                                    className="product-feature-card"
+                                    key={`${section.title || "section"}-${sIdx}`}
+                                  >
+                                    <h3>{section.title}</h3>
+                                    {section.groups?.length ? (
+                                      section.groups.map((group, gIdx) => (
+                                        <div
+                                          className="product-feature-group"
+                                          key={`${group.title || "group"}-${gIdx}`}
+                                        >
+                                          {group.title ? (
+                                            <h4 className="product-feature-group-title">{group.title}</h4>
+                                          ) : null}
+                                          <ul>
+                                            {(group.items || []).map((item, iIdx) => (
+                                              <li key={`${iIdx}-${item}`}>
+                                                <Check size={16} />
+                                                {item}
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      ))
+                                    ) : (
+                                      <ul>
+                                        {(section.items || []).map((item, iIdx) => (
+                                          <li key={`${iIdx}-${item}`}>
+                                            <Check size={16} />
+                                            {item}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    )}
+                                  </article>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </section>
+                    ) : null}
+
+                    {view === "applications" && !featuresApp ? (
                       <section className={styles.tableModule}>
                         <div className={styles.tableHeader}>
                           <h2 className={styles.noSpaceBottom}>Your Applications</h2>
@@ -3537,23 +3767,31 @@ function ResellDashboard({ reseller, onLogout }) {
                                     </div>
                                     <div>{count}</div>
                                     <div className={styles.tableActionsCell}>
-                                      {locked ? (
-                                        <button className={styles.secondaryButton} type="button" disabled>
-                                          <Lock size={14} />
-                                          Locked
-                                        </button>
-                                      ) : (
+                                      <div className={styles.adminInlineActions}>
                                         <button
-                                          className={styles.secondaryButton}
                                           type="button"
+                                          className={styles.rowActionButton}
+                                          title={locked ? "No access to this application" : "View Licenses"}
+                                          aria-label={locked ? "Locked" : "View Licenses"}
+                                          aria-disabled={locked || undefined}
                                           onClick={() => {
+                                            if (locked) return;
                                             setSelectedAppId(app.id);
                                             changeView("licenses");
                                           }}
                                         >
-                                          Licenses
+                                          {locked ? <Lock size={15} /> : <KeyRound size={15} />}
                                         </button>
-                                      )}
+                                        <button
+                                          type="button"
+                                          className={styles.rowActionButton}
+                                          title="View Features"
+                                          aria-label="View Features"
+                                          onClick={() => openAppFeatures(app)}
+                                        >
+                                          <FileText size={15} />
+                                        </button>
+                                      </div>
                                     </div>
                                   </div>
                                 );
@@ -4025,9 +4263,23 @@ function ResellPanelContent() {
   const [rememberMe, setRememberMe] = useState(true);
   const [theme, setTheme] = useState("dark");
   const [loginPrefsReady, setLoginPrefsReady] = useState(false);
+  const [authRefreshTick, setAuthRefreshTick] = useState(0);
 
   useLayoutEffect(() => {
     setCachedReseller(readCachedReseller());
+  }, []);
+
+  // When Supabase finishes refreshing the access token (which can happen just
+  // after our session check raced and 401'd), re-run access verification so the
+  // reseller auto-recovers into the panel instead of staying locked out.
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "TOKEN_REFRESHED") setAuthRefreshTick((value) => value + 1);
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -4140,8 +4392,7 @@ function ResellPanelContent() {
 
       try {
         await resolvePublicNetworkIp();
-        const { data } = await supabase.auth.getSession();
-        const token = data?.session?.access_token;
+        const token = await getFreshAccessToken();
         if (!token) {
           clearCachedReseller();
           setCachedReseller(null);
@@ -4149,11 +4400,11 @@ function ResellPanelContent() {
           return;
         }
 
-        const response = await fetch("/api/resell-panel/session", {
+        let response = await fetch("/api/resell-panel/session", {
           headers: resellAuthHeaders(token),
           cache: "no-store",
         });
-        const result = await response.json().catch(() => ({}));
+        let result = await response.json().catch(() => ({}));
         if (cancelled) return;
 
         if (response.status === 401 && result.revoked) {
@@ -4165,7 +4416,66 @@ function ResellPanelContent() {
           return;
         }
 
+        // A non-revoked 401 here almost always means the access token was stale
+        // (autoRefreshToken race) — NOT that the reseller lost access. Refresh
+        // the session once and retry before deciding anything. We must never
+        // permanently lock a reseller behind "Access denied" for a stale token.
+        if (response.status === 401) {
+          const refreshed = await refreshSessionOnce();
+          if (cancelled) return;
+          if (refreshed) {
+            response = await fetch("/api/resell-panel/session", {
+              headers: resellAuthHeaders(refreshed),
+              cache: "no-store",
+            });
+            result = await response.json().catch(() => ({}));
+            if (cancelled) return;
+
+            if (response.status === 401 && result.revoked) {
+              clearResellDeviceSessionId();
+              clearCachedReseller();
+              setCachedReseller(null);
+              await supabase.auth.signOut({ scope: "local" });
+              setAccessState({ status: "guest", error: "This session was disconnected.", reseller: null });
+              return;
+            }
+            if (response.ok) {
+              const reseller = result.reseller || null;
+              writeCachedReseller(reseller);
+              setCachedReseller(reseller);
+              setAccessState({ status: "allowed", error: "", reseller });
+              return;
+            }
+          }
+
+          // Token still rejected. Keep the reseller inside the panel if we have
+          // a cached profile (data calls will keep retrying with fresh tokens);
+          // only fall back to the login screen if we truly have nothing cached.
+          const cached = readCachedReseller();
+          if (cached) {
+            setCachedReseller(cached);
+            setAccessState({ status: "allowed", error: "", reseller: cached });
+            return;
+          }
+          setAccessState({ status: "guest", error: "", reseller: null });
+          return;
+        }
+
         if (!response.ok) {
+          // 403 = genuinely not registered as a reseller. Other non-OK codes are
+          // transient server errors — keep the cached reseller in the panel so
+          // a blip doesn't kick them out.
+          const transient = response.status >= 500;
+          if (transient) {
+            const cached = readCachedReseller();
+            if (cached) {
+              setCachedReseller(cached);
+              setAccessState({ status: "allowed", error: "", reseller: cached });
+              return;
+            }
+            setAccessState({ status: "checking", error: "", reseller: null });
+            return;
+          }
           clearCachedReseller();
           setCachedReseller(null);
           setAccessState({
@@ -4206,7 +4516,7 @@ function ResellPanelContent() {
     return () => {
       cancelled = true;
     };
-  }, [user, ready, oauthReturnPending, loginPrefsReady]);
+  }, [user, ready, oauthReturnPending, loginPrefsReady, authRefreshTick]);
 
   function handleLoginThemeToggle(nextLight) {
     const nextTheme = nextLight ? "light" : "dark";
