@@ -5,6 +5,7 @@ import {
   ArrowRight,
   ArrowLeft,
   Ban,
+  BookOpen,
   Check,
   ChevronDown,
   CircleCheck,
@@ -61,6 +62,7 @@ import {
 import { resolveOAuthReturnSession } from "../../lib/supabase-oauth";
 import { supabase } from "../../lib/supabase";
 import { useAuthUser, useIsClient } from "../../lib/use-auth-user";
+import { getProductGuideHref } from "../../lib/guide-links";
 import styles from "./AdminPage.module.css";
 import { ProductCheckoutModal } from "./ProductCheckoutModal";
 import { CloudflareTurnstileWidget } from "./CloudflareTurnstileWidget";
@@ -1540,6 +1542,10 @@ function ResellDashboard({ reseller, onLogout }) {
     return { features, productName, slug };
   }
 
+  function getAppGuideHref(app) {
+    return getProductGuideHref(getSlugByAppId(app?.app_id));
+  }
+
   async function copyFeaturesToClipboard(app) {
     const { features, productName } = getFeaturesForApp(app);
     if (!features) return;
@@ -2728,6 +2734,10 @@ function ResellDashboard({ reseller, onLogout }) {
                   <Ticket size={14} />
                   <span className={styles.adminNavItemLabel}>Redeem</span>
                 </button>
+                <Link href="/guide" className={styles.adminNavItem}>
+                  <BookOpen size={14} />
+                  <span className={styles.adminNavItemLabel}>Guides</span>
+                </Link>
                 <button
                   type="button"
                   className={`${styles.adminNavItem}${view === "settings" ? ` ${styles.adminNavItemActive}` : ""}`}
@@ -3948,6 +3958,14 @@ function ResellDashboard({ reseller, onLogout }) {
                                         >
                                           <FileText size={15} />
                                         </button>
+                                        <Link
+                                          href={getAppGuideHref(app)}
+                                          className={styles.rowActionButton}
+                                          title="Open Guides"
+                                          aria-label="Open Guides"
+                                        >
+                                          <BookOpen size={15} />
+                                        </Link>
                                       </div>
                                     </div>
                                   </div>

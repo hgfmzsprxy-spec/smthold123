@@ -76,6 +76,7 @@ import { PurchaseCountryFlag } from "./PurchaseCountryFlag";
 import { SkeletonBlock } from "./Skeleton";
 import { LoaderDownloadModal } from "./LoaderDownloadModal";
 import { LoaderRedeemModal } from "./LoaderRedeemModal";
+import { getProductGuideHref, LOADER_INSTALLATION_GUIDE_HREF } from "../../lib/guide-links";
 import { ProductCheckoutModal } from "./ProductCheckoutModal";
 import {
   clearCompletedRedeem,
@@ -5023,6 +5024,7 @@ function LoaderDetailContent({ slug }) {
   const displayVersion = loaderDisplayMeta?.version || product.version;
   const displayLastUpdate = loaderDisplayMeta?.lastUpdate || formatLoaderAppDate(product.updated);
   const displayStatus = loaderDisplayMeta?.status || "Undetected";
+  const productGuideHref = getProductGuideHref(slug);
 
   function getProductStatusClass(status) {
     return getLoaderProductStatusClass(status);
@@ -5840,7 +5842,7 @@ function LoaderDetailContent({ slug }) {
                 </div>
               </div>
               <div className="loader-actions-body">
-                <Link className="loader-actions-item" href="/loader#instruction">
+                <Link className="loader-actions-item" href={LOADER_INSTALLATION_GUIDE_HREF}>
                   <span className="loader-actions-item-icon">
                     <Play size={18} />
                   </span>
@@ -5850,7 +5852,7 @@ function LoaderDetailContent({ slug }) {
                   </span>
                   <ArrowRight size={16} strokeWidth={2.4} />
                 </Link>
-                <Link className="loader-actions-item" href="/pomoc">
+                <Link className="loader-actions-item" href={productGuideHref}>
                   <span className="loader-actions-item-icon">
                     <Info size={18} />
                   </span>
