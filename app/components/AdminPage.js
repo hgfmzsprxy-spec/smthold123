@@ -1437,6 +1437,7 @@ export default function AdminPage() {
     durationUnit: "days",
   });
   const [extendForm, setExtendForm] = useState({
+    action: "add",
     durationValue: 30,
     durationUnit: "days",
   });
@@ -4729,16 +4730,25 @@ export default function AdminPage() {
 
     const unit = String(extendForm.durationUnit || "days");
     const durationValue = Number(extendForm.durationValue || 0);
+    const action = extendForm.action || "add";
 
     if (unit !== "unlimited" && (!Number.isFinite(durationValue) || durationValue <= 0)) {
       setExtendMessage({ text: "Enter a valid duration number.", type: "error" });
       return;
     }
 
+    if (action === "remove" && unit === "unlimited") {
+      setExtendMessage({ text: "Cannot remove unlimited time.", type: "error" });
+      return;
+    }
+
     const activatedAt = parseDateSafe(activeExtendLicense.activated_at);
     const expiresAt = parseDateSafe(activeExtendLicense.expires_at);
     const currentDurationMs = durationToMs(activeExtendLicense.duration_value, activeExtendLicense.duration_unit);
+    
     const addedMs = unit === "unlimited" ? Number.POSITIVE_INFINITY : durationToMs(durationValue, unit);
+    const msChange = action === "add" ? addedMs : -addedMs;
+
     const payload = {};
 
     if (unit === "unlimited") {
@@ -4746,12 +4756,13 @@ export default function AdminPage() {
       payload.duration_unit = "unlimited";
       if (activatedAt) payload.expires_at = null;
     } else if (!activatedAt) {
-      const totalMs = (Number.isFinite(currentDurationMs) ? currentDurationMs : 0) + addedMs;
-      payload.duration_value = Math.max(1, Math.round(totalMs / 1000));
+      const totalMs = (Number.isFinite(currentDurationMs) ? currentDurationMs : 0) + msChange;
+      const finalMs = Math.max(0, totalMs);
+      payload.duration_value = Math.max(1, Math.round(finalMs / 1000));
       payload.duration_unit = "seconds";
     } else {
       const baseDate = expiresAt && expiresAt.getTime() > Date.now() ? expiresAt : new Date();
-      payload.expires_at = new Date(baseDate.getTime() + addedMs).toISOString();
+      payload.expires_at = new Date(baseDate.getTime() + msChange).toISOString();
     }
 
     const licenseId = activeExtendLicense.id;
@@ -9180,6 +9191,17 @@ export default function AdminPage() {
                     </div>
                     <div className={styles.tableContent}>
                       <form className={styles.formPad} onSubmit={handleExtendLicense}>
+                        <div className={styles.group}>
+                          <label>Action</label>
+                          <AdminSelect
+                            options={[
+                              { value: "add", label: "Add Time" },
+                              { value: "remove", label: "Remove Time" },
+                            ]}
+                            value={extendForm.action || "add"}
+                            onChange={(action) => setExtendForm((value) => ({ ...value, action }))}
+                          />
+                        </div>
                         <div className={styles.twoCols}>
                           <div className={styles.group}>
                             <label htmlFor="extend-value">Duration Value</label>
