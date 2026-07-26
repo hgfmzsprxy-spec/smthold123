@@ -107,7 +107,6 @@ export async function GET(request) {
       productsStore,
       depositStore,
       transactions,
-      protectionLogsStore,
     ] = await Promise.all([
       fetchApplications(admin),
       fetchLicenses(admin),
@@ -117,10 +116,6 @@ export async function GET(request) {
       safe(readResellerProductsStore(admin), { products: [] }),
       safe(readDepositVariantsStore(admin, { skipSeed: true }), { variants: [] }),
       safe(listTransactions({ limit: 500 }, admin), []),
-      safe(readProtectionLogStore(admin, { signScreenshots: false }), {
-        entries: [],
-        ignored_user_ids: [],
-      }),
     ]);
 
     const resellers = Array.isArray(resellerStore?.resellers) ? resellerStore.resellers : [];
@@ -154,10 +149,8 @@ export async function GET(request) {
       storeProducts: Array.isArray(productsStore?.products) ? productsStore.products : [],
       depositVariants: Array.isArray(depositStore?.variants) ? depositStore.variants : [],
       transactions: Array.isArray(transactions) ? transactions : [],
-      protectionLogs: Array.isArray(protectionLogsStore?.entries) ? protectionLogsStore.entries : [],
-      protectionLogIgnoredUserIds: Array.isArray(protectionLogsStore?.ignored_user_ids)
-        ? protectionLogsStore.ignored_user_ids
-        : [],
+      protectionLogs: [],
+      protectionLogIgnoredUserIds: [],
       protectionLogSources,
       protectionLogColumns: PROTECTION_LOG_COLUMNS,
       protectionLogDefaultColumns: defaultProtectionLogColumns(),
