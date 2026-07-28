@@ -33,7 +33,13 @@ export async function GET(request) {
     const admin = getSupabaseAdmin();
     const { appId, sourceId } = readFilterParams(request);
 
-    const [store, resellerStore] = await Promise.all([readProtectionLogStore(admin), readResellersStore(admin)]);
+    const [store, resellerStore] = await Promise.all([
+      readProtectionLogStore(admin).catch((e) => {
+        console.error("readProtectionLogStore error:", e);
+        return { entries: [], ignored_user_ids: [] };
+      }),
+      readResellersStore(admin).catch(() => ({ resellers: [] }))
+    ]);
 
     let entries = store.entries || [];
     if (appId && appId !== "all") {
@@ -67,6 +73,7 @@ export async function GET(request) {
       local_source_id: LOCAL_PROTECTION_SOURCE_ID,
     });
   } catch (error) {
+    console.error("GET protection-logs ERROR:", error);
     return NextResponse.json({ error: error?.message || String(error) }, { status: 500 });
   }
 }
