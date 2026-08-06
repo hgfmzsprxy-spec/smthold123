@@ -1075,7 +1075,7 @@ function ResponseChart({ history, theme = "dark" }) {
   );
 }
 
-function AdminResponseMonitor({ signedIn, theme = "dark" }) {
+function AdminResponseMonitor({ configUrl, signedIn, theme = "dark" }) {
   const [responseMs, setResponseMs] = useState(null);
   const [history, setHistory] = useState([]);
   const [open, setOpen] = useState(false);
@@ -1086,13 +1086,17 @@ function AdminResponseMonitor({ signedIn, theme = "dark" }) {
     let timer = null;
 
     async function ping() {
+      const supabaseBase = String(configUrl || "").trim();
       const origin = typeof window !== "undefined" ? window.location.origin : "";
-      if (!origin) return;
-      // Same-origin only — bare Supabase /rest/v1 without apikey spam 401 in the console.
-      const target = `${origin.replace(/\/+$/, "")}/api/reviews?t=${Date.now()}`;
+      // Prefer Supabase REST when configured; otherwise ping the site origin.
+      const base = supabaseBase || origin;
+      if (!base) return;
+      const target = supabaseBase
+        ? `${supabaseBase.replace(/\/+$/, "")}/rest/v1/?t=${Date.now()}`
+        : `${origin.replace(/\/+$/, "")}/api/reviews?t=${Date.now()}`;
       const start = performance.now();
       try {
-        await fetch(target, { method: "GET", cache: "no-store" });
+        await fetch(target, { method: "GET", cache: "no-store", mode: supabaseBase ? "no-cors" : "cors" });
       } catch {
         // ignore — round-trip still measured
       }
@@ -1108,7 +1112,7 @@ function AdminResponseMonitor({ signedIn, theme = "dark" }) {
       cancelled = true;
       if (timer) clearInterval(timer);
     };
-  }, [signedIn]);
+  }, [signedIn, configUrl]);
 
   if (!signedIn) return null;
 
@@ -1226,7 +1230,6 @@ export default function AdminPage() {
   const [protectionLogIgnoredDraft, setProtectionLogIgnoredDraft] = useState("");
   const [protectionLogIgnoredBusy, setProtectionLogIgnoredBusy] = useState(false);
   const protectionLogIgnoredSavedAtRef = useRef(0);
-  const protectionLogScreenshotsHydratedRef = useRef(new Set());
   const [deletingProtectionLogId, setDeletingProtectionLogId] = useState("");
   const [protectionLogColumns, setProtectionLogColumns] = useState(() => {
     if (typeof window === "undefined") return defaultProtectionLogColumns();
@@ -1578,18 +1581,10 @@ export default function AdminPage() {
     async function acceptAdminSession(supabaseSession, userOverride = null) {
       if (!supabaseSession?.access_token) return false;
 
-      // Prefer session.user — avoid extra /auth/v1/user round-trip (often 522 under Cloudflare).
-      let user = userOverride || supabaseSession.user || null;
+      let user = userOverride || null;
       if (!user) {
-        try {
-          const raced = await Promise.race([
-            supabase.auth.getUser(),
-            new Promise((resolve) => setTimeout(() => resolve({ data: { user: null } }), 8_000)),
-          ]);
-          user = raced?.data?.user || null;
-        } catch {
-          user = null;
-        }
+        const { data } = await supabase.auth.getUser();
+        user = data?.user || null;
       }
       if (!user) {
         await supabase.auth.signOut({ scope: "local" });
@@ -2067,8 +2062,6 @@ export default function AdminPage() {
       setDashboardMessage({ text: "", type: "" });
     }
 
-    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-    const timeoutId = controller ? window.setTimeout(() => controller.abort(), 22_000) : null;
     try {
       const accessToken = getAdminAccessToken();
       if (!accessToken) throw new Error("Not signed in.");
@@ -2076,39 +2069,18 @@ export default function AdminPage() {
       const response = await fetch("/api/admin/bootstrap", {
         headers: { Authorization: `Bearer ${accessToken}` },
         cache: "no-store",
-        signal: controller?.signal,
       });
       const result = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        if (response.status === 504 || response.status === 503) {
-          throw new Error(
-            result.error ||
-              "Database/Auth timed out (504/503). Wait a moment and reload — protection logs load separately."
-          );
-        }
-        throw new Error(result.error || "Failed to load dashboard.");
-      }
+      if (!response.ok) throw new Error(result.error || "Failed to load dashboard.");
 
       applyBootstrapPayload(result);
       writeBootstrapCache(
         adminBootstrapCacheKey(session.discordUserId || session.email || ""),
         slimBootstrapForCache(result)
       );
-      if (Array.isArray(result.warnings) && result.warnings.length && !silent) {
-        setDashboardMessage({
-          text: `Dashboard loaded with warnings: ${result.warnings.join("; ")}`,
-          type: "error",
-        });
-      }
     } catch (error) {
-      const aborted = error?.name === "AbortError";
-      reportActionError(
-        aborted
-          ? new Error("Dashboard bootstrap timed out. Open Protection Logs and hit Reload, or refresh the page.")
-          : error
-      );
+      reportActionError(error);
     } finally {
-      if (timeoutId) window.clearTimeout(timeoutId);
       if (!silent) setDashboardBusy(false);
       setDashboardInitialized(true);
     }
@@ -2659,16 +2631,10 @@ export default function AdminPage() {
 
     setProtectionLogsBusy(true);
     setProtectionLogsMessage({ text: "", type: "" });
-    protectionLogScreenshotsHydratedRef.current = new Set();
-    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-    const timeoutId = controller
-      ? window.setTimeout(() => controller.abort(), 20_000)
-      : null;
     try {
       const response = await fetch("/api/admin/protection-logs", {
         headers: { Authorization: `Bearer ${accessToken}` },
         cache: "no-store",
-        signal: controller?.signal,
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -2676,7 +2642,6 @@ export default function AdminPage() {
       }
       const entries = Array.isArray(result.entries) ? result.entries : [];
       setProtectionLogsRaw(entries);
-      setProtectionLogs(filterProtectionLogsLocal(entries));
       setProtectionLogsScreenshotsSigned(true);
       if (Array.isArray(result.sources) && result.sources.length) {
         setProtectionLogSources(result.sources);
@@ -2684,24 +2649,9 @@ export default function AdminPage() {
       if (Array.isArray(result.ignored_user_ids)) {
         applyProtectionLogIgnoredUserIds(result.ignored_user_ids);
       }
-      if (Array.isArray(result.warnings) && result.warnings.length) {
-        setProtectionLogsMessage({
-          text: `Loaded with warnings: ${result.warnings.join("; ")}`,
-          type: "error",
-        });
-      }
     } catch (error) {
-      const aborted = error?.name === "AbortError";
-      setProtectionLogsMessage({
-        text: aborted
-          ? "Timed out loading protection logs. Try Reload."
-          : error?.message || String(error),
-        type: "error",
-      });
-      // Allow UI to keep working with whatever we already have.
-      setProtectionLogsScreenshotsSigned(true);
+      setProtectionLogsMessage({ text: error?.message || String(error), type: "error" });
     } finally {
-      if (timeoutId) window.clearTimeout(timeoutId);
       setProtectionLogsBusy(false);
     }
   }
@@ -2718,10 +2668,6 @@ export default function AdminPage() {
     setProtectionLogsMessage({ text: "", type: "" });
     // Optimistic UI so remove doesn't visually bounce back while the request finishes.
     applyProtectionLogIgnoredUserIds(ignored_user_ids, { fromSave: true });
-    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-    const timeoutId = controller
-      ? window.setTimeout(() => controller.abort(), 20_000)
-      : null;
     try {
       const response = await fetch("/api/admin/protection-logs", {
         method: "PUT",
@@ -2731,7 +2677,6 @@ export default function AdminPage() {
         },
         body: JSON.stringify({ ignored_user_ids }),
         cache: "no-store",
-        signal: controller?.signal,
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -2744,16 +2689,9 @@ export default function AdminPage() {
       );
       return true;
     } catch (error) {
-      const aborted = error?.name === "AbortError";
-      setProtectionLogsMessage({
-        text: aborted
-          ? "Timed out saving ignored user IDs. Try again."
-          : error?.message || String(error),
-        type: "error",
-      });
+      setProtectionLogsMessage({ text: error?.message || String(error), type: "error" });
       return false;
     } finally {
-      if (timeoutId) window.clearTimeout(timeoutId);
       setProtectionLogIgnoredBusy(false);
     }
   }
@@ -2929,49 +2867,12 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!signedIn || adminView !== "protection-logs") return;
-    // Filters are applied locally; fetch list when missing.
+    // Filters are applied locally; fetch signed screenshots when missing.
     if (!protectionLogsScreenshotsSigned) {
       void loadProtectionLogs({ force: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn, adminView, protectionLogsScreenshotsSigned]);
-
-  // Screenshots are loaded on demand (embedded base64 rows are multi‑MB and cause 504s in bulk).
-  async function hydrateProtectionLogScreenshots(logId) {
-    const id = String(logId || "").trim();
-    if (!id || protectionLogScreenshotsHydratedRef.current.has(id)) return;
-    const accessToken = getAdminAccessToken();
-    if (!accessToken) return;
-
-    protectionLogScreenshotsHydratedRef.current.add(id);
-    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-    const timeoutId = controller ? window.setTimeout(() => controller.abort(), 12_000) : null;
-    try {
-      const response = await fetch(
-        `/api/admin/protection-logs?screenshotsFor=${encodeURIComponent(id)}`,
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-          cache: "no-store",
-          signal: controller?.signal,
-        }
-      );
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.error || "Failed to load screenshots.");
-      const shots = result.screenshots?.[id];
-      if (!Array.isArray(shots)) return;
-      setProtectionLogsRaw((current) =>
-        current.map((entry) => (String(entry.id) === id ? { ...entry, screenshots: shots } : entry))
-      );
-    } catch (error) {
-      protectionLogScreenshotsHydratedRef.current.delete(id);
-      setProtectionLogsMessage({
-        text: error?.name === "AbortError" ? "Timed out loading screenshots." : error?.message || String(error),
-        type: "error",
-      });
-    } finally {
-      if (timeoutId) window.clearTimeout(timeoutId);
-    }
-  }
 
   function toChangelogDateInputValue(value) {
     const date = value ? new Date(value) : new Date();
@@ -5101,7 +5002,7 @@ export default function AdminPage() {
               <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
                 <HelpCircle size={13} /> Support
               </a>
-              <AdminResponseMonitor signedIn={signedIn} theme={adminTheme} />
+              <AdminResponseMonitor configUrl={config.url} signedIn={signedIn} theme={adminTheme} />
               <button
                 type="button"
                 className={styles.adminTopbarTheme}
@@ -5772,9 +5673,10 @@ export default function AdminPage() {
                                 onKeyDown={(event) => {
                                   if (event.key === "Enter") {
                                     event.preventDefault();
-                                    if (!protectionLogIgnoredBusy) void addIgnoredProtectionLogUserId();
+                                    void addIgnoredProtectionLogUserId();
                                   }
                                 }}
+                                disabled={protectionLogIgnoredBusy}
                                 aria-label="Ignored Discord user ID"
                               />
                               <button
@@ -5784,7 +5686,7 @@ export default function AdminPage() {
                                 onClick={() => void addIgnoredProtectionLogUserId()}
                               >
                                 <Plus size={14} />
-                                {protectionLogIgnoredBusy ? "Saving…" : "Add"}
+                                Add
                               </button>
                             </div>
                             {protectionLogIgnoredUserIds.length ? (
@@ -6066,50 +5968,40 @@ export default function AdminPage() {
                                 <p className={styles.protectionLogMessage}>{entry.message}</p>
                               ) : null}
 
-                              {protectionLogColumns.screenshots ? (
+                              {protectionLogColumns.screenshots &&
+                              Array.isArray(entry.screenshots) &&
+                              entry.screenshots.length ? (
                                 <div className={styles.protectionLogScreenshots}>
                                   <div className={styles.protectionLogScreenshotsHead}>
                                     <span className={styles.protectionLogFieldLabel}>Screenshots</span>
-                                    {Array.isArray(entry.screenshots) && entry.screenshots.length ? (
-                                      <span className={styles.protectionLogScreenshotCount}>
-                                        {entry.screenshots.length}
-                                      </span>
-                                    ) : null}
+                                    <span className={styles.protectionLogScreenshotCount}>
+                                      {entry.screenshots.length}
+                                    </span>
                                   </div>
-                                  {Array.isArray(entry.screenshots) && entry.screenshots.length ? (
-                                    <div className={styles.protectionLogScreenshotGrid}>
-                                      {entry.screenshots.map((shot, index) => {
-                                        const label =
-                                          shot.monitor != null
-                                            ? `Monitor ${Number(shot.monitor) + 1}`
-                                            : `Screen ${index + 1}`;
-                                        const size = formatScreenshotResolution(shot);
-                                        return (
-                                          <ProtectionLogScreenshotThumb
-                                            key={`${entry.id}-${shot.path || index}`}
-                                            shot={shot}
-                                            label={label}
-                                            size={size}
-                                            onOpen={() =>
-                                              openScreenshotPreview(
-                                                entry.screenshots,
-                                                index,
-                                                entry.discord_username || entry.application || "Session"
-                                              )
-                                            }
-                                          />
-                                        );
-                                      })}
-                                    </div>
-                                  ) : (
-                                    <button
-                                      type="button"
-                                      className={styles.protectionLogIgnoreAdd}
-                                      onClick={() => void hydrateProtectionLogScreenshots(entry.id)}
-                                    >
-                                      Load screenshots
-                                    </button>
-                                  )}
+                                  <div className={styles.protectionLogScreenshotGrid}>
+                                    {entry.screenshots.map((shot, index) => {
+                                      const label =
+                                        shot.monitor != null
+                                          ? `Monitor ${Number(shot.monitor) + 1}`
+                                          : `Screen ${index + 1}`;
+                                      const size = formatScreenshotResolution(shot);
+                                      return (
+                                        <ProtectionLogScreenshotThumb
+                                          key={`${entry.id}-${shot.path || index}`}
+                                          shot={shot}
+                                          label={label}
+                                          size={size}
+                                          onOpen={() =>
+                                            openScreenshotPreview(
+                                              entry.screenshots,
+                                              index,
+                                              entry.discord_username || entry.application || "Session"
+                                            )
+                                          }
+                                        />
+                                      );
+                                    })}
+                                  </div>
                                 </div>
                               ) : null}
                             </article>

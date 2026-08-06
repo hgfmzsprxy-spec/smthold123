@@ -7,8 +7,6 @@ import {
   defaultProtectionLogColumns,
   deleteProtectionLogById,
   deleteProtectionLogsByFilter,
-  readIgnoredProtectionLogUserIds,
-  readProtectionLogScreenshotsByIds,
   readProtectionLogStore,
   writeIgnoredProtectionLogUserIds,
 } from "../../../../lib/panel-protection-logs";
@@ -16,7 +14,6 @@ import { getResellerDisplayName, readResellersStore } from "../../../../lib/rese
 import { getSupabaseAdmin } from "../../../../lib/supabase-admin";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
 
 function readFilterParams(request) {
   const url = new URL(request.url);
@@ -25,7 +22,6 @@ function readFilterParams(request) {
     sourceId:
       String(url.searchParams.get("sourceId") || url.searchParams.get("source_id") || "all").trim() || "all",
     id: String(url.searchParams.get("id") || "").trim(),
-    screenshotsFor: String(url.searchParams.get("screenshotsFor") || "").trim(),
   };
 }
 
@@ -35,73 +31,17 @@ export async function GET(request) {
     if (auth.error) return auth.error;
 
     const admin = getSupabaseAdmin();
-    const { appId, sourceId, screenshotsFor } = readFilterParams(request);
+    const { appId, sourceId } = readFilterParams(request);
 
-    // Lightweight path: hydrate screenshots for a few log cards only.
-    if (screenshotsFor) {
-      const ids = screenshotsFor
-        .split(",")
-        .map((id) => id.trim())
-        .filter(Boolean);
-      const byId = await readProtectionLogScreenshotsByIds(ids, admin).catch((e) => {
-        console.error("readProtectionLogScreenshotsByIds error:", e);
-        return {};
-      });
-      return NextResponse.json({ ok: true, screenshots: byId });
-    }
-
-    const withDeadline = (promise, ms, fallback) =>
-      Promise.race([
-        promise,
-        new Promise((resolve) => setTimeout(() => resolve(fallback), ms)),
-      ]);
-
-    const [storeResult, ignoredResult, resellerStore] = await Promise.all([
-      // Fast list: never pull screenshots jsonb (often multi‑MB base64).
-      withDeadline(
-        readProtectionLogStore(admin, {
-          includeScreenshots: false,
-          signScreenshots: false,
-          limit: 200,
-        })
-          .then((store) => ({ ok: true, store }))
-          .catch((e) => {
-            console.error("readProtectionLogStore error:", e);
-            return {
-              ok: false,
-              error: e?.message || String(e),
-              store: { entries: [], ignored_user_ids: [] },
-            };
-          }),
-        12_000,
-        {
-          ok: false,
-          error: "timed out reading protection logs",
-          store: { entries: [], ignored_user_ids: [] },
-        }
-      ),
-      withDeadline(
-        readIgnoredProtectionLogUserIds(admin)
-          .then((ids) => ({ ok: true, ids }))
-          .catch((e) => {
-            console.error("readIgnoredProtectionLogUserIds error:", e);
-            return { ok: false, ids: [] };
-          }),
-        4_000,
-        { ok: false, ids: [] }
-      ),
-      withDeadline(readResellersStore(admin).catch(() => ({ resellers: [] })), 4_000, {
-        resellers: [],
+    const [store, resellerStore] = await Promise.all([
+      readProtectionLogStore(admin).catch((e) => {
+        console.error("readProtectionLogStore error:", e);
+        return { entries: [], ignored_user_ids: [] };
       }),
+      readResellersStore(admin).catch(() => ({ resellers: [] }))
     ]);
 
-    const store = storeResult.store || { entries: [], ignored_user_ids: [] };
-    const ignored_user_ids =
-      (Array.isArray(ignoredResult.ids) && ignoredResult.ids.length
-        ? ignoredResult.ids
-        : store.ignored_user_ids) || [];
-
-    let entries = Array.isArray(store.entries) ? store.entries : [];
+    let entries = store.entries || [];
     if (appId && appId !== "all") {
       entries = entries.filter((entry) => String(entry.app_id || "") === appId);
     }
@@ -127,15 +67,10 @@ export async function GET(request) {
       ok: true,
       entries,
       sources,
-      ignored_user_ids,
+      ignored_user_ids: store.ignored_user_ids || [],
       columns: PROTECTION_LOG_COLUMNS,
       default_columns: defaultProtectionLogColumns(),
       local_source_id: LOCAL_PROTECTION_SOURCE_ID,
-      screenshots_deferred: true,
-      warnings: [
-        !storeResult.ok ? `logs: ${storeResult.error || "failed to load"}` : null,
-        !ignoredResult.ok ? "ignored_user_ids: failed to load" : null,
-      ].filter(Boolean),
     });
   } catch (error) {
     console.error("GET protection-logs ERROR:", error);
@@ -168,7 +103,6 @@ export async function PUT(request) {
 
     return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
   } catch (error) {
-    console.error("PUT protection-logs ERROR:", error);
     return NextResponse.json({ error: error?.message || String(error) }, { status: 500 });
   }
 }
@@ -198,7 +132,6 @@ export async function DELETE(request) {
       ids: result.ids,
     });
   } catch (error) {
-    console.error("DELETE protection-logs ERROR:", error);
     return NextResponse.json({ error: error?.message || String(error) }, { status: 500 });
   }
 }
