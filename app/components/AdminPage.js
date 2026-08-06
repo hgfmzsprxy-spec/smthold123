@@ -2623,13 +2623,60 @@ export default function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn, adminView, protectionLoaded]);
 
-  async function signProtectionLogScreenshotPaths(paths) {
+  async function loadVisibleProtectionLogScreenshots(entries) {
     const accessToken = getAdminAccessToken();
-    if (!accessToken) return {};
-    const unique = Array.from(
-      new Set((Array.isArray(paths) ? paths : []).map((p) => String(p || "").trim()).filter(Boolean))
-    );
-    if (!unique.length) return {};
+    if (!accessToken) return;
+
+    const list = (Array.isArray(entries) ? entries : []).slice(0, PROTECTION_LOGS_PAGE_SIZE * 3);
+    const ids = list
+      .filter((entry) => entry?.id && !entry._screenshotsLoaded)
+      .map((entry) => String(entry.id));
+
+    // Already have meta — only sign any remaining storage paths.
+    if (!ids.length) {
+      const paths = [];
+      for (const entry of list) {
+        for (const shot of entry.screenshots || []) {
+          if (shot?.path && !shot?.url) paths.push(shot.path);
+        }
+      }
+      if (!paths.length) {
+        setProtectionLogsScreenshotsSigned(true);
+        return;
+      }
+      try {
+        const response = await fetch("/api/admin/protection-logs", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ sign_paths: paths }),
+          cache: "no-store",
+        });
+        const result = await response.json().catch(() => ({}));
+        const urlMap = result.urls && typeof result.urls === "object" ? result.urls : {};
+        if (!Object.keys(urlMap).length) return;
+        setProtectionLogsRaw((current) =>
+          (Array.isArray(current) ? current : []).map((entry) => {
+            if (!entry?.screenshots?.length) return entry;
+            let changed = false;
+            const screenshots = entry.screenshots.map((shot) => {
+              if (shot?.url || !shot?.path) return shot;
+              const signed = urlMap[shot.path];
+              if (!signed) return shot;
+              changed = true;
+              return { ...shot, url: signed, data: "" };
+            });
+            return changed ? { ...entry, screenshots } : entry;
+          })
+        );
+        setProtectionLogsScreenshotsSigned(true);
+      } catch {
+        // ignore sign failures
+      }
+      return;
+    }
 
     try {
       const response = await fetch("/api/admin/protection-logs", {
@@ -2638,49 +2685,32 @@ export default function AdminPage() {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ sign_paths: unique }),
+        body: JSON.stringify({ entry_ids: ids }),
         cache: "no-store",
       });
       const result = await response.json().catch(() => ({}));
-      if (!response.ok) return {};
-      return result.urls && typeof result.urls === "object" ? result.urls : {};
-    } catch {
-      return {};
-    }
-  }
-
-  function mergeSignedScreenshotUrls(entries, urlMap) {
-    if (!urlMap || !Object.keys(urlMap).length) return entries;
-    return (Array.isArray(entries) ? entries : []).map((entry) => {
-      if (!entry?.screenshots?.length) return entry;
-      let changed = false;
-      const screenshots = entry.screenshots.map((shot) => {
-        if (shot?.url || !shot?.path) return shot;
-        const signed = urlMap[shot.path];
-        if (!signed) return shot;
-        changed = true;
-        return { ...shot, url: signed, data: "" };
-      });
-      return changed ? { ...entry, screenshots } : entry;
-    });
-  }
-
-  async function signVisibleProtectionLogScreenshots(entries) {
-    const list = Array.isArray(entries) ? entries : [];
-    const paths = [];
-    for (const entry of list.slice(0, PROTECTION_LOGS_PAGE_SIZE * 3)) {
-      for (const shot of entry.screenshots || []) {
-        if (shot?.path && !shot?.url) paths.push(shot.path);
-      }
-    }
-    if (!paths.length) {
+      if (!response.ok) return;
+      const byId = result.by_id && typeof result.by_id === "object" ? result.by_id : {};
+      setProtectionLogsRaw((current) =>
+        (Array.isArray(current) ? current : []).map((entry) => {
+          const id = String(entry?.id || "");
+          if (!byId[id]) return entry;
+          return {
+            ...entry,
+            screenshots: Array.isArray(byId[id]) ? byId[id] : [],
+            _screenshotsLoaded: true,
+          };
+        })
+      );
       setProtectionLogsScreenshotsSigned(true);
-      return;
+    } catch {
+      // ignore lazy-load failures
     }
-    const urlMap = await signProtectionLogScreenshotPaths(paths);
-    if (!Object.keys(urlMap).length) return;
-    setProtectionLogsRaw((current) => mergeSignedScreenshotUrls(current, urlMap));
-    setProtectionLogsScreenshotsSigned(true);
+  }
+
+  // Back-compat alias used by older call sites in this file.
+  async function signVisibleProtectionLogScreenshots(entries) {
+    return loadVisibleProtectionLogScreenshots(entries);
   }
 
   async function loadProtectionLogs(options = {}) {
@@ -2965,15 +2995,23 @@ export default function AdminPage() {
       void loadProtectionLogs({ force: true });
       return;
     }
-    // Sign thumbs for the current page (+ neighbours).
-    void signVisibleProtectionLogScreenshots(
+    // Lazy-load + sign thumbs for the current page (+ neighbours).
+    void loadVisibleProtectionLogScreenshots(
       protectionLogs.slice(
         Math.max(0, (protectionLogsPageSafe - 1) * PROTECTION_LOGS_PAGE_SIZE),
         protectionLogsPageSafe * PROTECTION_LOGS_PAGE_SIZE + PROTECTION_LOGS_PAGE_SIZE
       )
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signedIn, adminView, protectionLogsPageSafe]);
+  }, [
+    signedIn,
+    adminView,
+    protectionLogsPageSafe,
+    protectionLogAppFilter,
+    protectionLogSourceFilter,
+    protectionLogSearchQuery,
+    protectionLogsRaw.length,
+  ]);
 
   function toChangelogDateInputValue(value) {
     const date = value ? new Date(value) : new Date();

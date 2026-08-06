@@ -7,6 +7,7 @@ import {
   defaultProtectionLogColumns,
   deleteProtectionLogById,
   deleteProtectionLogsByFilter,
+  loadProtectionLogScreenshotsByIds,
   readProtectionLogStore,
   signProtectionLogScreenshotPaths,
   writeIgnoredProtectionLogUserIds,
@@ -104,13 +105,34 @@ export async function POST(request) {
     if (auth.error) return auth.error;
 
     const body = await request.json().catch(() => ({}));
+    const admin = getSupabaseAdmin();
+
+    const entryIds = Array.isArray(body.entry_ids)
+      ? body.entry_ids
+      : Array.isArray(body.entryIds)
+        ? body.entryIds
+        : [];
+
+    // Lazy-load slim screenshot meta (+ signed URLs) for visible log rows only.
+    if (entryIds.length) {
+      const result = await loadProtectionLogScreenshotsByIds(entryIds, admin, {
+        sign: true,
+        // Allow data: URLs only for legacy rows that never uploaded to storage.
+        allowDataUrl: true,
+      });
+      return NextResponse.json({
+        ok: true,
+        by_id: result.by_id,
+        urls: result.urls,
+      });
+    }
+
     const paths = Array.isArray(body.sign_paths)
       ? body.sign_paths
       : Array.isArray(body.signPaths)
         ? body.signPaths
         : [];
 
-    const admin = getSupabaseAdmin();
     const urls = await signProtectionLogScreenshotPaths(paths, admin);
     return NextResponse.json({ ok: true, urls });
   } catch (error) {
