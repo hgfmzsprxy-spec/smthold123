@@ -8,6 +8,7 @@ import {
   deleteProtectionLogById,
   deleteProtectionLogsByFilter,
   readIgnoredProtectionLogUserIds,
+  readProtectionLogScreenshotsByIds,
   readProtectionLogStore,
   writeIgnoredProtectionLogUserIds,
 } from "../../../../lib/panel-protection-logs";
@@ -24,6 +25,7 @@ function readFilterParams(request) {
     sourceId:
       String(url.searchParams.get("sourceId") || url.searchParams.get("source_id") || "all").trim() || "all",
     id: String(url.searchParams.get("id") || "").trim(),
+    screenshotsFor: String(url.searchParams.get("screenshotsFor") || "").trim(),
   };
 }
 
@@ -33,14 +35,36 @@ export async function GET(request) {
     if (auth.error) return auth.error;
 
     const admin = getSupabaseAdmin();
-    const { appId, sourceId } = readFilterParams(request);
+    const { appId, sourceId, screenshotsFor } = readFilterParams(request);
+
+    // Lightweight path: hydrate screenshots for a few log cards only.
+    if (screenshotsFor) {
+      const ids = screenshotsFor
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean);
+      const byId = await readProtectionLogScreenshotsByIds(ids, admin).catch((e) => {
+        console.error("readProtectionLogScreenshotsByIds error:", e);
+        return {};
+      });
+      return NextResponse.json({ ok: true, screenshots: byId });
+    }
 
     const [storeResult, ignoredResult, resellerStore] = await Promise.all([
-      readProtectionLogStore(admin, { signScreenshots: true })
+      // Fast list: never pull screenshots jsonb (often multi‑MB base64).
+      readProtectionLogStore(admin, {
+        includeScreenshots: false,
+        signScreenshots: false,
+        limit: 200,
+      })
         .then((store) => ({ ok: true, store }))
         .catch((e) => {
           console.error("readProtectionLogStore error:", e);
-          return { ok: false, error: e?.message || String(e), store: { entries: [], ignored_user_ids: [] } };
+          return {
+            ok: false,
+            error: e?.message || String(e),
+            store: { entries: [], ignored_user_ids: [] },
+          };
         }),
       readIgnoredProtectionLogUserIds(admin)
         .then((ids) => ({ ok: true, ids }))
@@ -87,6 +111,7 @@ export async function GET(request) {
       columns: PROTECTION_LOG_COLUMNS,
       default_columns: defaultProtectionLogColumns(),
       local_source_id: LOCAL_PROTECTION_SOURCE_ID,
+      screenshots_deferred: true,
       warnings: [
         !storeResult.ok ? `logs: ${storeResult.error || "failed to load"}` : null,
         !ignoredResult.ok ? "ignored_user_ids: failed to load" : null,

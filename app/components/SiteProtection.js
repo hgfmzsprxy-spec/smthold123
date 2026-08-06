@@ -76,6 +76,20 @@ function isProtectionEnabled() {
   return process.env.NEXT_PUBLIC_DISABLE_SITE_PROTECTION !== "true";
 }
 
+/** Exception: logged-in admin on /admin may open DevTools / use console shortcuts. */
+function isLoggedInAdminOnAdminRoute(pathname) {
+  if (typeof window === "undefined") return false;
+  if (!String(pathname || "").startsWith("/admin")) return false;
+  try {
+    const raw = window.localStorage.getItem("admin_auth_state_v2");
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    return Boolean(parsed?.accessToken);
+  } catch {
+    return false;
+  }
+}
+
 function isMobileOrUnreliableDevToolsEnvironment() {
   if (typeof window === "undefined" || typeof navigator === "undefined") return true;
 
@@ -252,6 +266,8 @@ export default function SiteProtection() {
   useEffect(() => {
     if (!isProtectionEnabled()) return undefined;
     if (pathname === "/site-access") return undefined;
+    // Allow console/devtools only after admin is already signed in on /admin.
+    if (isLoggedInAdminOnAdminRoute(pathname)) return undefined;
 
     let devToolsTriggered = false;
     let devToolsPositiveCount = 0;

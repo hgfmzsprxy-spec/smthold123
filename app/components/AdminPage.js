@@ -1230,6 +1230,7 @@ export default function AdminPage() {
   const [protectionLogIgnoredDraft, setProtectionLogIgnoredDraft] = useState("");
   const [protectionLogIgnoredBusy, setProtectionLogIgnoredBusy] = useState(false);
   const protectionLogIgnoredSavedAtRef = useRef(0);
+  const protectionLogScreenshotsHydratedRef = useRef(new Set());
   const [deletingProtectionLogId, setDeletingProtectionLogId] = useState("");
   const [protectionLogColumns, setProtectionLogColumns] = useState(() => {
     if (typeof window === "undefined") return defaultProtectionLogColumns();
@@ -2631,9 +2632,10 @@ export default function AdminPage() {
 
     setProtectionLogsBusy(true);
     setProtectionLogsMessage({ text: "", type: "" });
+    protectionLogScreenshotsHydratedRef.current = new Set();
     const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
     const timeoutId = controller
-      ? window.setTimeout(() => controller.abort(), 45_000)
+      ? window.setTimeout(() => controller.abort(), 20_000)
       : null;
     try {
       const response = await fetch("/api/admin/protection-logs", {
@@ -2899,12 +2901,67 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!signedIn || adminView !== "protection-logs") return;
-    // Filters are applied locally; fetch signed screenshots when missing.
+    // Filters are applied locally; fetch list when missing.
     if (!protectionLogsScreenshotsSigned) {
       void loadProtectionLogs({ force: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn, adminView, protectionLogsScreenshotsSigned]);
+
+  // Hydrate screenshots only for the visible page (keeps list GET tiny/fast).
+  useEffect(() => {
+    if (!signedIn || adminView !== "protection-logs") return;
+    if (!protectionLogsScreenshotsSigned) return;
+    if (!pagedProtectionLogs.length) return;
+
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) return;
+
+    const ids = pagedProtectionLogs
+      .map((entry) => String(entry?.id || "").trim())
+      .filter((id) => id && !protectionLogScreenshotsHydratedRef.current.has(id));
+    if (!ids.length) return;
+
+    ids.forEach((id) => protectionLogScreenshotsHydratedRef.current.add(id));
+
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timeoutId = controller
+      ? window.setTimeout(() => controller.abort(), 20_000)
+      : null;
+
+    void (async () => {
+      try {
+        const response = await fetch(
+          `/api/admin/protection-logs?screenshotsFor=${encodeURIComponent(ids.join(","))}`,
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            cache: "no-store",
+            signal: controller?.signal,
+          }
+        );
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) return;
+        const byId = result.screenshots && typeof result.screenshots === "object" ? result.screenshots : {};
+        setProtectionLogsRaw((current) =>
+          current.map((entry) => {
+            const shots = byId[entry.id];
+            if (!Array.isArray(shots)) return entry;
+            return { ...entry, screenshots: shots };
+          })
+        );
+      } catch {
+        ids.forEach((id) => protectionLogScreenshotsHydratedRef.current.delete(id));
+      } finally {
+        if (timeoutId) window.clearTimeout(timeoutId);
+      }
+    })();
+
+    return () => {
+      if (timeoutId) window.clearTimeout(timeoutId);
+      controller?.abort?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signedIn, adminView, protectionLogsScreenshotsSigned, protectionLogsPageSafe, pagedProtectionLogs]);
 
   function toChangelogDateInputValue(value) {
     const date = value ? new Date(value) : new Date();
