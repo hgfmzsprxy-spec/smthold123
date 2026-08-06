@@ -37,13 +37,28 @@ export async function GET(request) {
 
     // Never sign screenshots on the list GET — that was timing out (504) on Vercel.
     // Thumbnails are signed lazily via POST { sign_paths: [...] }.
-    const [store, resellerStore] = await Promise.all([
-      readProtectionLogStore(admin, { signScreenshots: false }).catch((e) => {
-        console.error("readProtectionLogStore error:", e);
-        throw e;
-      }),
-      readResellersStore(admin).catch(() => ({ resellers: [] })),
-    ]);
+    let store;
+    try {
+      store = await readProtectionLogStore(admin, { signScreenshots: false });
+    } catch (e) {
+      console.error("readProtectionLogStore error:", e);
+      return NextResponse.json(
+        {
+          ok: false,
+          error: e?.message || String(e),
+          entries: [],
+          sources: [],
+          ignored_user_ids: [],
+          columns: PROTECTION_LOG_COLUMNS,
+          default_columns: defaultProtectionLogColumns(),
+          local_source_id: LOCAL_PROTECTION_SOURCE_ID,
+          screenshots_signed: false,
+        },
+        { status: 500 }
+      );
+    }
+
+    const resellerStore = await readResellersStore(admin).catch(() => ({ resellers: [] }));
 
     let entries = store.entries || [];
     if (appId && appId !== "all") {

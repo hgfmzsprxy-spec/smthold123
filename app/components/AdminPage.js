@@ -1088,8 +1088,7 @@ function AdminResponseMonitor({ configUrl, signedIn, theme = "dark" }) {
     async function ping() {
       const origin = typeof window !== "undefined" ? window.location.origin : "";
       if (!origin) return;
-      // Ping the site itself — Supabase /rest/v1/ without apikey returns 401 spam.
-      const target = `${origin.replace(/\/+$/, "")}/favicon.ico?t=${Date.now()}`;
+      const target = `${origin.replace(/\/+$/, "")}/api/ping?t=${Date.now()}`;
       const start = performance.now();
       try {
         await fetch(target, { method: "GET", cache: "no-store" });
@@ -1108,7 +1107,7 @@ function AdminResponseMonitor({ configUrl, signedIn, theme = "dark" }) {
       cancelled = true;
       if (timer) clearInterval(timer);
     };
-  }, [signedIn, configUrl]);
+  }, [signedIn]);
 
   if (!signedIn) return null;
 

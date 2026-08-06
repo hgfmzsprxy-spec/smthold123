@@ -617,14 +617,14 @@ function ResellerResponseMonitor({ configUrl, theme = "dark" }) {
     let timer = null;
 
     async function ping() {
-      const base = configUrl || (typeof window !== "undefined" ? window.location.origin : "");
-      if (!base) return;
-      const target = `${base.replace(/\/+$/, "")}/rest/v1/?t=${Date.now()}`;
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      if (!origin) return;
+      const target = `${origin.replace(/\/+$/, "")}/api/ping?t=${Date.now()}`;
       const start = performance.now();
       try {
-        await fetch(target, { method: "GET", cache: "no-store", mode: "no-cors" });
+        await fetch(target, { method: "GET", cache: "no-store" });
       } catch {
-        // ignore — round-trip still measured for opaque/no-cors
+        // ignore — round-trip still measured
       }
       if (cancelled) return;
       const ms = Math.round(performance.now() - start);
@@ -638,7 +638,7 @@ function ResellerResponseMonitor({ configUrl, theme = "dark" }) {
       cancelled = true;
       if (timer) clearInterval(timer);
     };
-  }, [configUrl]);
+  }, []);
 
   return (
     <>
