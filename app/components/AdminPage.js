@@ -1086,17 +1086,13 @@ function AdminResponseMonitor({ configUrl, signedIn, theme = "dark" }) {
     let timer = null;
 
     async function ping() {
-      const supabaseBase = String(configUrl || "").trim();
       const origin = typeof window !== "undefined" ? window.location.origin : "";
-      // Prefer Supabase REST when configured; otherwise ping the site origin.
-      const base = supabaseBase || origin;
-      if (!base) return;
-      const target = supabaseBase
-        ? `${supabaseBase.replace(/\/+$/, "")}/rest/v1/?t=${Date.now()}`
-        : `${origin.replace(/\/+$/, "")}/api/reviews?t=${Date.now()}`;
+      if (!origin) return;
+      // Ping the site itself — Supabase /rest/v1/ without apikey returns 401 spam.
+      const target = `${origin.replace(/\/+$/, "")}/favicon.ico?t=${Date.now()}`;
       const start = performance.now();
       try {
-        await fetch(target, { method: "GET", cache: "no-store", mode: supabaseBase ? "no-cors" : "cors" });
+        await fetch(target, { method: "GET", cache: "no-store" });
       } catch {
         // ignore — round-trip still measured
       }
@@ -2628,14 +2624,77 @@ export default function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn, adminView, protectionLoaded]);
 
+  async function signProtectionLogScreenshotPaths(paths) {
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) return {};
+    const unique = Array.from(
+      new Set((Array.isArray(paths) ? paths : []).map((p) => String(p || "").trim()).filter(Boolean))
+    );
+    if (!unique.length) return {};
+
+    try {
+      const response = await fetch("/api/admin/protection-logs", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ sign_paths: unique }),
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) return {};
+      return result.urls && typeof result.urls === "object" ? result.urls : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function mergeSignedScreenshotUrls(entries, urlMap) {
+    if (!urlMap || !Object.keys(urlMap).length) return entries;
+    return (Array.isArray(entries) ? entries : []).map((entry) => {
+      if (!entry?.screenshots?.length) return entry;
+      let changed = false;
+      const screenshots = entry.screenshots.map((shot) => {
+        if (shot?.url || !shot?.path) return shot;
+        const signed = urlMap[shot.path];
+        if (!signed) return shot;
+        changed = true;
+        return { ...shot, url: signed, data: "" };
+      });
+      return changed ? { ...entry, screenshots } : entry;
+    });
+  }
+
+  async function signVisibleProtectionLogScreenshots(entries) {
+    const list = Array.isArray(entries) ? entries : [];
+    const paths = [];
+    for (const entry of list.slice(0, PROTECTION_LOGS_PAGE_SIZE * 3)) {
+      for (const shot of entry.screenshots || []) {
+        if (shot?.path && !shot?.url) paths.push(shot.path);
+      }
+    }
+    if (!paths.length) {
+      setProtectionLogsScreenshotsSigned(true);
+      return;
+    }
+    const urlMap = await signProtectionLogScreenshotPaths(paths);
+    if (!Object.keys(urlMap).length) return;
+    setProtectionLogsRaw((current) => mergeSignedScreenshotUrls(current, urlMap));
+    setProtectionLogsScreenshotsSigned(true);
+  }
+
   async function loadProtectionLogs(options = {}) {
     const forceNetwork = options.force === true;
     const accessToken = getAdminAccessToken();
     if (!accessToken) return;
 
-    // Fast path: local filter from bootstrap payload.
-    if (!forceNetwork && protectionLogsRaw.length && protectionLogsScreenshotsSigned) {
+    // Fast path: local filter from already-loaded payload.
+    if (!forceNetwork && protectionLogsRaw.length) {
       setProtectionLogs(filterProtectionLogsLocal(protectionLogsRaw));
+      if (!protectionLogsScreenshotsSigned) {
+        void signVisibleProtectionLogScreenshots(protectionLogsRaw);
+      }
       return;
     }
 
@@ -2652,13 +2711,15 @@ export default function AdminPage() {
       }
       const entries = Array.isArray(result.entries) ? result.entries : [];
       setProtectionLogsRaw(entries);
-      setProtectionLogsScreenshotsSigned(true);
+      setProtectionLogsScreenshotsSigned(false);
       if (Array.isArray(result.sources) && result.sources.length) {
         setProtectionLogSources(result.sources);
       }
       if (Array.isArray(result.ignored_user_ids)) {
         applyProtectionLogIgnoredUserIds(result.ignored_user_ids);
       }
+      // Sign only visible thumbs after list is on screen (avoids 504).
+      void signVisibleProtectionLogScreenshots(entries);
     } catch (error) {
       setProtectionLogsMessage({ text: error?.message || String(error), type: "error" });
     } finally {
@@ -2830,11 +2891,35 @@ export default function AdminPage() {
     return "";
   }
 
-  function openScreenshotPreview(shots, index, title = "") {
-    const list = (Array.isArray(shots) ? shots : []).filter((shot) => shot?.url);
+  async function openScreenshotPreview(shots, index, title = "") {
+    let list = Array.isArray(shots) ? shots.slice() : [];
     if (!list.length) return;
-    const safeIndex = Math.max(0, Math.min(Number(index) || 0, list.length - 1));
-    setScreenshotPreview({ shots: list, index: safeIndex, title: String(title || "").trim() });
+
+    const missing = list.map((shot) => shot?.path).filter((path, i) => path && !list[i]?.url);
+    if (missing.length) {
+      const urlMap = await signProtectionLogScreenshotPaths(missing);
+      if (Object.keys(urlMap).length) {
+        list = list.map((shot) =>
+          shot?.path && !shot?.url && urlMap[shot.path]
+            ? { ...shot, url: urlMap[shot.path], data: "" }
+            : shot
+        );
+        setProtectionLogsRaw((current) => mergeSignedScreenshotUrls(current, urlMap));
+      }
+    }
+
+    const viewable = list.filter((shot) => shot?.url);
+    if (!viewable.length) return;
+    const clickedPath = list[Number(index) || 0]?.path;
+    const safeIndex = Math.max(
+      0,
+      viewable.findIndex((shot) => shot.path && shot.path === clickedPath)
+    );
+    setScreenshotPreview({
+      shots: viewable,
+      index: safeIndex >= 0 ? safeIndex : 0,
+      title: String(title || "").trim(),
+    });
   }
 
   function closeScreenshotPreview() {
@@ -2877,12 +2962,19 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!signedIn || adminView !== "protection-logs") return;
-    // Filters are applied locally; fetch signed screenshots when missing.
-    if (!protectionLogsScreenshotsSigned) {
+    if (!protectionLogsRaw.length) {
       void loadProtectionLogs({ force: true });
+      return;
     }
+    // Sign thumbs for the current page (+ neighbours).
+    void signVisibleProtectionLogScreenshots(
+      protectionLogs.slice(
+        Math.max(0, (protectionLogsPageSafe - 1) * PROTECTION_LOGS_PAGE_SIZE),
+        protectionLogsPageSafe * PROTECTION_LOGS_PAGE_SIZE + PROTECTION_LOGS_PAGE_SIZE
+      )
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signedIn, adminView, protectionLogsScreenshotsSigned]);
+  }, [signedIn, adminView, protectionLogsPageSafe]);
 
   function toChangelogDateInputValue(value) {
     const date = value ? new Date(value) : new Date();

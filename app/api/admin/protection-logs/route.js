@@ -8,12 +8,14 @@ import {
   deleteProtectionLogById,
   deleteProtectionLogsByFilter,
   readProtectionLogStore,
+  signProtectionLogScreenshotPaths,
   writeIgnoredProtectionLogUserIds,
 } from "../../../../lib/panel-protection-logs";
 import { getResellerDisplayName, readResellersStore } from "../../../../lib/resellers";
 import { getSupabaseAdmin } from "../../../../lib/supabase-admin";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 function readFilterParams(request) {
   const url = new URL(request.url);
@@ -33,12 +35,14 @@ export async function GET(request) {
     const admin = getSupabaseAdmin();
     const { appId, sourceId } = readFilterParams(request);
 
+    // Never sign screenshots on the list GET — that was timing out (504) on Vercel.
+    // Thumbnails are signed lazily via POST { sign_paths: [...] }.
     const [store, resellerStore] = await Promise.all([
-      readProtectionLogStore(admin).catch((e) => {
+      readProtectionLogStore(admin, { signScreenshots: false }).catch((e) => {
         console.error("readProtectionLogStore error:", e);
-        return { entries: [], ignored_user_ids: [] };
+        throw e;
       }),
-      readResellersStore(admin).catch(() => ({ resellers: [] }))
+      readResellersStore(admin).catch(() => ({ resellers: [] })),
     ]);
 
     let entries = store.entries || [];
@@ -71,9 +75,30 @@ export async function GET(request) {
       columns: PROTECTION_LOG_COLUMNS,
       default_columns: defaultProtectionLogColumns(),
       local_source_id: LOCAL_PROTECTION_SOURCE_ID,
+      screenshots_signed: false,
     });
   } catch (error) {
     console.error("GET protection-logs ERROR:", error);
+    return NextResponse.json({ error: error?.message || String(error) }, { status: 500 });
+  }
+}
+
+export async function POST(request) {
+  try {
+    const auth = await requireAdmin(request);
+    if (auth.error) return auth.error;
+
+    const body = await request.json().catch(() => ({}));
+    const paths = Array.isArray(body.sign_paths)
+      ? body.sign_paths
+      : Array.isArray(body.signPaths)
+        ? body.signPaths
+        : [];
+
+    const admin = getSupabaseAdmin();
+    const urls = await signProtectionLogScreenshotPaths(paths, admin);
+    return NextResponse.json({ ok: true, urls });
+  } catch (error) {
     return NextResponse.json({ error: error?.message || String(error) }, { status: 500 });
   }
 }
