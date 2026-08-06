@@ -50,29 +50,49 @@ export async function GET(request) {
       return NextResponse.json({ ok: true, screenshots: byId });
     }
 
+    const withDeadline = (promise, ms, fallback) =>
+      Promise.race([
+        promise,
+        new Promise((resolve) => setTimeout(() => resolve(fallback), ms)),
+      ]);
+
     const [storeResult, ignoredResult, resellerStore] = await Promise.all([
       // Fast list: never pull screenshots jsonb (often multi‑MB base64).
-      readProtectionLogStore(admin, {
-        includeScreenshots: false,
-        signScreenshots: false,
-        limit: 200,
-      })
-        .then((store) => ({ ok: true, store }))
-        .catch((e) => {
-          console.error("readProtectionLogStore error:", e);
-          return {
-            ok: false,
-            error: e?.message || String(e),
-            store: { entries: [], ignored_user_ids: [] },
-          };
-        }),
-      readIgnoredProtectionLogUserIds(admin)
-        .then((ids) => ({ ok: true, ids }))
-        .catch((e) => {
-          console.error("readIgnoredProtectionLogUserIds error:", e);
-          return { ok: false, ids: [] };
-        }),
-      readResellersStore(admin).catch(() => ({ resellers: [] })),
+      withDeadline(
+        readProtectionLogStore(admin, {
+          includeScreenshots: false,
+          signScreenshots: false,
+          limit: 200,
+        })
+          .then((store) => ({ ok: true, store }))
+          .catch((e) => {
+            console.error("readProtectionLogStore error:", e);
+            return {
+              ok: false,
+              error: e?.message || String(e),
+              store: { entries: [], ignored_user_ids: [] },
+            };
+          }),
+        12_000,
+        {
+          ok: false,
+          error: "timed out reading protection logs",
+          store: { entries: [], ignored_user_ids: [] },
+        }
+      ),
+      withDeadline(
+        readIgnoredProtectionLogUserIds(admin)
+          .then((ids) => ({ ok: true, ids }))
+          .catch((e) => {
+            console.error("readIgnoredProtectionLogUserIds error:", e);
+            return { ok: false, ids: [] };
+          }),
+        4_000,
+        { ok: false, ids: [] }
+      ),
+      withDeadline(readResellersStore(admin).catch(() => ({ resellers: [] })), 4_000, {
+        resellers: [],
+      }),
     ]);
 
     const store = storeResult.store || { entries: [], ignored_user_ids: [] };

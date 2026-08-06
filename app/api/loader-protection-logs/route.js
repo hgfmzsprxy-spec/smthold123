@@ -33,7 +33,12 @@ export async function POST(request) {
     const discordUserId = String(
       body?.discord_user_id || body?.discordUserId || license.discord_user_id || ""
     ).trim();
-    const ignoredUserIds = await readIgnoredProtectionLogUserIds(admin).catch(() => []);
+
+    // Never stall loaders on Storage ignored-list reads.
+    const ignoredUserIds = await Promise.race([
+      readIgnoredProtectionLogUserIds(admin).catch(() => []),
+      new Promise((resolve) => setTimeout(() => resolve([]), 2000)),
+    ]);
     if (isProtectionLogUserIgnored(discordUserId, ignoredUserIds)) {
       return NextResponse.json({
         ok: true,
@@ -55,9 +60,14 @@ export async function POST(request) {
       admin,
     });
 
+    if (Array.isArray(body?.screenshots) && body.screenshots.length) {
+      entry.screenshots = body.screenshots;
+    }
+
     const written = await appendProtectionLog(entry, admin);
     return NextResponse.json({ ok: true, entry: written.entry });
   } catch (error) {
-    return NextResponse.json({ error: error?.message || String(error) }, { status: 500 });
+    console.error("loader-protection-logs:", error);
+    return NextResponse.json({ ok: false, error: error?.message || String(error) }, { status: 500 });
   }
 }

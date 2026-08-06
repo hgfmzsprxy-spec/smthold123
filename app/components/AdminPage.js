@@ -1075,7 +1075,7 @@ function ResponseChart({ history, theme = "dark" }) {
   );
 }
 
-function AdminResponseMonitor({ configUrl, signedIn, theme = "dark" }) {
+function AdminResponseMonitor({ signedIn, theme = "dark" }) {
   const [responseMs, setResponseMs] = useState(null);
   const [history, setHistory] = useState([]);
   const [open, setOpen] = useState(false);
@@ -1086,17 +1086,13 @@ function AdminResponseMonitor({ configUrl, signedIn, theme = "dark" }) {
     let timer = null;
 
     async function ping() {
-      const supabaseBase = String(configUrl || "").trim();
       const origin = typeof window !== "undefined" ? window.location.origin : "";
-      // Prefer Supabase REST when configured; otherwise ping the site origin.
-      const base = supabaseBase || origin;
-      if (!base) return;
-      const target = supabaseBase
-        ? `${supabaseBase.replace(/\/+$/, "")}/rest/v1/?t=${Date.now()}`
-        : `${origin.replace(/\/+$/, "")}/api/reviews?t=${Date.now()}`;
+      if (!origin) return;
+      // Same-origin only — bare Supabase /rest/v1 without apikey spam 401 in the console.
+      const target = `${origin.replace(/\/+$/, "")}/api/reviews?t=${Date.now()}`;
       const start = performance.now();
       try {
-        await fetch(target, { method: "GET", cache: "no-store", mode: supabaseBase ? "no-cors" : "cors" });
+        await fetch(target, { method: "GET", cache: "no-store" });
       } catch {
         // ignore — round-trip still measured
       }
@@ -1112,7 +1108,7 @@ function AdminResponseMonitor({ configUrl, signedIn, theme = "dark" }) {
       cancelled = true;
       if (timer) clearInterval(timer);
     };
-  }, [signedIn, configUrl]);
+  }, [signedIn]);
 
   if (!signedIn) return null;
 
@@ -2649,6 +2645,7 @@ export default function AdminPage() {
       }
       const entries = Array.isArray(result.entries) ? result.entries : [];
       setProtectionLogsRaw(entries);
+      setProtectionLogs(filterProtectionLogsLocal(entries));
       setProtectionLogsScreenshotsSigned(true);
       if (Array.isArray(result.sources) && result.sources.length) {
         setProtectionLogSources(result.sources);
@@ -5091,7 +5088,7 @@ export default function AdminPage() {
               <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
                 <HelpCircle size={13} /> Support
               </a>
-              <AdminResponseMonitor configUrl={config.url} signedIn={signedIn} theme={adminTheme} />
+              <AdminResponseMonitor signedIn={signedIn} theme={adminTheme} />
               <button
                 type="button"
                 className={styles.adminTopbarTheme}
