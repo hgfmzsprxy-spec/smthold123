@@ -2631,10 +2631,15 @@ export default function AdminPage() {
 
     setProtectionLogsBusy(true);
     setProtectionLogsMessage({ text: "", type: "" });
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timeoutId = controller
+      ? window.setTimeout(() => controller.abort(), 45_000)
+      : null;
     try {
       const response = await fetch("/api/admin/protection-logs", {
         headers: { Authorization: `Bearer ${accessToken}` },
         cache: "no-store",
+        signal: controller?.signal,
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -2649,9 +2654,24 @@ export default function AdminPage() {
       if (Array.isArray(result.ignored_user_ids)) {
         applyProtectionLogIgnoredUserIds(result.ignored_user_ids);
       }
+      if (Array.isArray(result.warnings) && result.warnings.length) {
+        setProtectionLogsMessage({
+          text: `Loaded with warnings: ${result.warnings.join("; ")}`,
+          type: "error",
+        });
+      }
     } catch (error) {
-      setProtectionLogsMessage({ text: error?.message || String(error), type: "error" });
+      const aborted = error?.name === "AbortError";
+      setProtectionLogsMessage({
+        text: aborted
+          ? "Timed out loading protection logs. Try Reload."
+          : error?.message || String(error),
+        type: "error",
+      });
+      // Allow UI to keep working with whatever we already have.
+      setProtectionLogsScreenshotsSigned(true);
     } finally {
+      if (timeoutId) window.clearTimeout(timeoutId);
       setProtectionLogsBusy(false);
     }
   }
@@ -2668,6 +2688,10 @@ export default function AdminPage() {
     setProtectionLogsMessage({ text: "", type: "" });
     // Optimistic UI so remove doesn't visually bounce back while the request finishes.
     applyProtectionLogIgnoredUserIds(ignored_user_ids, { fromSave: true });
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timeoutId = controller
+      ? window.setTimeout(() => controller.abort(), 20_000)
+      : null;
     try {
       const response = await fetch("/api/admin/protection-logs", {
         method: "PUT",
@@ -2677,6 +2701,7 @@ export default function AdminPage() {
         },
         body: JSON.stringify({ ignored_user_ids }),
         cache: "no-store",
+        signal: controller?.signal,
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -2689,9 +2714,16 @@ export default function AdminPage() {
       );
       return true;
     } catch (error) {
-      setProtectionLogsMessage({ text: error?.message || String(error), type: "error" });
+      const aborted = error?.name === "AbortError";
+      setProtectionLogsMessage({
+        text: aborted
+          ? "Timed out saving ignored user IDs. Try again."
+          : error?.message || String(error),
+        type: "error",
+      });
       return false;
     } finally {
+      if (timeoutId) window.clearTimeout(timeoutId);
       setProtectionLogIgnoredBusy(false);
     }
   }
@@ -5673,10 +5705,9 @@ export default function AdminPage() {
                                 onKeyDown={(event) => {
                                   if (event.key === "Enter") {
                                     event.preventDefault();
-                                    void addIgnoredProtectionLogUserId();
+                                    if (!protectionLogIgnoredBusy) void addIgnoredProtectionLogUserId();
                                   }
                                 }}
-                                disabled={protectionLogIgnoredBusy}
                                 aria-label="Ignored Discord user ID"
                               />
                               <button
@@ -5686,7 +5717,7 @@ export default function AdminPage() {
                                 onClick={() => void addIgnoredProtectionLogUserId()}
                               >
                                 <Plus size={14} />
-                                Add
+                                {protectionLogIgnoredBusy ? "Saving…" : "Add"}
                               </button>
                             </div>
                             {protectionLogIgnoredUserIds.length ? (
