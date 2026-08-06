@@ -11,7 +11,6 @@ import {
   LOCAL_PROTECTION_SOURCE_LABEL,
   PROTECTION_LOG_COLUMNS,
   defaultProtectionLogColumns,
-  readProtectionLogStore,
 } from "../../../../lib/panel-protection-logs";
 import { readNotificationStore } from "../../../../lib/panel-notifications";
 import { PROTECTION_OPTIONS, readProtectionStore } from "../../../../lib/panel-protections";
@@ -26,18 +25,35 @@ import { getSupabaseAdmin } from "../../../../lib/supabase-admin";
 import { listTransactions } from "../../../../lib/transactions";
 
 export const dynamic = "force-dynamic";
+// Stay under Cloudflare/Vercel gateway limits — return partial data instead of 504.
+export const maxDuration = 30;
 
-async function safe(promise, fallback) {
+const QUERY_DEADLINE_MS = 10_000;
+const LICENSE_BOOTSTRAP_LIMIT = 2_500;
+const TRANSACTION_BOOTSTRAP_LIMIT = 200;
+const CHANGELOG_APPS_LIMIT = 12;
+
+function withDeadline(promise, ms, fallback) {
+  let timer = null;
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(() => resolve(fallback), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
+
+async function safe(promise, fallback, label = "bootstrap") {
   try {
     return await promise;
   } catch (error) {
-    console.error("[admin/bootstrap]", error?.message || error);
+    console.error(`[admin/bootstrap] ${label}:`, error?.message || error);
     return fallback;
   }
 }
 
 async function buildChangelogSummaries(apps, admin) {
-  const list = Array.isArray(apps) ? apps : [];
+  const list = (Array.isArray(apps) ? apps : []).slice(0, CHANGELOG_APPS_LIMIT);
   if (!list.length) return {};
 
   const pairs = await Promise.all(
@@ -45,7 +61,11 @@ async function buildChangelogSummaries(apps, admin) {
       const id = String(app?.id || "").trim();
       if (!id) return null;
       try {
-        const store = await readChangelogStore(id, admin);
+        const store = await withDeadline(
+          readChangelogStore(id, admin),
+          2_500,
+          { entries: [] }
+        );
         const entries = Array.isArray(store?.entries) ? store.entries : [];
         return [
           id,
@@ -81,22 +101,40 @@ async function fetchLicenses(admin) {
   const slim = await admin
     .from("licenses")
     .select(ADMIN_LICENSE_SELECT)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(LICENSE_BOOTSTRAP_LIMIT);
   if (!slim.error) return Array.isArray(slim.data) ? slim.data : [];
 
   if (!/column|schema cache/i.test(slim.error.message || "")) throw slim.error;
 
-  const full = await admin.from("licenses").select("*").order("created_at", { ascending: false });
+  const full = await admin
+    .from("licenses")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(LICENSE_BOOTSTRAP_LIMIT);
   if (full.error) throw full.error;
   return Array.isArray(full.data) ? full.data : [];
 }
 
 export async function GET(request) {
+  const warnings = [];
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+    if (auth.degradedAuth) warnings.push("auth: degraded (Supabase Auth slow/unreachable)");
 
     const admin = getSupabaseAdmin();
+
+    const emptyStore = { resellers: [] };
+    async function bounded(label, promise, fallback) {
+      const marker = { __timeout: true, fallback };
+      const result = await withDeadline(safe(promise, fallback, label), QUERY_DEADLINE_MS, marker);
+      if (result && result.__timeout) {
+        warnings.push(`${label}: timeout`);
+        return fallback;
+      }
+      return result ?? fallback;
+    }
 
     const [
       applications,
@@ -108,19 +146,32 @@ export async function GET(request) {
       depositStore,
       transactions,
     ] = await Promise.all([
-      fetchApplications(admin),
-      fetchLicenses(admin),
-      safe(readResellersStore(admin), { resellers: [] }),
-      safe(readProtectionStore(admin), { flags: {}, updated_at: "", updated_by: "" }),
-      safe(readNotificationStore(admin), { entries: [] }),
-      safe(readResellerProductsStore(admin), { products: [] }),
-      safe(readDepositVariantsStore(admin, { skipSeed: true }), { variants: [] }),
-      safe(listTransactions({ limit: 500 }, admin), []),
+      bounded("applications", fetchApplications(admin), []),
+      bounded("licenses", fetchLicenses(admin), []),
+      bounded("resellers", readResellersStore(admin), emptyStore),
+      bounded("protections", readProtectionStore(admin), {
+        flags: {},
+        updated_at: "",
+        updated_by: "",
+      }),
+      bounded("notifications", readNotificationStore(admin), { entries: [] }),
+      bounded("store", readResellerProductsStore(admin), { products: [] }),
+      bounded("deposits", readDepositVariantsStore(admin, { skipSeed: true }), { variants: [] }),
+      bounded(
+        "transactions",
+        listTransactions({ limit: TRANSACTION_BOOTSTRAP_LIMIT }, admin),
+        []
+      ),
     ]);
 
     const resellers = Array.isArray(resellerStore?.resellers) ? resellerStore.resellers : [];
 
-    const changelogSummaries = await safe(buildChangelogSummaries(applications, admin), {});
+    // Non-critical — never block bootstrap on per-app changelog fan-out.
+    const changelogSummaries = await withDeadline(
+      safe(buildChangelogSummaries(applications, admin), {}, "changelogs"),
+      4_000,
+      {}
+    );
 
     const protectionLogSources = [
       { id: LOCAL_PROTECTION_SOURCE_ID, label: LOCAL_PROTECTION_SOURCE_LABEL, type: "local" },
@@ -149,6 +200,7 @@ export async function GET(request) {
       storeProducts: Array.isArray(productsStore?.products) ? productsStore.products : [],
       depositVariants: Array.isArray(depositStore?.variants) ? depositStore.variants : [],
       transactions: Array.isArray(transactions) ? transactions : [],
+      // Protection logs load on-demand from /api/admin/protection-logs — keep bootstrap light.
       protectionLogs: [],
       protectionLogIgnoredUserIds: [],
       protectionLogSources,
@@ -157,6 +209,7 @@ export async function GET(request) {
       localProtectionSourceId: LOCAL_PROTECTION_SOURCE_ID,
       changelogSummaries,
       screenshotsSigned: false,
+      warnings: warnings.filter(Boolean),
       fetchedAt: new Date().toISOString(),
     });
   } catch (error) {
