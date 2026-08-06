@@ -1,9 +1,4 @@
 -- Protection / loader auth logs (written by loaders via anon key, read by admin service role).
---
--- WARNING: If this table already has huge base64 screenshots, do NOT re-run this file
--- in the SQL Editor (CREATE INDEX / DDL will connection-timeout).
--- Recover with: supabase/protection-logs-recover.sql  (truncate/drop first, one statement at a time).
---
 create table if not exists public.protection_logs (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
