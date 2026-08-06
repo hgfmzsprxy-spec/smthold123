@@ -1734,11 +1734,21 @@ export default function AdminPage() {
   function persistSession(nextSession) {
     setSession(nextSession);
     localStorage.setItem(sessionStorageKey(), JSON.stringify(nextSession));
+    try {
+      window.dispatchEvent(new Event("admin-session-changed"));
+    } catch {
+      // Ignore.
+    }
   }
 
   function clearSession() {
     setSession({ ...EMPTY_ADMIN_SESSION });
     localStorage.removeItem(sessionStorageKey());
+    try {
+      window.dispatchEvent(new Event("admin-session-changed"));
+    } catch {
+      // Ignore.
+    }
     void supabase.auth.signOut({ scope: "local" });
     setApplications([]);
     setAllLicenses([]);
