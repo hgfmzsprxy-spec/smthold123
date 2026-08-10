@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { requireAdmin } from "../../../../lib/admin-auth";
+import { assertPermission } from "../../../../lib/panel-permissions";
 import {
   buildResellerProfileFromAuthUser,
   computeResellerMetrics,
@@ -39,6 +40,9 @@ export async function GET(request) {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
 
+    const denied = assertPermission(auth.permissions, "resellers.view");
+    if (denied) return denied;
+
     const admin = getSupabaseAdmin();
     const store = await readResellersStore(admin);
     return NextResponse.json({
@@ -54,6 +58,9 @@ export async function POST(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "resellers.edit");
+    if (denied) return denied;
 
     const body = await request.json().catch(() => ({}));
     const email = String(body?.email || "").trim().toLowerCase();
@@ -149,6 +156,14 @@ export async function PATCH(request) {
     if (!resellerId) {
       return NextResponse.json({ error: "Reseller id is required." }, { status: 400 });
     }
+
+    const touchesBalance =
+      body?.balanceDelta != null || body?.balance_delta != null || body?.balance != null;
+    const denied = assertPermission(
+      auth.permissions,
+      touchesBalance ? "resellers.balance" : "resellers.edit"
+    );
+    if (denied) return denied;
 
     const admin = getSupabaseAdmin();
     const store = await readResellersStore(admin);
@@ -255,6 +270,9 @@ export async function DELETE(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "resellers.delete");
+    if (denied) return denied;
 
     const body = await request.json().catch(() => ({}));
     const resellerId = String(body?.id || body?.resellerId || "").trim();

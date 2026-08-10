@@ -4,8 +4,10 @@ import Link from "next/link";
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowLeft,
   ArrowRight,
   BadgePercent,
+  Ban,
   CalendarDays,
   Camera,
   Check,
@@ -22,6 +24,7 @@ import {
   Gamepad2,
   HardDrive,
   Headphones,
+  HelpCircle,
   House,
   KeyRound,
   Layers,
@@ -444,6 +447,20 @@ function useScrollReveal() {
     let lastScrollY = window.scrollY;
     let scrollingUp = false;
 
+    const isCoarsePointer =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(hover: none), (max-width: 767px)").matches;
+
+    // Phones: skip reveal entirely — opacity/transform animations break hit-testing on iOS.
+    if (isCoarsePointer) {
+      root.classList.remove("reveal-enabled");
+      document.querySelectorAll(revealSelector).forEach((node) => {
+        node.classList.add("is-visible");
+        node.style.removeProperty("--reveal-delay");
+      });
+      return undefined;
+    }
+
     root.classList.add("reveal-enabled");
 
     if (!("IntersectionObserver" in window)) {
@@ -468,7 +485,10 @@ function useScrollReveal() {
           }
         });
       },
-      { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }
+      {
+        threshold: isCoarsePointer ? 0.01 : 0.12,
+        rootMargin: isCoarsePointer ? "0px 0px 0px 0px" : "0px 0px -8% 0px",
+      }
     );
 
     function updateScrollDirection() {
@@ -510,7 +530,17 @@ function useScrollReveal() {
     const mutationObserver = new MutationObserver(scheduleCollect);
     mutationObserver.observe(document.body, { childList: true, subtree: true });
 
+    // Failsafe: if IO never fires (common on some mobile browsers), show content.
+    const failsafe = window.setTimeout(() => {
+      document.querySelectorAll(revealSelector).forEach((node) => {
+        if (!node.classList.contains("is-visible")) {
+          node.classList.add("reveal-instant", "is-visible");
+        }
+      });
+    }, isCoarsePointer ? 900 : 2500);
+
     return () => {
+      window.clearTimeout(failsafe);
       cancelAnimationFrame(frame);
       window.removeEventListener("scroll", updateScrollDirection);
       mutationObserver.disconnect();
@@ -571,18 +601,71 @@ function CustomScrollbar() {
   );
 }
 
-export function PageChrome({ active, children }) {
+function applyBrandName(text, brandName) {
+  if (!brandName || !text) return text;
+  return String(text).replace(/unbanhwid\.com/gi, brandName);
+}
+
+function hexToRgbTuple(hex) {
+  const raw = String(hex || "").trim().toLowerCase();
+  const stripped = raw.replace(/^#/, "");
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  if (/^[0-9a-f]{6}$/.test(stripped)) {
+    r = parseInt(stripped.slice(0, 2), 16);
+    g = parseInt(stripped.slice(2, 4), 16);
+    b = parseInt(stripped.slice(4, 6), 16);
+  } else if (/^[0-9a-f]{3}$/.test(stripped)) {
+    r = parseInt(stripped[0] + stripped[0], 16);
+    g = parseInt(stripped[1] + stripped[1], 16);
+    b = parseInt(stripped[2] + stripped[2], 16);
+  } else {
+    return null;
+  }
+  return [r, g, b];
+}
+
+function buildBrandColorVars(color) {
+  const tuple = hexToRgbTuple(color);
+  if (!tuple) return null;
+  const [r, g, b] = tuple;
+  const dark = [
+    Math.round(r * 0.75),
+    Math.round(g * 0.75),
+    Math.round(b * 0.75),
+  ];
+  return {
+    "--primary": `rgb(${r}, ${g}, ${b})`,
+    "--primary-rgb": `${r}, ${g}, ${b}`,
+    "--primary-dark": `rgb(${dark[0]}, ${dark[1]}, ${dark[2]})`,
+    "--primary-soft": `rgba(${r}, ${g}, ${b}, 0.2)`,
+    "--loader-brand-color": `rgb(${r}, ${g}, ${b})`,
+  };
+}
+
+export function PageChrome({ active, children, brand }) {
   useScrollReveal();
 
+  const brandVars = brand
+    ? { ...buildBrandColorVars(brand.color), "--site-announce-height": "0px" }
+    : null;
+
   return (
-    <div className="site-shell reveal-enabled">
-      <div className="site-announce-bar" role="status">
-        WE ARE STARTING SOON...
-      </div>
+    <div
+      className={`site-shell${brand ? " site-shell--branded" : ""}`}
+      style={brandVars || undefined}
+    >
+      {brand ? null : (
+        <div className="site-announce-bar" role="status">
+          WE ARE STARTING SOON...
+        </div>
+      )}
       <HeroBackdrop />
-      <Navbar active={active} />
+      {brand ? <div className="branded-grid-bg" aria-hidden="true" /> : null}
+      <Navbar active={active} brand={brand} />
       {children}
-      <Footer />
+      {brand ? null : <Footer />}
       <CustomScrollbar />
     </div>
   );
@@ -618,7 +701,21 @@ function DiscordIcon({ size = 15 }) {
   );
 }
 
-function Brand({ compact = false }) {
+function Brand({ compact = false, brand }) {
+  if (brand) {
+    return (
+      <span className={`brand-link brand-link--static ${compact ? "brand-link--compact" : ""}`}>
+        <span className="brand-logo">
+          {brand.logo ? (
+            <img src={brand.logo} alt={brand.brandName || "Brand"} />
+          ) : (
+            <img src="/images/unbanhwid-logo.png" alt={brand.brandName || "Brand"} />
+          )}
+        </span>
+        <span className="brand-name">{brand.brandName || "unbanhwid.com"}</span>
+      </span>
+    );
+  }
   return (
     <Link className={`brand-link ${compact ? "brand-link--compact" : ""}`} href="/">
       <span className="brand-logo">
@@ -629,7 +726,216 @@ function Brand({ compact = false }) {
   );
 }
 
-function Navbar({ active }) {
+const SITE_RESPONSE_HISTORY_LIMIT = 60;
+
+function SiteResponseChart({ history }) {
+  const width = 600;
+  const height = 150;
+  const pad = { l: 38, r: 14, t: 12, b: 22 };
+  const gridStroke = "rgba(255,255,255,0.06)";
+  const labelFill = "#7c7c7c";
+  const metaFill = "#bdbdbd";
+
+  if (history.length < 2) {
+    return <div className="site-response-chart-empty">Collecting response samples…</div>;
+  }
+
+  const values = history.map((h) => h.ms);
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const yMax = Math.max(max, 50);
+  const yMin = 0;
+  const innerW = width - pad.l - pad.r;
+  const innerH = height - pad.t - pad.b;
+  const xStep = innerW / Math.max(history.length - 1, 1);
+  const y = (v) => pad.t + innerH - ((v - yMin) / (yMax - yMin)) * innerH;
+  const x = (i) => pad.l + i * xStep;
+  const linePath = history.map((h, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(h.ms).toFixed(1)}`).join(" ");
+  const areaPath = `${linePath} L${x(history.length - 1).toFixed(1)},${(pad.t + innerH).toFixed(1)} L${x(0).toFixed(1)},${(pad.t + innerH).toFixed(1)} Z`;
+  const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+  const gridLevels = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(yMin + f * (yMax - yMin)));
+  const last = history[history.length - 1];
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="site-response-chart" role="img" aria-label="Response time chart">
+      {gridLevels.map((g, i) => (
+        <g key={i}>
+          <line x1={pad.l} x2={width - pad.r} y1={y(g)} y2={y(g)} stroke={gridStroke} strokeWidth="1" />
+          <text x={pad.l - 6} y={y(g) + 3} textAnchor="end" fontSize="9" fill={labelFill}>
+            {g}ms
+          </text>
+        </g>
+      ))}
+      <path d={areaPath} className="site-response-chart-area" />
+      <path d={linePath} className="site-response-chart-line" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={x(history.length - 1)} cy={y(last.ms)} r="3" className="site-response-chart-point" strokeWidth="1.5" />
+      <text x={width - pad.r} y={height - 6} textAnchor="end" fontSize="9" fill={labelFill}>
+        now
+      </text>
+      <text x={pad.l} y={height - 6} textAnchor="start" fontSize="9" fill={labelFill}>
+        -{history.length}s
+      </text>
+      <text x={width - pad.r} y={pad.t + 8} textAnchor="end" fontSize="9" fill={metaFill}>
+        cur {last.ms}ms · avg {avg}ms · min {min}ms · max {max}ms
+      </text>
+    </svg>
+  );
+}
+
+function SiteResponseMonitor({ preview = false, portalRef = null }) {
+  const [responseMs, setResponseMs] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [region, setRegion] = useState("");
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    let timer = null;
+    let regionFetched = false;
+
+    async function ping() {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      if (!origin) return;
+      const target = `${origin.replace(/\/+$/, "")}/api/ping?t=${Date.now()}`;
+      const start = performance.now();
+      try {
+        const res = await fetch(target, { method: "GET", cache: "no-store" });
+        if (!regionFetched && res.ok) {
+          regionFetched = true;
+          const data = await res.json().catch(() => null);
+          if (data?.region) setRegion(String(data.region));
+        }
+      } catch {
+        // ignore — round-trip still measured
+      }
+      if (cancelled) return;
+      const ms = Math.round(performance.now() - start);
+      setResponseMs(ms);
+      setHistory((h) => [...h, { t: Date.now(), ms }].slice(-SITE_RESPONSE_HISTORY_LIMIT));
+    }
+
+    ping();
+    timer = setInterval(ping, 1000);
+    return () => {
+      cancelled = true;
+      if (timer) clearInterval(timer);
+    };
+  }, []);
+
+  return (
+    <>
+      <button
+        type="button"
+        className="branded-toolbar-btn"
+        onClick={() => setOpen(true)}
+        title="Backend response monitor"
+      >
+        <Info size={13} />
+        <span>Response: {responseMs == null ? "—" : `${responseMs}ms`}</span>
+      </button>
+
+      {open
+        ? preview
+          ? createPortal(
+            <div className="site-response-overlay site-response-overlay--preview" onClick={() => setOpen(false)}>
+              <div className="redeem-panel site-response-panel" onClick={(event) => event.stopPropagation()}>
+                <div className="redeem-panel-header">
+                  <div>
+                    <div className="redeem-panel-kicker">Backend monitor</div>
+                    <h3>Response time</h3>
+                  </div>
+                  <button type="button" className="redeem-close" aria-label="Close" onClick={() => setOpen(false)}>
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="redeem-panel-body">
+                  <div className="site-response-stats">
+                    <div className="site-response-stat">
+                      <span className="site-response-stat-label">Current</span>
+                      <strong className="site-response-stat-value">{responseMs == null ? "—" : `${responseMs}ms`}</strong>
+                    </div>
+                    <div className="site-response-stat">
+                      <span className="site-response-stat-label">Average</span>
+                      <strong className="site-response-stat-value">
+                        {history.length ? `${Math.round(history.reduce((a, h) => a + h.ms, 0) / history.length)}ms` : "—"}
+                      </strong>
+                    </div>
+                    <div className="site-response-stat">
+                      <span className="site-response-stat-label">Samples</span>
+                      <strong className="site-response-stat-value">{history.length}</strong>
+                    </div>
+                  </div>
+
+                  <div className="site-response-chart-wrap">
+                    <SiteResponseChart history={history} />
+                  </div>
+
+                  <p className="site-response-footnote">
+                    Response time is measured every second against the backend REST endpoint.{" "}
+                    <span className="site-response-region">
+                      <span className="site-response-region-label">Region:</span>
+                      <span className="site-response-region-value">{region || "—"}</span>
+                    </span>
+                  </p>
+                </div>
+              </div>
+            </div>,
+            portalRef?.current ?? null
+          )
+          : createPortal(
+            <div className="site-response-overlay" onClick={() => setOpen(false)}>
+              <div className="redeem-panel site-response-panel" onClick={(event) => event.stopPropagation()}>
+                <div className="redeem-panel-header">
+                  <div>
+                    <div className="redeem-panel-kicker">Backend monitor</div>
+                    <h3>Response time</h3>
+                  </div>
+                  <button type="button" className="redeem-close" aria-label="Close" onClick={() => setOpen(false)}>
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="redeem-panel-body">
+                  <div className="site-response-stats">
+                    <div className="site-response-stat">
+                      <span className="site-response-stat-label">Current</span>
+                      <strong className="site-response-stat-value">{responseMs == null ? "—" : `${responseMs}ms`}</strong>
+                    </div>
+                    <div className="site-response-stat">
+                      <span className="site-response-stat-label">Average</span>
+                      <strong className="site-response-stat-value">
+                        {history.length ? `${Math.round(history.reduce((a, h) => a + h.ms, 0) / history.length)}ms` : "—"}
+                      </strong>
+                    </div>
+                    <div className="site-response-stat">
+                      <span className="site-response-stat-label">Samples</span>
+                      <strong className="site-response-stat-value">{history.length}</strong>
+                    </div>
+                  </div>
+
+                  <div className="site-response-chart-wrap">
+                    <SiteResponseChart history={history} />
+                  </div>
+
+                  <p className="site-response-footnote">
+                    Response time is measured every second against the backend REST endpoint.{" "}
+                    <span className="site-response-region">
+                      <span className="site-response-region-label">Region:</span>
+                      <span className="site-response-region-value">{region || "—"}</span>
+                    </span>
+                  </p>
+                </div>
+              </div>
+            </div>,
+            typeof document !== "undefined" ? document.body : null
+          )
+        : null}
+    </>
+  );
+}
+
+function Navbar({ active, brand }) {
   const [open, setOpen] = useState(false);
   const [cartItems] = useCartItems();
   const cartCount = cartTotalQuantity(cartItems);
@@ -652,11 +958,13 @@ function Navbar({ active }) {
     return user.user_metadata?.full_name || user.user_metadata?.name || user.email;
   };
 
+  if (brand) return null;
+
   return (
-    <nav className="navbar">
+    <nav className={`navbar${brand ? " navbar--branded" : ""}`}>
       <div className="container nav-inner">
         <div className="nav-head">
-          <Brand />
+          <Brand brand={brand} />
           <button
             className={`burger ${open ? "is-open" : ""}`}
             type="button"
@@ -694,16 +1002,16 @@ function Navbar({ active }) {
               <li className="nav-user-wrap">
                 <div className="nav-user">
                   {getDiscordAvatar() ? (
-                    <img 
-                      src={getDiscordAvatar()} 
-                      alt="User Avatar" 
-                      className="nav-user-avatar" 
+                    <img
+                      src={getDiscordAvatar()}
+                      alt="User Avatar"
+                      className="nav-user-avatar"
                     />
                   ) : (
                     <div className="nav-user-avatar-placeholder" />
                   )}
                   <span className="nav-user-name">{getDiscordUsername()}</span>
-                  <button 
+                  <button
                     className="nav-logout"
                     onClick={handleLogout}
                     title="Logout"
@@ -1700,8 +2008,8 @@ const checkoutProducts = [
       "A stable Call of Duty product with fast setup, instant access, and the unbanhwid.com product panel.",
     variants: [
       { label: "1 Day License", price: "4.99 USD" },
-      { label: "7 Days License", price: "19.99 USD" },
-      { label: "30 Days License", price: "49.99 USD" },
+      { label: "7 Days License", price: "14.99 USD" },
+      { label: "30 Days License", price: "39.99 USD" },
       { label: "Lifetime License", price: "99.99 USD" },
     ],
     requirements: callOfDutyRequirements,
@@ -1726,8 +2034,8 @@ const checkoutProducts = [
       "A stable Apex Legends product with fast setup, instant access, and the unbanhwid.com product panel.",
     variants: [
       { label: "1 Day License", price: "4.99 USD" },
-      { label: "7 Days License", price: "19.99 USD" },
-      { label: "30 Days License", price: "49.99 USD" },
+      { label: "7 Days License", price: "14.99 USD" },
+      { label: "30 Days License", price: "39.99 USD" },
       { label: "Lifetime License", price: "99.99 USD" },
     ],
     requirements: apexLegendsRequirements,
@@ -2175,8 +2483,13 @@ function productSlug(name = "") {
     .replace(/^-+|-+$/g, "");
 }
 
-function loaderHref(product) {
-  return `/loader/${product.slug}`;
+function loaderHref(product, brandSlug) {
+  const base = `/loader/${product.slug}`;
+  return brandSlug ? `${base}?${brandSlug}` : base;
+}
+
+function getResellerProductImage(slug) {
+  return `/images/loader-resellers/${slug}.png`;
 }
 
 function isLoaderProductInactive(displayMeta) {
@@ -4303,11 +4616,30 @@ function CartContent() {
   );
 }
 
-function SimpleHeader({ title, subtitle, linkText, className = "" }) {
+function SimpleHeader({
+  title,
+  subtitle,
+  linkText,
+  className = "",
+  brandLogo,
+  brandAutoLogo = true,
+  brandLogoPlaceholder = false,
+}) {
+  const showBrandMark = Boolean(brandLogo) || brandLogoPlaceholder;
   return (
-    <header className={`simple-header ${className}`}>
+    <header className={`simple-header ${showBrandMark ? "simple-header--branded" : ""} ${className}`}>
       <div className="container">
         <div className="simple-header-inner fade-up">
+          {brandLogo ? (
+            <div className={`simple-header-brand-logo${brandAutoLogo ? "" : " simple-header-brand-logo--fixed"}`}>
+              <img src={brandLogo} alt="" />
+            </div>
+          ) : brandLogoPlaceholder ? (
+            <div className="simple-header-brand-logo simple-header-brand-logo--placeholder" aria-hidden="true">
+              <Images size={22} strokeWidth={1.8} />
+              <span>LOGO</span>
+            </div>
+          ) : null}
           <h1>{title}</h1>
           {subtitle ? <p>{subtitle}</p> : null}
           {linkText ? (
@@ -4695,17 +5027,26 @@ function RulesContent() {
   );
 }
 
-function LoaderCard({ item, displayMeta, subscriptionBadge = null }) {
+function LoaderCard({ item, displayMeta, subscriptionBadge = null, brandSlug = "", brandName = "", locked = false, onNavigate }) {
   const previewCount = item.featurePreviewCount || 3;
   const visibleModules = item.modules.slice(0, previewCount);
   const hiddenModulesCount = Math.max(0, item.modules.length - visibleModules.length);
   const status = displayMeta?.status || "Undetected";
   const lastUpdate = displayMeta?.lastUpdate || item.updated || "-";
 
-  return (
-    <Link className="loader-card" href={loaderHref(item)}>
+  const inner = (
+    <>
       <div className="loader-card-media">
-        <img src={item.image} alt={item.name} loading="eager" fetchPriority="high" decoding="async" />
+        <img
+          src={brandSlug ? getResellerProductImage(item.slug) : item.image}
+          alt={item.name}
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
+          onError={brandSlug ? (event) => {
+            if (event.currentTarget.src !== item.image) event.currentTarget.src = item.image;
+          } : undefined}
+        />
         {subscriptionBadge === "active" ? (
           <span className="loader-card-active-badge">ACTIVE</span>
         ) : subscriptionBadge === "banned" ? (
@@ -4718,7 +5059,7 @@ function LoaderCard({ item, displayMeta, subscriptionBadge = null }) {
       </div>
       <div className="loader-card-body">
         <h3>{item.name}</h3>
-        <p className="loader-card-description">{item.description}</p>
+        <p className="loader-card-description">{applyBrandName(item.description, brandName)}</p>
         <div className="loader-card-spacer" />
         <div className="loader-card-info">
           <div className="loader-card-feature-label">
@@ -4755,14 +5096,41 @@ function LoaderCard({ item, displayMeta, subscriptionBadge = null }) {
           </span>
         </div>
       </div>
+    </>
+  );
+
+  if (locked) {
+    return (
+      <div className="loader-card loader-card--locked" aria-disabled="true">
+        {inner}
+      </div>
+    );
+  }
+
+  if (onNavigate) {
+    return (
+      <button
+        type="button"
+        className="loader-card"
+        onClick={() => onNavigate(item.slug)}
+      >
+        {inner}
+      </button>
+    );
+  }
+
+  return (
+    <Link className="loader-card" href={loaderHref(item, brandSlug)}>
+      {inner}
     </Link>
   );
 }
 
-function LoaderContent() {
+function LoaderContent({ brandSlug = "", brandName = "", brandProductSlugs = null, onNavigate, onReady }) {
   const { user, ready: authReady } = useAuthUser();
   const [displayMetaBySlug, setDisplayMetaBySlug] = useState(() => getStaticLoaderDisplayMetaMap(loaderProducts));
   const displayMetaRef = useRef(displayMetaBySlug);
+  const [metaReady, setMetaReady] = useState(false);
   const [productBadges, setProductBadges] = useState(() =>
     Object.fromEntries(loaderProducts.map((item) => [item.slug, "inactive"])),
   );
@@ -4821,6 +5189,10 @@ function LoaderContent() {
   }, [authReady, refreshProductBadges, user?.id, displayMetaBySlug]);
 
   useEffect(() => {
+    if (metaReady && authReady) onReady?.();
+  }, [metaReady, authReady, onReady]);
+
+  useEffect(() => {
     const onStorage = (event) => {
       if (!event.key || event.key.includes("loader_completed_redeem")) {
         void refreshProductBadges();
@@ -4846,7 +5218,10 @@ function LoaderContent() {
 
     async function loadMeta() {
       const nextMeta = await refreshLoaderDisplayMetaMap(loaderProducts);
-      if (!cancelled) setDisplayMetaBySlug(nextMeta);
+      if (!cancelled) {
+        setDisplayMetaBySlug(nextMeta);
+        setMetaReady(true);
+      }
     }
 
     setDisplayMetaBySlug(getInitialLoaderDisplayMetaMap(loaderProducts));
@@ -4877,40 +5252,53 @@ function LoaderContent() {
   }, []);
 
   return (
-    <section className="section loader-section fade-up" data-scroll-target>
+    <section className={`section loader-section fade-up${brandSlug ? " loader-section--branded" : ""}`} data-scroll-target>
       <div className="container">
-        <div className="loader-intro">
-          <button
-            className="loader-note loader-guide-cta"
-            type="button"
-            onClick={() => {
-              history.replaceState(null, "", "#instruction");
-              document.getElementById("instruction")?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }}
-          >
-            <span>How Does it works? — Watch the video.</span>
-            <span className="loader-guide-cta-icons" aria-hidden="true">
-              <Camera size={16} strokeWidth={2.2} />
-              <CircleArrowDown size={16} strokeWidth={2.2} />
-            </span>
-          </button>
-        </div>
+        {brandSlug ? null : (
+          <div className="loader-intro">
+            <button
+              className="loader-note loader-guide-cta"
+              type="button"
+              onClick={() => {
+                history.replaceState(null, "", "#instruction");
+                document.getElementById("instruction")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+            >
+              <span>How Does it works? — Watch the video.</span>
+              <span className="loader-guide-cta-icons" aria-hidden="true">
+                <Camera size={16} strokeWidth={2.2} />
+                <CircleArrowDown size={16} strokeWidth={2.2} />
+              </span>
+            </button>
+          </div>
+        )}
         <div className="loader-grid">
-          {loaderProducts.map((item) => (
-            <LoaderCard
-              item={item}
-              displayMeta={displayMetaBySlug[item.slug]}
-              subscriptionBadge={productBadges[item.slug] || "inactive"}
-              key={item.slug}
-            />
-          ))}
+          {loaderProducts.map((item) => {
+            const locked = brandSlug && Array.isArray(brandProductSlugs)
+              ? !brandProductSlugs.includes(item.slug)
+              : false;
+            return (
+              <LoaderCard
+                item={item}
+                displayMeta={displayMetaBySlug[item.slug]}
+                subscriptionBadge={productBadges[item.slug] || "inactive"}
+                brandSlug={brandSlug}
+                brandName={brandName}
+                locked={locked}
+                onNavigate={onNavigate}
+                key={item.slug}
+              />
+            );
+          })}
         </div>
-        <ProductShowcaseVideo
-          id="instruction"
-          src="/images/video/guide.mp4"
-          poster="/images/video/thumbnail.png"
-          chapters={loaderGuideChapters}
-        />
+        {brandSlug ? null : (
+          <ProductShowcaseVideo
+            id="instruction"
+            src="/images/video/guide.mp4"
+            poster="/images/video/thumbnail.png"
+            chapters={loaderGuideChapters}
+          />
+        )}
       </div>
     </section>
   );
@@ -4988,7 +5376,17 @@ function LoaderLaunchToast({ item, onClose }) {
   );
 }
 
-function LoaderDetailContent({ slug }) {
+function LoaderDetailContent({
+  slug,
+  brandSlug = "",
+  brandName = "",
+  brandProductSlugs = null,
+  removeLoaderFaq = false,
+  removeGuides = false,
+  onBack,
+  onReady,
+  preview = false,
+}) {
   const product = getLoaderProduct(slug);
   const previewImages = useMemo(() => getProductPreviewImages(slug), [slug]);
   const lightboxImages = useMemo(() => getProductLightboxImages(slug), [slug]);
@@ -5024,6 +5422,13 @@ function LoaderDetailContent({ slug }) {
   const downloadUrlRef = useRef("");
   const subscriptionPollRef = useRef(null);
   const bannedMetricsSnapshotRef = useRef(null);
+
+  const brandLocked =
+    brandSlug && Array.isArray(brandProductSlugs) ? !brandProductSlugs.includes(slug) : false;
+
+  useEffect(() => {
+    if (brandLocked) onReady?.();
+  }, [brandLocked, onReady]);
 
   const hasRedeemedKey = Boolean(redeemState?.licenseKey);
   const isLaunchBanned = hasRedeemedKey && subscriptionMode === "banned";
@@ -5121,6 +5526,10 @@ function LoaderDetailContent({ slug }) {
       window.clearInterval(timerId);
     };
   }, [appId]);
+
+  useEffect(() => {
+    if (loaderMetaReady && appFreezeReady) onReady?.();
+  }, [loaderMetaReady, appFreezeReady, onReady]);
 
   const detachSubscriptionUi = useCallback(() => {
     setRedeemState(null);
@@ -5540,26 +5949,64 @@ function LoaderDetailContent({ slug }) {
           </article>
         ))}
       </div>
-      <Link className="button button-logout full loader-features-details-button" href={`${productHref({ slug })}#product-features`}>
-        Browse all Features & Details
-        <ArrowRight size={16} strokeWidth={2.4} />
-      </Link>
+      {brandSlug ? null : (
+        <Link className="button button-logout full loader-features-details-button" href={`${productHref({ slug })}#product-features`}>
+          Browse all Features & Details
+          <ArrowRight size={16} strokeWidth={2.4} />
+        </Link>
+      )}
     </div>
   );
 
+  if (brandLocked) {
+    return (
+      <section className="section loader-section fade-up loader-section--branded" data-scroll-target>
+        <div className="container">
+          <div className="loader-detail-locked">
+            <div className="loader-detail-locked-card">
+              <span className="loader-detail-locked-icon" aria-hidden="true">
+                <Lock size={28} strokeWidth={2.2} />
+              </span>
+              <h2>This product is not available</h2>
+              <p>
+                This product is not part of {brandName || "this brand"}&apos;s offering.
+              </p>
+              <Link className="button loader-detail-locked-back" href={`/loader?${brandSlug}`}>
+                <ArrowLeft size={16} strokeWidth={2.4} />
+                Back to Remote Loader
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <section className="section loader-section fade-up" data-scroll-target>
+    <section className={`section loader-section fade-up${brandSlug ? " loader-section--branded" : ""}`} data-scroll-target>
       <div className="container">
+        {onBack ? (
+          <button type="button" className="loader-preview-back" onClick={onBack}>
+            <ArrowLeft size={16} strokeWidth={2.4} />
+            Back to Remote Loader
+          </button>
+        ) : null}
         <div className="loader-detail-layout">
           <div className="loader-detail-left-column">
             <article className="loader-detail-hero">
               <div className="loader-detail-visual">
-                <img src={product.image} alt={product.name} />
+                <img
+                  src={brandSlug ? getResellerProductImage(slug) : product.image}
+                  alt={product.name}
+                  onError={brandSlug ? (event) => {
+                    if (event.currentTarget.src !== product.image) event.currentTarget.src = product.image;
+                  } : undefined}
+                />
               </div>
               <div className="loader-detail-hero-body">
                 <div className="loader-detail-copy">
                   <h2>{product.name}</h2>
-                  <p>{product.description}</p>
+                  <p>{applyBrandName(product.description, brandName)}</p>
                 </div>
                 <div className="loader-detail-meta-strip">
                   <div className="loader-detail-meta-item">
@@ -5639,6 +6086,7 @@ function LoaderDetailContent({ slug }) {
                         }`}
                         type="button"
                         disabled={
+                          preview ||
                           launchBusy ||
                           isLaunchBanned ||
                           isLaunchFrozen ||
@@ -5852,26 +6300,30 @@ function LoaderDetailContent({ slug }) {
                 </div>
               </div>
               <div className="loader-actions-body">
-                <Link className="loader-actions-item" href={LOADER_INSTALLATION_GUIDE_HREF}>
-                  <span className="loader-actions-item-icon">
-                    <Play size={18} />
-                  </span>
-                  <span className="loader-actions-item-text">
-                    <strong>How to launch loader</strong>
-                    <small>Watch the setup video guide.</small>
-                  </span>
-                  <ArrowRight size={16} strokeWidth={2.4} />
-                </Link>
-                <Link className="loader-actions-item" href={productGuideHref}>
-                  <span className="loader-actions-item-icon">
-                    <Info size={18} />
-                  </span>
-                  <span className="loader-actions-item-text">
-                    <strong>Initialization guide</strong>
-                    <small>Read the help &amp; init docs.</small>
-                  </span>
-                  <ArrowRight size={16} strokeWidth={2.4} />
-                </Link>
+                {!removeLoaderFaq ? (
+                  <Link className="loader-actions-item" href={LOADER_INSTALLATION_GUIDE_HREF}>
+                    <span className="loader-actions-item-icon">
+                      <Play size={18} />
+                    </span>
+                    <span className="loader-actions-item-text">
+                      <strong>How to launch loader</strong>
+                      <small>Watch the setup video guide.</small>
+                    </span>
+                    <ArrowRight size={16} strokeWidth={2.4} />
+                  </Link>
+                ) : null}
+                {!removeGuides ? (
+                  <Link className="loader-actions-item" href={productGuideHref}>
+                    <span className="loader-actions-item-icon">
+                      <Info size={18} />
+                    </span>
+                    <span className="loader-actions-item-text">
+                      <strong>Initialization guide</strong>
+                      <small>Read the help &amp; init docs.</small>
+                    </span>
+                    <ArrowRight size={16} strokeWidth={2.4} />
+                  </Link>
+                ) : null}
                 <a className="loader-actions-item" href={DISCORD_INVITE_URL} target="_blank" rel="noreferrer">
                   <span className="loader-actions-item-icon">
                     <Headphones size={18} />
@@ -5960,6 +6412,7 @@ function LoaderDetailContent({ slug }) {
                 )}
               </div>
             </div>
+            {brandSlug ? null : (
             <div className="loader-side-card loader-preview-card">
               <div className="loader-preview-header">
                 <div className="loader-preview-header-inner">
@@ -6034,11 +6487,12 @@ function LoaderDetailContent({ slug }) {
                 </div>
               </div>
             </div>
+            )}
           </aside>
         </div>
       </div>
 
-      {lightboxImages.length ? (
+      {brandSlug ? null : lightboxImages.length ? (
         <ProductImageLightbox
           images={lightboxImages}
           index={previewIndex}
@@ -6510,26 +6964,416 @@ export function RulesPage() {
   );
 }
 
-export function LoaderPage() {
+function useLoaderBrand(slug) {
+  const [brand, setBrand] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!slug) {
+      setBrand(null);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/loader-brand?slug=${encodeURIComponent(slug)}`, { cache: "no-store" })
+      .then(async (response) => {
+        const result = await response.json().catch(() => null);
+        return { ok: response.ok, status: response.status, result };
+      })
+      .then(({ ok, status, result }) => {
+        if (cancelled) return;
+        if (status === 403 && result?.blocked) {
+          setBrand({ blocked: true });
+          return;
+        }
+        if (ok && result?.brand) {
+          setBrand({
+            color: result.brand.color || "#a32e3b",
+            brandName: result.brand.brand_name || "",
+            logo: result.brand.logo || "",
+            discordLink: result.brand.discord_link || "",
+            autoLogoSize: result.brand.auto_logo_size !== undefined ? Boolean(result.brand.auto_logo_size) : true,
+            removeLoaderFaq: Boolean(result.brand.remove_loader_faq),
+            removeGuides: Boolean(result.brand.remove_guides),
+            productSlugs: Array.isArray(result.brand.product_slugs) ? result.brand.product_slugs : [],
+            slug: result.brand.slug || "",
+          });
+        } else {
+          setBrand(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setBrand(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (brand && !brand.blocked) {
+      const vars = buildBrandColorVars(brand.color);
+      if (vars) {
+        Object.entries(vars).forEach(([key, value]) => {
+          root.style.setProperty(key, value);
+        });
+      }
+    }
+    return () => {
+      const vars = buildBrandColorVars("#a32e3b");
+      if (vars) {
+        Object.keys(vars).forEach((key) => {
+          root.style.removeProperty(key);
+        });
+      }
+    };
+  }, [brand]);
+
+  useEffect(() => {
+    if (!brand || brand.blocked) return undefined;
+
+    const previousTitle = document.title;
+    document.title = "Remote Loader";
+
+    const logo = String(brand.logo || "").trim();
+    const iconLinks = Array.from(
+      document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]'),
+    );
+    const previousIcons = iconLinks.map((link) => ({
+      el: link,
+      href: link.getAttribute("href"),
+      type: link.getAttribute("type"),
+    }));
+
+    let createdIcon = null;
+    if (logo) {
+      if (iconLinks.length) {
+        iconLinks.forEach((link) => {
+          link.setAttribute("href", logo);
+          if (logo.startsWith("data:image/")) {
+            const mime = logo.slice(5, logo.indexOf(";")) || "image/png";
+            link.setAttribute("type", mime);
+          } else {
+            link.removeAttribute("type");
+          }
+        });
+      } else {
+        createdIcon = document.createElement("link");
+        createdIcon.setAttribute("rel", "icon");
+        createdIcon.setAttribute("href", logo);
+        if (logo.startsWith("data:image/")) {
+          const mime = logo.slice(5, logo.indexOf(";")) || "image/png";
+          createdIcon.setAttribute("type", mime);
+        }
+        document.head.appendChild(createdIcon);
+      }
+    }
+
+    return () => {
+      document.title = previousTitle;
+      previousIcons.forEach(({ el, href, type }) => {
+        if (href == null) el.removeAttribute("href");
+        else el.setAttribute("href", href);
+        if (type == null) el.removeAttribute("type");
+        else el.setAttribute("type", type);
+      });
+      if (createdIcon?.parentNode) createdIcon.parentNode.removeChild(createdIcon);
+    };
+  }, [brand]);
+
+  return { brand, loading };
+}
+
+function BrandedToolbar({ brand, backHref = "", onBack, preview = false, portalRef = null }) {
+  const { user } = useAuthUser();
+  const isClient = useIsClient();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
+  const handleDiscordLogin = async () => {
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}${window.location.pathname}${window.location.search}`
+        : undefined;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "discord",
+      options: redirectTo ? { redirectTo } : undefined,
+    });
+    if (error) console.error("Error logging in with Discord:", error);
+  };
+
+  const getDiscordAvatar = () => {
+    if (!user) return null;
+    return user.user_metadata?.avatar_url || null;
+  };
+
+  const getDiscordUsername = () => {
+    if (!user) return null;
+    return user.user_metadata?.full_name || user.user_metadata?.name || user.email;
+  };
+
   return (
-    <PageChrome active="loader">
-      <SimpleHeader title="Remote Loader" subtitle="Choose product, redeem the license and start dominating lobbies!" linkText="select product" />
-      <LoaderContent />
+    <div className="branded-toolbar">
+      <div className="container">
+        <div className="branded-toolbar-row">
+          {onBack ? (
+            <button
+              type="button"
+              className="branded-toolbar-back"
+              onClick={onBack}
+              title="Back to Remote Loader"
+              aria-label="Back to Remote Loader"
+            >
+              <ArrowLeft size={18} strokeWidth={2.2} />
+            </button>
+          ) : backHref ? (
+            <Link className="branded-toolbar-back" href={backHref} title="Back to Remote Loader" aria-label="Back to Remote Loader">
+              <ArrowLeft size={18} strokeWidth={2.2} />
+            </Link>
+          ) : null}
+          {!isClient || preview ? (
+            <button
+              type="button"
+              className="branded-toolbar-btn"
+              onClick={preview ? undefined : handleDiscordLogin}
+              disabled={preview}
+              title={preview ? "Login is disabled in preview" : "Login with Discord"}
+              aria-disabled={preview || undefined}
+            >
+              <DiscordIcon size={13} />
+              <span>Login</span>
+            </button>
+          ) : user ? (
+            <div className="branded-toolbar-user">
+              {getDiscordAvatar() ? (
+                <img src={getDiscordAvatar()} alt="User Avatar" className="branded-toolbar-avatar" />
+              ) : (
+                <div className="branded-toolbar-avatar branded-toolbar-avatar-placeholder" />
+              )}
+              <span className="branded-toolbar-username">{getDiscordUsername()}</span>
+              <button
+                type="button"
+                className="branded-toolbar-logout"
+                onClick={handleLogout}
+                title="Logout"
+                aria-label="Logout"
+              >
+                <LogOut size={13} />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="branded-toolbar-btn"
+              onClick={handleDiscordLogin}
+              title="Login with Discord"
+            >
+              <DiscordIcon size={13} />
+              <span>Login</span>
+            </button>
+          )}
+          <SiteResponseMonitor preview={preview} portalRef={portalRef} />
+          <a
+            className="branded-toolbar-link"
+            href={brand?.discordLink || DISCORD_INVITE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Contact support on Discord"
+          >
+            <Headphones size={13} />
+            <span>Support</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LoaderSplash({ brand, ready }) {
+  const [hidden, setHidden] = useState(false);
+  const hidingRef = useRef(false);
+
+  useEffect(() => {
+    if (!ready || hidingRef.current) return;
+    hidingRef.current = true;
+    const timer = window.setTimeout(() => setHidden(true), 420);
+    return () => window.clearTimeout(timer);
+  }, [ready]);
+
+  // Never leave a full-screen blocker if ready stalls (mobile/network).
+  useEffect(() => {
+    if (hidden) return undefined;
+    const failsafe = window.setTimeout(() => setHidden(true), 4500);
+    return () => window.clearTimeout(failsafe);
+  }, [hidden]);
+
+  if (hidden) return null;
+
+  return (
+    <div className={`loader-splash${ready ? " loader-splash--leaving" : ""}`} aria-hidden="true">
+      <div className="loader-splash-inner">
+        {brand?.logo ? (
+          <div className={`loader-splash-logo${brand.autoLogoSize === false ? " loader-splash-logo--fixed" : ""}`}>
+            <img src={brand.logo} alt="" />
+          </div>
+        ) : (
+          <div className="loader-splash-spinner" aria-hidden="true" />
+        )}
+        {brand?.brandName ? (
+          <strong className="loader-splash-name">{brand.brandName}</strong>
+        ) : null}
+        <span className="loader-splash-loading">Loading</span>
+      </div>
+    </div>
+  );
+}
+
+export function LoaderPreview({ brand }) {
+  const [selectedSlug, setSelectedSlug] = useState(null);
+  const portalRef = useRef(null);
+  const brandColor = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(String(brand?.color || ""))
+    ? brand.color
+    : "#a32e3b";
+  const brandVars = { ...(buildBrandColorVars(brandColor) || {}), "--site-announce-height": "0px" };
+  const previewBrandSlug = brand?.slug || "preview";
+  const brandName = brand?.brandName || "";
+  const brandLogo = brand?.logo || "";
+  const autoLogo = brand?.autoLogoSize !== false;
+  const productSlugs = Array.isArray(brand?.productSlugs) ? brand.productSlugs : null;
+  const removeLoaderFaq = Boolean(brand?.removeLoaderFaq);
+  const removeGuides = Boolean(brand?.removeGuides);
+
+  return (
+    <div className="loader-preview-root" style={brandVars} ref={portalRef}>
+      <div className="branded-grid-bg branded-grid-bg--preview" aria-hidden="true" />
+      <SimpleHeader
+        title={selectedSlug ? `${getLoaderProduct(selectedSlug)?.name || "Product"} Loader` : "Remote Loader"}
+        subtitle={selectedSlug ? "Dedicated product loader page with remote setup and launch flow." : "Choose product, redeem the license and start dominating lobbies!"}
+        linkText={selectedSlug ? "Launch" : "select product"}
+        brandLogo={brandLogo}
+        brandAutoLogo={autoLogo}
+        brandLogoPlaceholder={!brandLogo}
+      />
+      <BrandedToolbar
+        brand={{ discordLink: brand?.discordLink || "" }}
+        onBack={selectedSlug ? () => setSelectedSlug(null) : undefined}
+        preview
+        portalRef={portalRef}
+      />
+      <div className="loader-preview-view">
+        {selectedSlug ? (
+          <LoaderDetailContent
+            slug={selectedSlug}
+            brandSlug={previewBrandSlug}
+            brandName={brandName}
+            removeLoaderFaq={removeLoaderFaq}
+            removeGuides={removeGuides}
+            onReady={() => {}}
+            preview
+          />
+        ) : (
+          <LoaderContent
+            brandSlug={previewBrandSlug}
+            brandName={brandName}
+            brandProductSlugs={productSlugs}
+            onNavigate={(slug) => setSelectedSlug(slug)}
+            onReady={() => {}}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LoaderBlockedPage() {
+  useEffect(() => {
+    document.title = "Remote Loader";
+  }, []);
+
+  return (
+    <div className="loader-blocked-page">
+      <div className="loader-blocked-card">
+        <Ban size={28} strokeWidth={2.2} />
+        <h1>Loader unavailable</h1>
+        <p>This custom loader page has been blocked.</p>
+      </div>
+    </div>
+  );
+}
+
+export function LoaderPage({ brandSlug }) {
+  const { brand, loading: brandLoading } = useLoaderBrand(brandSlug);
+  const [productsReady, setProductsReady] = useState(false);
+  const onReady = useCallback(() => setProductsReady(true), []);
+  const hasSlug = Boolean(brandSlug);
+  const isBlocked = Boolean(brand?.blocked);
+  const splashReady = !hasSlug || (!brandLoading && (isBlocked || productsReady));
+  const showSplash = hasSlug;
+
+  if (hasSlug && !brandLoading && isBlocked) {
+    return (
+      <>
+        {showSplash ? <LoaderSplash brand={null} ready={splashReady} /> : null}
+        <LoaderBlockedPage />
+      </>
+    );
+  }
+
+  return (
+    <PageChrome active="loader" brand={brand}>
+      {showSplash ? <LoaderSplash brand={brand} ready={splashReady} /> : null}
+      <SimpleHeader title="Remote Loader" subtitle="Choose product, redeem the license and start dominating lobbies!" linkText="select product" brandLogo={brand?.logo || ""} brandAutoLogo={brand?.autoLogoSize !== false} />
+      {hasSlug ? <BrandedToolbar brand={brand} /> : null}
+      <LoaderContent brandSlug={brandSlug} brandName={brand?.brandName || ""} brandProductSlugs={brand?.productSlugs || null} onReady={onReady} />
     </PageChrome>
   );
 }
 
-export function LoaderDetailPage({ slug }) {
-  const product = getLoaderProduct(slug);
+export function LoaderDetailPage({ slug: productSlug, brandSlug }) {
+  const product = getLoaderProduct(productSlug);
+  const { brand, loading: brandLoading } = useLoaderBrand(brandSlug);
+  const [productsReady, setProductsReady] = useState(false);
+  const onReady = useCallback(() => setProductsReady(true), []);
+  const hasSlug = Boolean(brandSlug);
+  const isBlocked = Boolean(brand?.blocked);
+  const splashReady = !hasSlug || (!brandLoading && (isBlocked || productsReady));
+  const showSplash = hasSlug;
+
+  if (hasSlug && !brandLoading && isBlocked) {
+    return (
+      <>
+        {showSplash ? <LoaderSplash brand={null} ready={splashReady} /> : null}
+        <LoaderBlockedPage />
+      </>
+    );
+  }
 
   return (
-    <PageChrome active="loader">
+    <PageChrome active="loader" brand={brand}>
+      {showSplash ? <LoaderSplash brand={brand} ready={splashReady} /> : null}
       <SimpleHeader
         title={`${product.name} Loader`}
         subtitle="Dedicated product loader page with remote setup and launch flow."
         linkText="Launch"
+        brandLogo={brand?.logo || ""}
+        brandAutoLogo={brand?.autoLogoSize !== false}
       />
-      <LoaderDetailContent slug={slug} />
+      {hasSlug ? <BrandedToolbar brand={brand} backHref={`/loader?${brandSlug}`} /> : null}
+      <LoaderDetailContent
+        slug={productSlug}
+        brandSlug={brandSlug}
+        brandName={brand?.brandName || ""}
+        brandProductSlugs={brand?.productSlugs || null}
+        removeLoaderFaq={Boolean(brand?.removeLoaderFaq)}
+        removeGuides={Boolean(brand?.removeGuides)}
+        onReady={onReady}
+      />
     </PageChrome>
   );
 }

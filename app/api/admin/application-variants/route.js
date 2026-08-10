@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../../lib/admin-auth";
+import { assertPermission } from "../../../../lib/panel-permissions";
 import {
   createVariant,
   deleteVariant,
@@ -14,6 +15,9 @@ export async function GET(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "apps.view");
+    if (denied) return denied;
 
     const applicationId = String(request.nextUrl.searchParams.get("applicationId") || "").trim();
     if (!applicationId) {
@@ -34,6 +38,9 @@ export async function POST(request) {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
 
+    const denied = assertPermission(auth.permissions, "apps.edit");
+    if (denied) return denied;
+
     const body = await request.json().catch(() => ({}));
     const admin = getSupabaseAdmin();
     const variant = await createVariant(body, admin);
@@ -49,6 +56,9 @@ export async function PATCH(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "apps.edit");
+    if (denied) return denied;
 
     const body = await request.json().catch(() => ({}));
     const id = String(body?.id || "").trim();
@@ -70,6 +80,9 @@ export async function DELETE(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "apps.edit");
+    if (denied) return denied;
 
     const body = await request.json().catch(() => ({}));
     const id = String(body?.id || "").trim();

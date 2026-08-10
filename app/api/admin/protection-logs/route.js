@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../../lib/admin-auth";
+import { assertPermission } from "../../../../lib/panel-permissions";
 import {
   LOCAL_PROTECTION_SOURCE_ID,
   LOCAL_PROTECTION_SOURCE_LABEL,
@@ -32,6 +33,9 @@ export async function GET(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "protections.view");
+    if (denied) return denied;
 
     const admin = getSupabaseAdmin();
     const { appId, sourceId } = readFilterParams(request);
@@ -104,6 +108,9 @@ export async function POST(request) {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
 
+    const denied = assertPermission(auth.permissions, "protections.view");
+    if (denied) return denied;
+
     const body = await request.json().catch(() => ({}));
     const admin = getSupabaseAdmin();
 
@@ -145,6 +152,9 @@ export async function PUT(request) {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
 
+    const denied = assertPermission(auth.permissions, "protections.edit");
+    if (denied) return denied;
+
     const body = await request.json().catch(() => ({}));
     const admin = getSupabaseAdmin();
 
@@ -173,6 +183,9 @@ export async function DELETE(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "protections.edit");
+    if (denied) return denied;
 
     const admin = getSupabaseAdmin();
     const { appId, sourceId, id } = readFilterParams(request);

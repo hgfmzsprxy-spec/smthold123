@@ -138,8 +138,8 @@ select public._seed_application_variants(
   '%call%of%duty%',
   '[
     {"slug":"1-day","label":"1 Day License","price":4.99,"duration_value":1,"duration_unit":"days","sort_order":0},
-    {"slug":"7-days","label":"7 Days License","price":19.99,"duration_value":7,"duration_unit":"days","sort_order":1},
-    {"slug":"30-days","label":"30 Days License","price":49.99,"duration_value":30,"duration_unit":"days","sort_order":2},
+    {"slug":"7-days","label":"7 Days License","price":14.99,"duration_value":7,"duration_unit":"days","sort_order":1},
+    {"slug":"30-days","label":"30 Days License","price":39.99,"duration_value":30,"duration_unit":"days","sort_order":2},
     {"slug":"lifetime","label":"Lifetime License","price":99.99,"duration_value":null,"duration_unit":"unlimited","sort_order":3}
   ]'::jsonb
 );
@@ -150,8 +150,8 @@ select public._seed_application_variants(
   '%apex%legends%',
   '[
     {"slug":"1-day","label":"1 Day License","price":4.99,"duration_value":1,"duration_unit":"days","sort_order":0},
-    {"slug":"7-days","label":"7 Days License","price":19.99,"duration_value":7,"duration_unit":"days","sort_order":1},
-    {"slug":"30-days","label":"30 Days License","price":49.99,"duration_value":30,"duration_unit":"days","sort_order":2},
+    {"slug":"7-days","label":"7 Days License","price":14.99,"duration_value":7,"duration_unit":"days","sort_order":1},
+    {"slug":"30-days","label":"30 Days License","price":39.99,"duration_value":30,"duration_unit":"days","sort_order":2},
     {"slug":"lifetime","label":"Lifetime License","price":99.99,"duration_value":null,"duration_unit":"unlimited","sort_order":3}
   ]'::jsonb
 );

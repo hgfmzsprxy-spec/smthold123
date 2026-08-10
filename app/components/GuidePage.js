@@ -12,6 +12,7 @@ import {
   Globe,
   HardDrive,
   ListChecks,
+  Menu,
   MessageCircle,
   Monitor,
   Moon,
@@ -24,6 +25,7 @@ import {
   Crosshair,
   Settings2,
   Syringe,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DISCORD_INVITE_URL } from "../../lib/discord";
@@ -503,6 +505,7 @@ export default function GuidePage({ initialView }) {
   const startView = normalizeGuideView(initialView);
   const [theme, setTheme] = useState("dark");
   const [view, setView] = useState(startView);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [expandedNav, setExpandedNav] = useState(() => getExpandedNavForView(startView));
   const [scrollProgress, setScrollProgress] = useState(0);
   const [antivirusStep, setAntivirusStep] = useState(1);
@@ -521,6 +524,27 @@ export default function GuidePage({ initialView }) {
   useEffect(() => {
     writeGuideViewToUrl(view);
   }, [view]);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") setMobileNavOpen(false);
+    };
+    const onResize = () => {
+      if (window.innerWidth > 900) setMobileNavOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [mobileNavOpen]);
+
+  function selectGuideView(nextView) {
+    setView(nextView);
+    setMobileNavOpen(false);
+  }
 
   useEffect(() => {
     if (view === "requirements-antivirus") {
@@ -644,8 +668,18 @@ export default function GuidePage({ initialView }) {
 
   return (
     <main className={`${styles.page}${theme === "light" ? ` ${styles.themeLight}` : ""}`}>
-      <div className={styles.adminLayout}>
+      <div className={`${styles.adminLayout}${mobileNavOpen ? ` ${styles.adminLayoutMobileNavOpen}` : ""}`}>
         <header className={styles.adminTopbar}>
+          <button
+            type="button"
+            className={styles.adminMobileNavBtn}
+            aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"}
+            aria-expanded={mobileNavOpen}
+            aria-controls="guide-sidebar-nav"
+            onClick={() => setMobileNavOpen((open) => !open)}
+          >
+            {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
           <a href="/" className={styles.adminTopbarBrand}>
             <img src="/images/unbanhwid-logo.png" alt="unbanhwid.com" />
             <span>unbanhwid.com</span>
@@ -659,13 +693,13 @@ export default function GuidePage({ initialView }) {
           </div>
           <nav className={styles.adminTopbarNav}>
             <a href="https://unbanhwid.com" target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
-              <Globe size={13} /> Website
+              <Globe size={13} /> <span className={styles.adminTopbarLinkLabel}>Website</span>
             </a>
             <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
-              <DiscordIcon size={14} /> Discord
+              <DiscordIcon size={14} /> <span className={styles.adminTopbarLinkLabel}>Discord</span>
             </a>
             <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
-              <MessageCircle size={13} /> Support
+              <MessageCircle size={13} /> <span className={styles.adminTopbarLinkLabel}>Support</span>
             </a>
             <button
               type="button"
@@ -679,8 +713,19 @@ export default function GuidePage({ initialView }) {
           </nav>
         </header>
 
+        <button
+          type="button"
+          className={`${styles.adminNavBackdrop}${mobileNavOpen ? ` ${styles.adminNavBackdropVisible}` : ""}`}
+          aria-label="Close navigation"
+          tabIndex={mobileNavOpen ? 0 : -1}
+          onClick={() => setMobileNavOpen(false)}
+        />
+
         <div className={styles.adminBody}>
-          <aside className={styles.adminSidebar}>
+          <aside
+            id="guide-sidebar-nav"
+            className={`${styles.adminSidebar}${mobileNavOpen ? ` ${styles.adminSidebarOpen}` : ""}`}
+          >
             <div className={styles.adminSidebarScroll}>
               {GUIDE_NAV.map((section) => (
                 <div className={styles.adminNavSection} key={section.label}>
@@ -710,7 +755,7 @@ export default function GuidePage({ initialView }) {
                                 }
                                 return;
                               }
-                              setView(item.id);
+                              selectGuideView(item.id);
                               setExpandedNav((current) => {
                                 if (!current.size) return current;
                                 return new Set();
@@ -758,7 +803,7 @@ export default function GuidePage({ initialView }) {
                                         }`}
                                         tabIndex={isExpanded ? 0 : -1}
                                         onClick={() => {
-                                          setView(child.id);
+                                          selectGuideView(child.id);
                                           setExpandedNav(new Set([item.id]));
                                         }}
                                       >

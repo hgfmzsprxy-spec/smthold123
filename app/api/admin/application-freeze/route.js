@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../../lib/admin-auth";
+import { assertPermission } from "../../../../lib/panel-permissions";
 import {
   buildFreezeLicensePatch,
   buildUnfreezeLicensePatch,
@@ -69,6 +70,9 @@ export async function POST(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "apps.freeze");
+    if (denied) return denied;
 
     const body = await request.json().catch(() => ({}));
     const applicationId = String(body?.applicationId || body?.application_id || body?.id || "").trim();
