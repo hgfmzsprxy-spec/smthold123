@@ -105,6 +105,7 @@ import {
   syncSubscriptionMetrics,
 } from "../../lib/loader-subscription";
 import { supabase } from "../../lib/supabase";
+import { rememberOAuthLaunch } from "../../lib/supabase-oauth";
 import { DISCORD_INVITE_URL } from "../../lib/discord";
 import { LOGIN_GUEST_FAQ_ITEMS, LOGIN_LOGGED_IN_FAQ_ITEMS } from "../../lib/login-faq";
 import {
@@ -6789,10 +6790,12 @@ function LoginContent() {
   const isClient = useIsClient();
 
   async function handleDiscordLogin() {
+    const loginRedirect = `${window.location.origin}/login`;
+    rememberOAuthLaunch("discord", loginRedirect);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "discord",
       options: {
-        redirectTo: `${window.location.origin}/login`,
+        redirectTo: loginRedirect,
       },
     });
     if (error) console.error("Error logging in with Discord:", error);
@@ -7101,6 +7104,7 @@ function BrandedToolbar({ brand, backHref = "", onBack, preview = false, portalR
       typeof window !== "undefined"
         ? `${window.location.origin}${window.location.pathname}${window.location.search}`
         : undefined;
+    if (redirectTo) rememberOAuthLaunch("discord", redirectTo);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "discord",
       options: redirectTo ? { redirectTo } : undefined,

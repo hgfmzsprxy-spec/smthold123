@@ -76,7 +76,7 @@ import {
   getProductNameBySlug,
   getSlugByAppId,
 } from "../../lib/product-features";
-import { resolveOAuthReturnSession } from "../../lib/supabase-oauth";
+import { resolveOAuthReturnSession, rememberOAuthLaunch } from "../../lib/supabase-oauth";
 import { supabase } from "../../lib/supabase";
 import { useAuthUser, useIsClient } from "../../lib/use-auth-user";
 import { getProductGuideHref } from "../../lib/guide-links";
@@ -7992,10 +7992,12 @@ function ResellPanelContent() {
     }
 
     setLoginBusy(true);
+    const resellRedirect = getResellPanelRedirectUrl();
+    rememberOAuthLaunch("discord", resellRedirect);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "discord",
       options: {
-        redirectTo: getResellPanelRedirectUrl(),
+        redirectTo: resellRedirect,
         skipBrowserRedirect: false,
       },
     });

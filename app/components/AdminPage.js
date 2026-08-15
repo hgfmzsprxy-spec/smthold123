@@ -91,7 +91,7 @@ import {
   getProductNameBySlug,
   getSlugByAppId,
 } from "../../lib/product-features";
-import { resolveOAuthReturnSession } from "../../lib/supabase-oauth";
+import { resolveOAuthReturnSession, rememberOAuthLaunch } from "../../lib/supabase-oauth";
 import { supabase } from "../../lib/supabase";
 import {
   buildBanLicensePatch,
@@ -5549,10 +5549,16 @@ export default function AdminPage() {
 
     setAuthBusy("Connecting…");
     setAuthMessage({ text: "", type: "" });
+    // Remember what EXACT redirect_uri we sent to Discord. If the internal
+    // Supabase exchange fails (redirect_uri mismatch), the fallback in
+    // resolveOAuthReturnSession() will re-use this value against our private
+    // /api/auth/discord-exchange endpoint that always mirrors the original.
+    const thisRedirect = getAdminPanelRedirectUrl();
+    rememberOAuthLaunch("discord", thisRedirect);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "discord",
       options: {
-        redirectTo: getAdminPanelRedirectUrl(),
+        redirectTo: thisRedirect,
         skipBrowserRedirect: false,
       },
     });
