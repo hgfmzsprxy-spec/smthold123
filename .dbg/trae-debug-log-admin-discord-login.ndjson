@@ -1,0 +1,3 @@
+﻿
+{"sessionId":"admin-discord-login","runId":"pre-fix","hypothesisId":"A","location":"app/components/AdminPage.js:init","msg":"[DEBUG] Admin page callback params parsed","data":{"hasCode":false,"codePrefix":"","oauthError":"","path":"/admin","search":""},"ts":1786835490978}
+{"sessionId":"admin-discord-login","runId":"pre-fix","hypothesisId":"B","location":"lib/supabase-oauth.js:rememberOAuthLaunch","msg":"[DEBUG] Stored OAuth launch context","data":{"provider":"discord","redirectTo":"http://localhost:3000/admin"},"ts":1786835494806}

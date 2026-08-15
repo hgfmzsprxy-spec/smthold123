@@ -6,7 +6,6 @@ import { createPortal } from "react-dom";
 import { lockBodyScroll } from "../../lib/body-scroll-lock";
 import { runAccessChecks } from "../../lib/site-access";
 import { supabase } from "../../lib/supabase";
-import { rememberOAuthLaunch } from "../../lib/supabase-oauth";
 import { CloudflareTurnstileWidget } from "./CloudflareTurnstileWidget";
 import {
   REDEEM_STEP_LABELS,
@@ -426,12 +425,10 @@ export function LoaderRedeemModal({
     clearDiscordAuthIntent();
     savePendingRedeem({ licenseKey: currentLicense.license_key }, productSlug, appId);
 
-    const thisRedeemRedirect = getRedeemRedirectUrl(productSlug);
-    rememberOAuthLaunch("discord", thisRedeemRedirect);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "discord",
       options: {
-        redirectTo: thisRedeemRedirect,
+        redirectTo: getRedeemRedirectUrl(productSlug),
         scopes: "identify",
       },
     });
@@ -445,12 +442,10 @@ export function LoaderRedeemModal({
   async function handleDiscordLoginLink() {
     clearPendingRedeem(productSlug, appId);
     saveDiscordAuthIntent({ source: "navbar", at: Date.now() });
-    const thisLinkRedirect = getRedeemRedirectUrl(productSlug);
-    rememberOAuthLaunch("discord", thisLinkRedirect);
     await supabase.auth.signInWithOAuth({
       provider: "discord",
       options: {
-        redirectTo: thisLinkRedirect,
+        redirectTo: getRedeemRedirectUrl(productSlug),
         scopes: "identify",
       },
     });
