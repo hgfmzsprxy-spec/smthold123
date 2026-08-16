@@ -86,7 +86,10 @@ export function LoaderRedeemModal({
   linkedLicenseKey = "",
   onCompleted,
   onOpenDownload,
+  variant = "default",
+  onOpenLoader,
 }) {
+  const isEmulatorVariant = variant === "emulator";
   const [step, setStep] = useState(1);
   const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [licenseInput, setLicenseInput] = useState("");
@@ -336,7 +339,9 @@ export function LoaderRedeemModal({
     if (!open) return undefined;
 
     const unlockScroll = lockBodyScroll();
-    const timer = window.setTimeout(() => licenseInputRef.current?.focus(), 30);
+    const timer = isEmulatorVariant
+      ? null
+      : window.setTimeout(() => licenseInputRef.current?.focus(), 30);
 
     const onKeyDown = (event) => {
       if (event.key === "Escape" && !playingOutroRef.current) closeRequestRef.current();
@@ -344,11 +349,11 @@ export function LoaderRedeemModal({
 
     window.addEventListener("keydown", onKeyDown);
     return () => {
-      window.clearTimeout(timer);
+      if (timer) window.clearTimeout(timer);
       window.removeEventListener("keydown", onKeyDown);
       unlockScroll();
     };
-  }, [open]);
+  }, [isEmulatorVariant, open]);
 
   useEffect(
     () => () => {
@@ -476,6 +481,11 @@ export function LoaderRedeemModal({
     onOpenDownloadRef.current?.(access);
   }
 
+  function handleOpenLoaderClick() {
+    onOpenLoader?.();
+    onOpenChangeRef.current(false);
+  }
+
   if (!open || typeof document === "undefined") return null;
 
   const progressScale = REDEEM_STEP_SCALES[step - 1] || REDEEM_STEP_SCALES[0];
@@ -493,8 +503,8 @@ export function LoaderRedeemModal({
       <div className="redeem-panel">
         <div className="redeem-panel-header">
           <div>
-            <div className="redeem-panel-kicker">Loader Access</div>
-            <h3 id="redeem-modal-title">Redeem License</h3>
+            <div className="redeem-panel-kicker">{isEmulatorVariant ? "Loader Launch" : "Loader Access"}</div>
+            <h3 id="redeem-modal-title">{isEmulatorVariant ? "Mouse Emulator" : "Redeem License"}</h3>
           </div>
           <button className="redeem-close" type="button" aria-label="Close redeem panel" onClick={handleCloseRequest}>
             <X size={18} />
@@ -502,17 +512,46 @@ export function LoaderRedeemModal({
         </div>
 
         <div className="redeem-panel-body">
-          <div className="redeem-progress" aria-label="Redeem progress">
-            <div className="redeem-progress-meta">
-              <span>Step {step} of 3</span>
-              <span>{REDEEM_STEP_LABELS[step - 1] || REDEEM_STEP_LABELS[0]}</span>
+          {!isEmulatorVariant ? (
+            <div className="redeem-progress" aria-label="Redeem progress">
+              <div className="redeem-progress-meta">
+                <span>Step {step} of 3</span>
+                <span>{REDEEM_STEP_LABELS[step - 1] || REDEEM_STEP_LABELS[0]}</span>
+              </div>
+              <div className="redeem-progress-track" aria-hidden="true">
+                <div className="redeem-progress-fill" style={{ "--redeem-progress-scale": progressScale }} />
+              </div>
             </div>
-            <div className="redeem-progress-track" aria-hidden="true">
-              <div className="redeem-progress-fill" style={{ "--redeem-progress-scale": progressScale }} />
-            </div>
-          </div>
+          ) : null}
 
-          {step === 1 && !showInfoPanel ? (
+          {isEmulatorVariant ? (
+            <div className="redeem-section">
+              <div className="redeem-field">
+                <label htmlFor="redeem-loader-status">Launch Status</label>
+                <div className="redeem-input-row">
+                  <input
+                    id="redeem-loader-status"
+                    className="redeem-input"
+                    type="text"
+                    value="Waiting for launch..."
+                    readOnly
+                    aria-readonly="true"
+                  />
+                </div>
+              </div>
+              <div className="redeem-actions">
+                <button className="redeem-button redeem-button-primary" type="button" onClick={handleOpenLoaderClick}>
+                  Open Loader
+                </button>
+              </div>
+              <p className="redeem-muted">
+                Open the emulator loader locally, wait until it shows <strong>Waiting for launch...</strong>, then come
+                back here and press <strong>Launch</strong> on the page to continue automatically.
+              </p>
+            </div>
+          ) : null}
+
+          {!isEmulatorVariant && step === 1 && !showInfoPanel ? (
             <div className="redeem-section">
               <div className="redeem-field">
                 <label htmlFor="redeem-license-input">License Key</label>
@@ -566,7 +605,7 @@ export function LoaderRedeemModal({
             </div>
           ) : null}
 
-          {step === 1 && showInfoPanel ? (
+          {!isEmulatorVariant && step === 1 && showInfoPanel ? (
             <div className="redeem-section">
               <div className="redeem-info-card">
                 <button className="redeem-info-back" type="button" onClick={() => setShowInfoPanel(false)}>
@@ -583,7 +622,7 @@ export function LoaderRedeemModal({
             </div>
           ) : null}
 
-          {step === 2 ? (
+          {!isEmulatorVariant && step === 2 ? (
             <div className="redeem-section">
               <p className="redeem-muted">
                 License is valid. Connect your Discord account to assign it to this key before downloading the loader.
@@ -618,7 +657,7 @@ export function LoaderRedeemModal({
             </div>
           ) : null}
 
-          {step === 3 ? (
+          {!isEmulatorVariant && step === 3 ? (
             <div className="redeem-section">
               <p className="redeem-muted">
                 Discord account connected successfully. You can continue to the loader download now, or skip this step

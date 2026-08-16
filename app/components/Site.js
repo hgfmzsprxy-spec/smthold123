@@ -1476,6 +1476,11 @@ const RECENT_PURCHASE_MAX_INTERVAL_MS = 300 * 60 * 1000;
 
 const recentPurchaseProducts = [
   { slug: "fortnite-private", name: "Fortnite Private", image: "/images/fortnite.png" },
+  {
+    slug: "emulator",
+    name: "Mouse Emulator",
+    image: "/images/emulator.png",
+  },
   { slug: "arc-raiders", name: "Arc Raiders", image: "/images/arc_raiders.png" },
   { slug: "call-of-duty", name: "Call of Duty", image: "/images/cod.png" },
   { slug: "apex-legends", name: "Apex Legends", image: "/images/apex-legends.png" },
@@ -2103,6 +2108,25 @@ const loaderProducts = [
       "Press Launch Loader and confirm the in-game ready status before playing.",
     ],
     modules: ["Aimbot", "Visuals", "Radar", "Streamproof", "Config Sync", "FOV Control", "Quick Launch", "Hotkeys"],
+  },
+  {
+    slug: "emulator",
+    name: "Mouse Emulator",
+    image: "/images/emulator.png",
+    featurePreviewCount: 3,
+    version: "v1.0.0",
+    updated: "15.08.2026",
+    compatibility: "Windows 10/11",
+    description: "Private emulator loader with website redeem flow and direct handoff into the local menu.",
+    note: "Run the local emulator as administrator and keep it open before pressing Launch on this page.",
+    subscription: "Redeem your emulator license here, then press Launch to continue the local setup directly inside the emulator.",
+    steps: [
+      "Redeem your active emulator license on this page.",
+      "Run the local emulator as administrator and wait until its menu says Waiting for launch.",
+      "Press Launch on the website to continue the emulator automatically into the find mouse step.",
+      "Confirm your mouse, initialize the driver, then open the Home menu.",
+    ],
+    modules: ["Mouse Sync", "Driver Status", "Launch Bridge", "Guided Flow", "Auth Sync", "Home Menu", "Engine Control", "Overlay"],
   },
   {
     slug: "arc-raiders",
@@ -5128,11 +5152,15 @@ function LoaderCard({ item, displayMeta, subscriptionBadge = null, brandSlug = "
 
 function LoaderContent({ brandSlug = "", brandName = "", brandProductSlugs = null, onNavigate, onReady }) {
   const { user, ready: authReady } = useAuthUser();
-  const [displayMetaBySlug, setDisplayMetaBySlug] = useState(() => getStaticLoaderDisplayMetaMap(loaderProducts));
+  const visibleLoaderProducts = useMemo(
+    () => loaderProducts.filter((item) => item.slug !== "emulator"),
+    [],
+  );
+  const [displayMetaBySlug, setDisplayMetaBySlug] = useState(() => getStaticLoaderDisplayMetaMap(visibleLoaderProducts));
   const displayMetaRef = useRef(displayMetaBySlug);
   const [metaReady, setMetaReady] = useState(false);
   const [productBadges, setProductBadges] = useState(() =>
-    Object.fromEntries(loaderProducts.map((item) => [item.slug, "inactive"])),
+    Object.fromEntries(visibleLoaderProducts.map((item) => [item.slug, "inactive"])),
   );
 
   useEffect(() => {
@@ -5141,12 +5169,12 @@ function LoaderContent({ brandSlug = "", brandName = "", brandProductSlugs = nul
 
   const refreshProductBadges = useCallback(async () => {
     if (!user) {
-      setProductBadges(Object.fromEntries(loaderProducts.map((item) => [item.slug, "inactive"])));
+      setProductBadges(Object.fromEntries(visibleLoaderProducts.map((item) => [item.slug, "inactive"])));
       return;
     }
 
     const nextBadges = await Promise.all(
-      loaderProducts.map(async (item) => {
+      visibleLoaderProducts.map(async (item) => {
         const appId = getLoaderAppId(item.slug);
         if (!appId) return [item.slug, "inactive"];
 
@@ -5181,7 +5209,7 @@ function LoaderContent({ brandSlug = "", brandName = "", brandProductSlugs = nul
     );
 
     setProductBadges(Object.fromEntries(nextBadges));
-  }, [user]);
+  }, [user, visibleLoaderProducts]);
 
   useEffect(() => {
     if (!authReady) return;
@@ -5217,14 +5245,14 @@ function LoaderContent({ brandSlug = "", brandName = "", brandProductSlugs = nul
     let cancelled = false;
 
     async function loadMeta() {
-      const nextMeta = await refreshLoaderDisplayMetaMap(loaderProducts);
+      const nextMeta = await refreshLoaderDisplayMetaMap(visibleLoaderProducts);
       if (!cancelled) {
         setDisplayMetaBySlug(nextMeta);
         setMetaReady(true);
       }
     }
 
-    setDisplayMetaBySlug(getInitialLoaderDisplayMetaMap(loaderProducts));
+    setDisplayMetaBySlug(getInitialLoaderDisplayMetaMap(visibleLoaderProducts));
     void loadMeta();
 
     const timerId = window.setInterval(() => {
@@ -5235,7 +5263,7 @@ function LoaderContent({ brandSlug = "", brandName = "", brandProductSlugs = nul
       cancelled = true;
       window.clearInterval(timerId);
     };
-  }, []);
+  }, [visibleLoaderProducts]);
 
   useEffect(() => {
     function scrollToHashTarget() {
@@ -5273,7 +5301,7 @@ function LoaderContent({ brandSlug = "", brandName = "", brandProductSlugs = nul
           </div>
         )}
         <div className="loader-grid">
-          {loaderProducts.map((item) => {
+          {visibleLoaderProducts.map((item) => {
             const locked = brandSlug && Array.isArray(brandProductSlugs)
               ? !brandProductSlugs.includes(item.slug)
               : false;
@@ -5422,6 +5450,7 @@ function LoaderDetailContent({
   const downloadUrlRef = useRef("");
   const subscriptionPollRef = useRef(null);
   const bannedMetricsSnapshotRef = useRef(null);
+  const isEmulatorLoader = slug === "emulator";
 
   const brandLocked =
     brandSlug && Array.isArray(brandProductSlugs) ? !brandProductSlugs.includes(slug) : false;
@@ -5862,17 +5891,8 @@ function LoaderDetailContent({
 
     setLaunchBusy(true);
     setLaunchAnim("launching");
-    const startedAt = Date.now();
-    const resultPromise = triggerLocalLoaderLaunch(redeemState.licenseKey);
+    const resultPromise = triggerLocalLoaderLaunch(redeemState.licenseKey, { emulator: isEmulatorLoader });
 
-    const remainingTakeoffMs = Math.max(0, 850 - (Date.now() - startedAt));
-    if (remainingTakeoffMs) {
-      await new Promise((resolve) => {
-        window.setTimeout(resolve, remainingTakeoffMs);
-      });
-    }
-
-    setLaunchAnim("busy");
     const result = await resultPromise;
     setLaunchBusy(false);
     setLaunchToast(result);
@@ -5887,7 +5907,15 @@ function LoaderDetailContent({
     } else {
       setLaunchAnim("idle");
     }
-  }, [hasRedeemedKey, isLaunchBanned, isLaunchFrozen, launchBusy, redeemState?.licenseKey, refreshSubscription]);
+  }, [
+    hasRedeemedKey,
+    isEmulatorLoader,
+    isLaunchBanned,
+    isLaunchFrozen,
+    launchBusy,
+    redeemState?.licenseKey,
+    refreshSubscription,
+  ]);
 
   // Make feature groups similar to product page
   const loaderFeatureSections =
