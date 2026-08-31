@@ -717,7 +717,7 @@ function Brand({ compact = false, brand }) {
           {brand.logo ? (
             <img src={brand.logo} alt={brand.brandName || "Brand"} />
           ) : (
-            <img src="/images/phantom-cheat-logo.png" alt={brand.brandName || "Brand"} />
+            <img src="/images/phantom-cheat-logo.svg" alt={brand.brandName || "Brand"} />
           )}
         </span>
         <span className="brand-name">{brand.brandName || "phantom-cheat.com"}</span>
@@ -727,7 +727,7 @@ function Brand({ compact = false, brand }) {
   return (
     <Link className={`brand-link ${compact ? "brand-link--compact" : ""}`} href="/">
       <span className="brand-logo">
-        <img src="/images/phantom-cheat-logo.png" alt="phantom-cheat.com" />
+        <img src="/images/phantom-cheat-logo.svg" alt="phantom-cheat.com" />
       </span>
       <span className="brand-name">phantom-cheat.com</span>
     </Link>
@@ -1082,7 +1082,7 @@ function Footer() {
             <Link href="/pomoc#polityka-prywatnosci">Refunds & Privacy Policy</Link>
             <a className="powered-by" href="https://phantom-cheat.com">
               <span className="powered-by-icon">
-                <img src="/images/phantom-cheat-logo.png" alt="" />
+                <img src="/images/phantom-cheat-logo.svg" alt="" />
               </span>
               <span>
                 <small>Powered by</small>
@@ -4566,7 +4566,7 @@ function VoucherForm() {
     >
       <div className="voucher-row">
         <div className="mc-head">
-          <img src="/images/phantom-cheat-logo.png" alt="" />
+          <img src="/images/phantom-cheat-logo.svg" alt="" />
         </div>
         <FloatingInput label="EMAIL" value={email} onChange={setEmail} type="email" />
       </div>
@@ -6417,7 +6417,7 @@ function NickPanel() {
   return (
     <div className="account-panel">
       <div className="mc-head dark">
-        <img src="/images/phantom-cheat-logo.png" alt="" />
+        <img src="/images/phantom-cheat-logo.svg" alt="" />
       </div>
       <div className="account-form">
         <FloatingInput label="EMAIL" value={email} onChange={setEmail} type="email" />

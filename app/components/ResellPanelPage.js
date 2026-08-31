@@ -1613,7 +1613,7 @@ function PanelLoginGate({
     <main className={`${styles.page}${theme === "light" ? ` ${styles.themeLight}` : ""}`}>
       <div className={styles.loginGate}>
         <header className={styles.loginGateHero}>
-          <img className={styles.loginGateLogo} src="/images/phantom-cheat-logo.png" alt="phantom-cheat.com" />
+          <img className={styles.loginGateLogo} src="/images/phantom-cheat-logo.svg" alt="phantom-cheat.com" />
           <h1 className={styles.loginGateBrand}>{brand}</h1>
           <p className={styles.loginGateDesc}>{description}</p>
         </header>
@@ -4363,7 +4363,7 @@ function ResellDashboard({ reseller, onLogout }) {
           {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
         </button>
         <a href="/" className={styles.adminTopbarBrand}>
-          <img src="/images/phantom-cheat-logo.png" alt="phantom-cheat.com" />
+          <img src="/images/phantom-cheat-logo.svg" alt="phantom-cheat.com" />
           <span>phantom-cheat.com</span>
         </a>
         <div
@@ -4925,7 +4925,7 @@ function ResellDashboard({ reseller, onLogout }) {
               {view === "welcome" ? (
                 <section className={styles.welcomeHub}>
                   <div className={styles.welcomeHero}>
-                    <img className={styles.welcomeLogo} src="/images/phantom-cheat-logo.png" alt="phantom-cheat.com" />
+                    <img className={styles.welcomeLogo} src="/images/phantom-cheat-logo.svg" alt="phantom-cheat.com" />
                     <h1 className={styles.welcomeTitle}>Reseller Panel</h1>
                     <p className={styles.welcomeSubtitle}>
                       Manage your assigned applications and generate licenses for your customers.
