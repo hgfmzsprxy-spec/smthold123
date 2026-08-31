@@ -65,7 +65,7 @@ export async function GET(request) {
     return Response.json({
       ok: true,
       brand: {
-        color: brand.color || "#a32e3b",
+        color: brand.color || "#9783d1",
         brand_name: brand.brand_name || "",
         logo: brand.logo || "",
         discord_link: brand.discord_link || "",

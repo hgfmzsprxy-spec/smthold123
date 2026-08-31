@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Loader Details | unbanhwid.com",
+  title: "Loader Details | phantom-cheats.com",
 };
 
 export default function LoaderDetailLayout({ children }) {

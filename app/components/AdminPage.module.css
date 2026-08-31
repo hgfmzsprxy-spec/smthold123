@@ -9,7 +9,7 @@
   background: #121212;
   padding: 24px 20px 40px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(163, 46, 59, 0.55) rgba(255, 255, 255, 0.04);
+  scrollbar-color: rgba(151, 131, 209, 0.55) rgba(255, 255, 255, 0.04);
 }
 
 .page *,
@@ -21,7 +21,7 @@
 .page *,
 .page {
   scrollbar-width: thin;
-  scrollbar-color: rgba(163, 46, 59, 0.55) rgba(255, 255, 255, 0.04);
+  scrollbar-color: rgba(151, 131, 209, 0.55) rgba(255, 255, 255, 0.04);
 }
 
 .page *::-webkit-scrollbar,
@@ -38,7 +38,7 @@
 
 .page *::-webkit-scrollbar-thumb,
 .page::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(163, 46, 59, 0.72), rgba(123, 32, 42, 0.78));
+  background: linear-gradient(180deg, rgba(151, 131, 209, 0.72), rgba(117, 104, 168, 0.78));
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
@@ -46,7 +46,7 @@
 
 .page *::-webkit-scrollbar-thumb:hover,
 .page::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(201, 75, 88, 0.9), rgba(163, 46, 59, 0.95));
+  background: linear-gradient(180deg, rgba(165, 184, 232, 0.9), rgba(151, 131, 209, 0.95));
   background-clip: padding-box;
   border: 2px solid transparent;
 }
@@ -118,11 +118,11 @@
     180deg,
     transparent 0%,
     rgba(255, 255, 255, 0.04) 14%,
-    rgba(163, 46, 59, 0.42) 50%,
+    rgba(151, 131, 209, 0.42) 50%,
     rgba(255, 255, 255, 0.04) 86%,
     transparent 100%
   );
-  box-shadow: 0 0 16px rgba(163, 46, 59, 0.16);
+  box-shadow: 0 0 16px rgba(151, 131, 209, 0.16);
 }
 
 .loginGateFaqCard,
@@ -170,11 +170,11 @@
 }
 
 .loginGateCardSlot :global(.checkout-terms-text) a {
-  color: #f0a8b1;
+  color: #c5dbf5;
 }
 
 .loginGateCardSlot :global(.redeem-button-primary) {
-  background: #a32e3b;
+  background: linear-gradient(135deg, #9783d1 0%, #8db4e2 100%);
 }
 
 .loginGateFaqHead {
@@ -240,7 +240,7 @@
 
 .loginGateFaqItemOpen .loginGateFaqChevron {
   transform: rotate(180deg);
-  color: #c94b58;
+  color: #a5b8e8;
 }
 
 .loginGateFaqAnswerPanel {
@@ -330,7 +330,7 @@
 }
 
 .themeLight .loginGateCardSlot :global(.checkout-terms-text) a {
-  color: #a32e3b;
+  color: #9783d1;
 }
 
 .themeLight .loginGateCardSlot :global(.redeem-panel-header) {
@@ -345,8 +345,8 @@
 
 .themeLight :global(.checkout-terms.is-checked .checkout-terms-box),
 .themeLight :global(.checkout-terms:has(input:checked) .checkout-terms-box) {
-  border-color: #a32e3b;
-  background: #a32e3b;
+  border-color: #9783d1;
+  background: linear-gradient(135deg, #9783d1 0%, #8db4e2 100%);
   color: #ffffff;
 }
 
@@ -364,7 +364,7 @@
       90deg,
       transparent 0%,
       rgba(255, 255, 255, 0.04) 14%,
-      rgba(163, 46, 59, 0.42) 50%,
+      rgba(151, 131, 209, 0.42) 50%,
       rgba(255, 255, 255, 0.04) 86%,
       transparent 100%
     );
@@ -439,7 +439,7 @@
 }
 
 .themeLight :global(.checkout-terms-text) a {
-  color: #a32e3b;
+  color: #9783d1;
 }
 
 .adminAuthStage {
@@ -625,8 +625,8 @@
   place-items: center;
   border-radius: 14px;
   color: #fff;
-  background: linear-gradient(135deg, rgba(163, 46, 59, 0.95), rgba(123, 32, 42, 0.9));
-  box-shadow: 0 16px 30px rgba(163, 46, 59, 0.28);
+  background: linear-gradient(135deg, rgba(151, 131, 209, 0.95), rgba(117, 104, 168, 0.9));
+  box-shadow: 0 16px 30px rgba(151, 131, 209, 0.28);
 }
 
 .mutedText {
@@ -712,7 +712,7 @@
 .messageerror {
   background: rgba(255, 80, 80, 0.12);
   border: 1px solid rgba(255, 80, 80, 0.24);
-  color: #ffaaaa;
+  color: #b5cef0;
 }
 
 .form,
@@ -763,7 +763,7 @@
 .group select:focus,
 .group textarea:hover,
 .group textarea:focus {
-  border-color: rgba(163, 46, 59, 0.7);
+  border-color: rgba(151, 131, 209, 0.7);
   background: rgba(255, 255, 255, 0.06);
 }
 
@@ -843,13 +843,15 @@
 }
 
 .primaryButton {
-  background: #8f2a35;
+  background: linear-gradient(135deg, #7568a8 0%, #8db4e2 100%);
   color: #fff;
   box-shadow: none;
+  transition: background 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
 }
 
 .primaryButton:hover:not(:disabled) {
-  background: #a32e3b;
+  background: linear-gradient(135deg, #9783d1 0%, #8db4e2 100%);
+  box-shadow: var(--primary-glow);
 }
 
 .secondaryButton {
@@ -860,7 +862,9 @@
 }
 
 .secondaryButton:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--primary-rgb), 0.1);
+  border-color: rgba(var(--primary-rgb), 0.28);
+  color: #fff;
 }
 
 .dangerButton {
@@ -873,7 +877,7 @@
   border-radius: 8px;
   border: 1px solid rgba(229, 72, 77, 0.45);
   background: rgba(229, 72, 77, 0.14);
-  color: #ff8b8f;
+  color: #a8c4ed;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -895,9 +899,10 @@
   min-width: 31px;
   padding: 0;
   border-radius: 6px;
-  background: #a32e3b;
+  background: linear-gradient(135deg, #7568a8 0%, #8db4e2 100%);
   color: #fff;
   box-shadow: none;
+  transition: background 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
 }
 
 .rowActionButton svg {
@@ -908,8 +913,9 @@
 }
 
 .rowActionButton:hover:not(:disabled) {
-  background: #b83644;
+  background: linear-gradient(135deg, #9783d1 0%, #8db4e2 100%);
   color: #fff;
+  box-shadow: var(--primary-glow);
 }
 
 .rowActionButtonActive {
@@ -951,8 +957,8 @@
   width: 44px;
   height: 44px;
   border-radius: 9px;
-  background: rgba(163, 46, 59, 0.12);
-  color: #c94b58;
+  background: rgba(151, 131, 209, 0.12);
+  color: #a5b8e8;
   flex: 0 0 auto;
 }
 
@@ -1052,7 +1058,7 @@
 }
 
 .tableRowActive {
-  background: rgba(163, 46, 59, 0.06);
+  background: rgba(151, 131, 209, 0.06);
 }
 
 .tableTitle {
@@ -1085,9 +1091,9 @@
 .appThumbPlaceholder {
   display: grid;
   place-items: center;
-  background: rgba(163, 46, 59, 0.14);
-  color: #c94b58;
-  border: 1px solid rgba(163, 46, 59, 0.2);
+  background: rgba(151, 131, 209, 0.14);
+  color: #a5b8e8;
+  border: 1px solid rgba(151, 131, 209, 0.2);
 }
 
 .appNameCell .tableTitle {
@@ -1183,8 +1189,8 @@
 
 .licenseStaffGenButton:hover,
 .licenseStaffGenButtonOpen {
-  color: #c94b58;
-  background: rgba(163, 46, 59, 0.12);
+  color: #a5b8e8;
+  background: rgba(151, 131, 209, 0.12);
 }
 
 .licenseStaffGenCard {
@@ -1240,8 +1246,8 @@
 .licenseStaffGenAvatarFallback {
   display: grid;
   place-items: center;
-  background: rgba(163, 46, 59, 0.16);
-  color: #c94b58;
+  background: rgba(151, 131, 209, 0.16);
+  color: #a5b8e8;
 }
 
 .licenseStaffGenMeta {
@@ -1343,18 +1349,18 @@
   min-height: 22px;
   padding: 0 8px;
   border-radius: var(--panel-radius);
-  border: 1px solid rgba(163, 46, 59, 0.35);
-  background: rgba(163, 46, 59, 0.1);
-  color: #c94b58;
+  border: 1px solid rgba(151, 131, 209, 0.35);
+  background: rgba(151, 131, 209, 0.1);
+  color: #a5b8e8;
   font-size: 11.5px;
   font-weight: 650;
   letter-spacing: 0.02em;
 }
 
 .themeLight .appAccessDeniedLabel {
-  border-color: rgba(163, 46, 59, 0.28);
-  background: rgba(163, 46, 59, 0.08);
-  color: #a32e3b;
+  border-color: rgba(151, 131, 209, 0.28);
+  background: rgba(151, 131, 209, 0.08);
+  color: #9783d1;
 }
 
 .tableRowLocked {
@@ -1418,7 +1424,7 @@
 
 .licenseSearchInput:hover:not(:disabled),
 .licenseSearchInput:focus:not(:disabled) {
-  border-color: rgba(163, 46, 59, 0.7);
+  border-color: rgba(151, 131, 209, 0.7);
   background: rgba(255, 255, 255, 0.06);
 }
 
@@ -1462,7 +1468,7 @@
 }
 
 .tonered {
-  background: #c94b58;
+  background: linear-gradient(135deg, #9783d1 0%, #8db4e2 100%);
 }
 
 .tonewhite {
@@ -1517,8 +1523,8 @@
   width: 54px;
   align-self: stretch;
   border-radius: 10px;
-  background: rgba(163, 46, 59, 0.16);
-  color: #c94b58;
+  background: rgba(151, 131, 209, 0.16);
+  color: #a5b8e8;
   flex: 0 0 auto;
 }
 
@@ -1613,7 +1619,7 @@
 
 .customSelectTrigger:hover,
 .customSelectTriggerOpen {
-  border-color: rgba(163, 46, 59, 0.7);
+  border-color: rgba(151, 131, 209, 0.7);
   background: rgba(255, 255, 255, 0.06);
 }
 
@@ -1633,7 +1639,7 @@
 
 .customSelectTriggerOpen .customSelectChevron {
   transform: rotate(180deg);
-  color: #c94b58;
+  color: #a5b8e8;
 }
 
 .customSelectMenu {
@@ -1650,7 +1656,7 @@
   background: #161616;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
   scrollbar-width: thin;
-  scrollbar-color: rgba(163, 46, 59, 0.55) rgba(255, 255, 255, 0.04);
+  scrollbar-color: rgba(151, 131, 209, 0.55) rgba(255, 255, 255, 0.04);
 }
 
 .customSelectMenu::-webkit-scrollbar {
@@ -1663,7 +1669,7 @@
 }
 
 .customSelectMenu::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(163, 46, 59, 0.72), rgba(123, 32, 42, 0.78));
+  background: linear-gradient(180deg, rgba(151, 131, 209, 0.72), rgba(117, 104, 168, 0.78));
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
@@ -1699,7 +1705,7 @@
 }
 
 .customSelectOptionActive {
-  background: rgba(163, 46, 59, 0.16);
+  background: rgba(151, 131, 209, 0.16);
   color: #ffffff;
 }
 
@@ -1941,7 +1947,7 @@
 }
 
 .transactionAmountNegative {
-  color: #f0a0a8;
+  color: #c5dbf5;
   font-weight: 700;
 }
 
@@ -1967,7 +1973,7 @@
 }
 
 .themeLight .transactionAmountNegative {
-  color: #a32e3b;
+  color: #9783d1;
 }
 
 .licenseDiscordUser {
@@ -2033,13 +2039,13 @@
   background: rgba(0, 0, 0, 0.55);
   padding: 16px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(163, 46, 59, 0.55) rgba(255, 255, 255, 0.04);
+  scrollbar-color: rgba(151, 131, 209, 0.55) rgba(255, 255, 255, 0.04);
 }
 
 .adminModal *,
 .adminModal {
   scrollbar-width: thin;
-  scrollbar-color: rgba(163, 46, 59, 0.55) rgba(255, 255, 255, 0.04);
+  scrollbar-color: rgba(151, 131, 209, 0.55) rgba(255, 255, 255, 0.04);
 }
 
 .adminModal *::-webkit-scrollbar,
@@ -2056,7 +2062,7 @@
 
 .adminModal *::-webkit-scrollbar-thumb,
 .adminModal::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(163, 46, 59, 0.72), rgba(123, 32, 42, 0.78));
+  background: linear-gradient(180deg, rgba(151, 131, 209, 0.72), rgba(117, 104, 168, 0.78));
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
@@ -2100,7 +2106,7 @@
   transition: transform 260ms ease;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: rgba(163, 46, 59, 0.55) rgba(255, 255, 255, 0.04);
+  scrollbar-color: rgba(151, 131, 209, 0.55) rgba(255, 255, 255, 0.04);
 }
 
 .sideDrawerPanel::-webkit-scrollbar {
@@ -2114,14 +2120,14 @@
 }
 
 .sideDrawerPanel::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(163, 46, 59, 0.72), rgba(123, 32, 42, 0.78));
+  background: linear-gradient(180deg, rgba(151, 131, 209, 0.72), rgba(117, 104, 168, 0.78));
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
 .sideDrawerPanel::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(201, 75, 88, 0.9), rgba(163, 46, 59, 0.95));
+  background: linear-gradient(180deg, rgba(165, 184, 232, 0.9), rgba(151, 131, 209, 0.95));
   background-clip: padding-box;
   border: 2px solid transparent;
 }
@@ -2155,7 +2161,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: rgba(163, 46, 59, 0.55) rgba(255, 255, 255, 0.04);
+  scrollbar-color: rgba(151, 131, 209, 0.55) rgba(255, 255, 255, 0.04);
 }
 
 .teamMemberDrawerForm {
@@ -2177,15 +2183,15 @@
   gap: 12px;
   padding: 14px 14px;
   border-radius: var(--panel-radius);
-  border: 1px solid rgba(163, 46, 59, 0.45);
-  background: rgba(163, 46, 59, 0.12);
-  color: #f0d0d4;
+  border: 1px solid rgba(151, 131, 209, 0.45);
+  background: rgba(151, 131, 209, 0.12);
+  color: #d4e4f7;
 }
 
 .teamMemberLiabilityAlert svg {
   flex-shrink: 0;
   margin-top: 2px;
-  color: #c94b58;
+  color: #a5b8e8;
 }
 
 .teamMemberLiabilityAlert strong {
@@ -2225,8 +2231,8 @@
 
 .themeLight .teamMemberLiabilityAlert {
   color: #5c2a30;
-  background: rgba(163, 46, 59, 0.08);
-  border-color: rgba(163, 46, 59, 0.28);
+  background: rgba(151, 131, 209, 0.08);
+  border-color: rgba(151, 131, 209, 0.28);
 }
 
 .themeLight .teamMemberLiabilityAlert strong {
@@ -2662,9 +2668,10 @@
 }
 
 .uploadDropZoneActive {
-  border-color: rgba(245, 214, 218, 0.55);
-  background: rgba(245, 214, 218, 0.08);
+  border-color: rgba(var(--primary-rgb), 0.55);
+  background: rgba(var(--primary-rgb), 0.08);
   transform: translateY(-1px);
+  box-shadow: var(--primary-glow-soft);
 }
 
 .uploadDropZoneBusy {
@@ -2726,7 +2733,7 @@
   transform-origin: left center;
   transform: scaleX(var(--package-upload-progress-scale, 0));
   border-radius: inherit;
-  background: linear-gradient(90deg, rgba(245, 214, 218, 0.85), rgba(255, 255, 255, 0.95));
+  background: var(--primary-gradient);
   transition: transform 0.18s ease;
 }
 
@@ -2771,7 +2778,7 @@
   border: 0;
   padding: 0;
   background: transparent;
-  color: #ff9f9f;
+  color: #a8c4ed;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -2808,7 +2815,7 @@
 
 .packageToastError {
   border-color: rgba(255, 80, 80, 0.28);
-  color: #ffaaaa;
+  color: #b5cef0;
 }
 
 .packageToastSuccess {
@@ -2839,7 +2846,7 @@
   border: 0;
   padding: 0;
   background: transparent;
-  color: #f5d6da;
+  color: #dce8f8;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -2936,7 +2943,7 @@
   transition: transform 260ms ease;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: rgba(163, 46, 59, 0.55) rgba(255, 255, 255, 0.04);
+  scrollbar-color: rgba(151, 131, 209, 0.55) rgba(255, 255, 255, 0.04);
 }
 
 .licenseDrawerPanel::-webkit-scrollbar {
@@ -2950,14 +2957,14 @@
 }
 
 .licenseDrawerPanel::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(163, 46, 59, 0.72), rgba(123, 32, 42, 0.78));
+  background: linear-gradient(180deg, rgba(151, 131, 209, 0.72), rgba(117, 104, 168, 0.78));
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
 .licenseDrawerPanel::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(201, 75, 88, 0.9), rgba(163, 46, 59, 0.95));
+  background: linear-gradient(180deg, rgba(165, 184, 232, 0.9), rgba(151, 131, 209, 0.95));
   background-clip: padding-box;
   border: 2px solid transparent;
 }
@@ -3278,8 +3285,8 @@
 .resellingTabActive,
 .resellingTabActive:hover {
   color: #f3f4f6;
-  border-color: rgba(163, 46, 59, 0.35);
-  background: rgba(163, 46, 59, 0.14);
+  border-color: rgba(151, 131, 209, 0.35);
+  background: rgba(151, 131, 209, 0.14);
 }
 
 .storeProductTableHeaders,
@@ -3349,8 +3356,8 @@
 
 .themeLight .resellingTabActive,
 .themeLight .resellingTabActive:hover {
-  background: rgba(163, 46, 59, 0.12);
-  border-color: rgba(163, 46, 59, 0.28);
+  background: rgba(151, 131, 209, 0.12);
+  border-color: rgba(151, 131, 209, 0.28);
   color: #121417;
 }
 
@@ -3423,7 +3430,7 @@
 .resellerAppCheckItem input {
   width: 16px;
   height: 16px;
-  accent-color: #a32e3b;
+  accent-color: #9783d1;
 }
 
 .resellerBalanceComposer {
@@ -3629,7 +3636,7 @@
   width: 7px;
   height: 7px;
   border-radius: 999px;
-  background: #e23d4a;
+  background: linear-gradient(135deg, #9783d1 0%, #8db4e2 100%);
   box-shadow: 0 0 0 2px #121212;
   pointer-events: none;
 }
@@ -3644,7 +3651,7 @@
   font-weight: 800;
   letter-spacing: 0.06em;
   color: #fff;
-  background: #c43a46;
+  background: linear-gradient(135deg, #9783d1 0%, #8db4e2 100%);
   border: 1px solid rgba(255, 255, 255, 0.12);
   flex-shrink: 0;
 }
@@ -3727,17 +3734,17 @@
 .adminNavItemActive {
   color: #ffffff;
   font-weight: 500;
-  background: rgba(163, 46, 59, 0.16);
-  border-left: 2px solid #a32e3b;
+  background: rgba(151, 131, 209, 0.16);
+  border-left: 2px solid #9783d1;
 }
 
 .adminNavItemActive:hover {
   color: #ffffff;
-  background: rgba(163, 46, 59, 0.16);
+  background: rgba(151, 131, 209, 0.16);
 }
 
 .adminNavItemActive svg {
-  color: #a32e3b;
+  color: #9783d1;
 }
 
 .adminNavItemLabel {
@@ -3770,13 +3777,13 @@
 }
 
 .guideNavParent.adminNavItemActive {
-  background: rgba(163, 46, 59, 0.16);
-  border-left-color: #a32e3b;
+  background: rgba(151, 131, 209, 0.16);
+  border-left-color: #9783d1;
   color: #ffffff;
 }
 
 .guideNavParent.adminNavItemActive .guideNavChevron {
-  color: #a32e3b;
+  color: #9783d1;
 }
 
 .guideNavChevron {
@@ -3850,7 +3857,7 @@
 }
 
 .themeLight .guideNavParent.adminNavItemActive {
-  background: rgba(163, 46, 59, 0.12);
+  background: rgba(151, 131, 209, 0.12);
   color: #121417;
 }
 
@@ -3860,7 +3867,7 @@
 }
 
 .themeLight .guideNavParent.adminNavItemActive .guideNavChevron {
-  color: #a32e3b;
+  color: #9783d1;
 }
 
 .themeLight .guideNavChildren {
@@ -3881,9 +3888,9 @@
   margin: 0 0 2px;
   padding: 8px 10px;
   border-radius: var(--panel-radius);
-  border: 1px solid rgba(163, 46, 59, 0.45);
-  background: rgba(163, 46, 59, 0.16);
-  color: #ff8f9a;
+  border: 1px solid rgba(151, 131, 209, 0.45);
+  background: rgba(151, 131, 209, 0.16);
+  color: #a8c4ed;
   font-size: 11.5px;
   font-weight: 600;
   line-height: 1.35;
@@ -4001,14 +4008,14 @@
 }
 
 .teamPermItemOn {
-  border-color: rgba(163, 46, 59, 0.55);
-  background: rgba(163, 46, 59, 0.1);
+  border-color: rgba(151, 131, 209, 0.55);
+  background: rgba(151, 131, 209, 0.1);
 }
 
 .teamPermItem:hover,
 .teamPermItemOn:hover {
-  border-color: rgba(163, 46, 59, 0.55);
-  background: rgba(163, 46, 59, 0.1);
+  border-color: rgba(151, 131, 209, 0.55);
+  background: rgba(151, 131, 209, 0.1);
 }
 
 .teamPermCheck {
@@ -4025,8 +4032,8 @@
 }
 
 .teamPermItemOn .teamPermCheck {
-  border-color: #a32e3b;
-  background: #a32e3b;
+  border-color: #9783d1;
+  background: linear-gradient(135deg, #9783d1 0%, #8db4e2 100%);
 }
 
 .teamLimitRow {
@@ -4078,9 +4085,9 @@
 
 .teamFaqBlock .faqItemOpen,
 .teamFaqBlock .faqItemOpen:hover {
-  border-color: rgba(201, 75, 88, 0.38);
-  background: rgba(163, 46, 59, 0.1);
-  box-shadow: 0 0 0 1px rgba(163, 46, 59, 0.12);
+  border-color: rgba(165, 184, 232, 0.38);
+  background: rgba(151, 131, 209, 0.1);
+  box-shadow: 0 0 0 1px rgba(151, 131, 209, 0.12);
 }
 
 .themeLight .teamFaqBlock .faqItem {
@@ -4095,8 +4102,8 @@
 
 .themeLight .teamFaqBlock .faqItemOpen,
 .themeLight .teamFaqBlock .faqItemOpen:hover {
-  border-color: rgba(163, 46, 59, 0.25);
-  background: rgba(163, 46, 59, 0.06);
+  border-color: rgba(151, 131, 209, 0.25);
+  background: rgba(151, 131, 209, 0.06);
 }
 
 .teamTableWrap {
@@ -4154,8 +4161,8 @@
 .teamInfoAvatarFallback {
   display: grid;
   place-items: center;
-  background: rgba(163, 46, 59, 0.16);
-  color: #c94b58;
+  background: rgba(151, 131, 209, 0.16);
+  color: #a5b8e8;
 }
 
 .teamInfoProfileMeta {
@@ -4237,8 +4244,8 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgba(163, 46, 59, 0.16);
-  color: #c94b58;
+  background: rgba(151, 131, 209, 0.16);
+  color: #a5b8e8;
   flex-shrink: 0;
 }
 
@@ -4325,7 +4332,7 @@
 
 .teamMetaChip svg {
   flex-shrink: 0;
-  color: #c94b58;
+  color: #a5b8e8;
 }
 
 .teamMetaChipLabel {
@@ -4352,13 +4359,13 @@
 }
 
 .teamMetaChipWarn {
-  border-color: rgba(163, 46, 59, 0.35);
-  background: rgba(163, 46, 59, 0.12);
+  border-color: rgba(151, 131, 209, 0.35);
+  background: rgba(151, 131, 209, 0.12);
 }
 
 .teamMetaChipWarn svg,
 .teamMetaChipWarn .teamMetaChipLabel {
-  color: #efb0b7;
+  color: #c5dbf5;
 }
 
 .teamMetaChipOwner {
@@ -4487,8 +4494,8 @@
 }
 
 .themeLight .permissionDeniedToast {
-  color: #a32e3b;
-  background: rgba(163, 46, 59, 0.1);
+  color: #9783d1;
+  background: rgba(151, 131, 209, 0.1);
 }
 
 .themeLight .adminNavItemDenied,
@@ -4559,8 +4566,8 @@
 }
 
 .themeLight .teamMetaChipWarn {
-  border-color: rgba(163, 46, 59, 0.22);
-  background: rgba(163, 46, 59, 0.08);
+  border-color: rgba(151, 131, 209, 0.22);
+  background: rgba(151, 131, 209, 0.08);
 }
 
 .themeLight .teamMetaChipOwner {
@@ -4653,9 +4660,9 @@
   min-height: 22px;
   padding: 3px 8px;
   border-radius: var(--panel-radius);
-  border: 1px solid rgba(163, 46, 59, 0.45);
-  background: rgba(163, 46, 59, 0.16);
-  color: #c94b58;
+  border: 1px solid rgba(151, 131, 209, 0.45);
+  background: rgba(151, 131, 209, 0.16);
+  color: #a5b8e8;
   font-size: 9.5px;
   font-weight: 800;
   letter-spacing: 0.05em;
@@ -4677,8 +4684,8 @@
 .sidebarUserAvatarFallback {
   display: grid;
   place-items: center;
-  background: rgba(163, 46, 59, 0.18);
-  color: #c94b58;
+  background: rgba(151, 131, 209, 0.18);
+  color: #a5b8e8;
 }
 
 .sidebarUserMeta {
@@ -4734,9 +4741,9 @@
 }
 
 .themeLight .sidebarStaffRibbon {
-  border-color: rgba(163, 46, 59, 0.35);
-  background: rgba(163, 46, 59, 0.12);
-  color: #a32e3b;
+  border-color: rgba(151, 131, 209, 0.35);
+  background: rgba(151, 131, 209, 0.12);
+  color: #9783d1;
 }
 
 .themeLight .sidebarUserName {
@@ -4757,8 +4764,8 @@
 }
 
 .themeLight .sidebarUserAvatarFallback {
-  background: rgba(163, 46, 59, 0.12);
-  color: #a32e3b;
+  background: rgba(151, 131, 209, 0.12);
+  color: #9783d1;
 }
 
 .adminSidebarCtaReview,
@@ -4834,9 +4841,9 @@
 }
 
 .adminMobileNavBtn[aria-expanded="true"] {
-  background: rgba(163, 46, 59, 0.18);
-  border-color: rgba(163, 46, 59, 0.45);
-  color: #e87884;
+  background: rgba(151, 131, 209, 0.18);
+  border-color: rgba(151, 131, 209, 0.45);
+  color: #9bb5e8;
 }
 
 .adminNavBackdrop {
@@ -5161,11 +5168,11 @@
 }
 
 .topbarNotifItemUnread {
-  background: rgba(163, 46, 59, 0.08);
+  background: rgba(151, 131, 209, 0.08);
 }
 
 .topbarNotifItemUnread:hover {
-  background: rgba(163, 46, 59, 0.12);
+  background: rgba(151, 131, 209, 0.12);
 }
 
 .topbarNotifItemIcon {
@@ -5280,7 +5287,7 @@
 }
 
 .themeLight .topbarNotifItemUnread {
-  background: rgba(163, 46, 59, 0.06);
+  background: rgba(151, 131, 209, 0.06);
 }
 
 .themeLight .topbarNotifItemIcon {
@@ -5322,7 +5329,7 @@
 
 .adminTopbarSignOut:hover {
   background: rgba(255, 80, 80, 0.12);
-  color: #ffaaaa;
+  color: #b5cef0;
 }
 
 .adminContent {
@@ -5493,8 +5500,8 @@
   width: 36px;
   height: 36px;
   border-radius: 9px;
-  background: rgba(163, 46, 59, 0.14);
-  color: #c94b58;
+  background: rgba(151, 131, 209, 0.14);
+  color: #a5b8e8;
   flex: 0 0 auto;
 }
 
@@ -5737,7 +5744,7 @@
 }
 
 @media (max-width: 640px) {
-  .adminTopbarLink[href="https://unbanhwid.com"] {
+  .adminTopbarLink[href="https://phantom-cheats.com"] {
     display: none;
   }
 
@@ -5955,8 +5962,8 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  border: 2.5px solid rgba(163, 46, 59, 0.22);
-  border-top-color: #c94b58;
+  border: 2.5px solid rgba(151, 131, 209, 0.22);
+  border-top-color: #a5b8e8;
   animation: panelLoadingSpin 0.8s linear infinite;
 }
 
@@ -5972,8 +5979,8 @@
 }
 
 .themeLight .panelLoadingSpinner {
-  border-color: rgba(163, 46, 59, 0.18);
-  border-top-color: #a32e3b;
+  border-color: rgba(151, 131, 209, 0.18);
+  border-top-color: #9783d1;
 }
 
 @keyframes panelLoadingSpin {
@@ -6102,7 +6109,7 @@
 .licenseFormatHint svg {
   flex-shrink: 0;
   margin-top: 1px;
-  color: #a32e3b;
+  color: #9783d1;
 }
 
 .licenseFormatHint p {
@@ -6192,12 +6199,12 @@
 
 .licenseFormatInputShell:hover,
 .licenseFormatInputShell:focus-within {
-  border-color: rgba(163, 46, 59, 0.7);
+  border-color: rgba(151, 131, 209, 0.7);
   background: rgba(255, 255, 255, 0.05);
 }
 
 .licenseFormatInputShell:focus-within svg {
-  color: #c94b58;
+  color: #a5b8e8;
 }
 
 .licenseFormatInputShell input {
@@ -6254,8 +6261,8 @@
 
 .licenseFormatOptionCard:hover,
 .licenseFormatOptionCardOn {
-  border-color: rgba(163, 46, 59, 0.55);
-  background: rgba(163, 46, 59, 0.1);
+  border-color: rgba(151, 131, 209, 0.55);
+  background: rgba(151, 131, 209, 0.1);
 }
 
 .licenseFormatOptionCard input {
@@ -6279,8 +6286,8 @@
 }
 
 .licenseFormatOptionCardOn .licenseFormatOptionCheck {
-  border-color: rgba(163, 46, 59, 0.8);
-  background: #a32e3b;
+  border-color: rgba(151, 131, 209, 0.8);
+  background: linear-gradient(135deg, #9783d1 0%, #8db4e2 100%);
 }
 
 .licenseFormatOptionCopy {
@@ -6387,8 +6394,8 @@
 
 .themeLight .licenseFormatOptionCard:hover,
 .themeLight .licenseFormatOptionCardOn {
-  border-color: rgba(163, 46, 59, 0.45);
-  background: rgba(163, 46, 59, 0.08);
+  border-color: rgba(151, 131, 209, 0.45);
+  background: rgba(151, 131, 209, 0.08);
 }
 
 .themeLight .licenseFormatOptionCheck {
@@ -6398,8 +6405,8 @@
 }
 
 .themeLight .licenseFormatOptionCardOn .licenseFormatOptionCheck {
-  border-color: #a32e3b;
-  background: #a32e3b;
+  border-color: #9783d1;
+  background: linear-gradient(135deg, #9783d1 0%, #8db4e2 100%);
 }
 
 .themeLight .licenseFormatMetaStatusOn {
@@ -6512,7 +6519,7 @@
 
 .loaderBenefitBadge svg {
   flex-shrink: 0;
-  color: #c94b58;
+  color: #a5b8e8;
 }
 
 .themeLight .loaderBenefitBadge {
@@ -6522,7 +6529,7 @@
 }
 
 .themeLight .loaderBenefitBadge svg {
-  color: #a32e3b;
+  color: #9783d1;
 }
 
 .loaderCustomizer {
@@ -6674,7 +6681,7 @@
 }
 
 .loaderColorSwatch {
-  --loader-swatch: #a32e3b;
+  --loader-swatch: #9783d1;
   position: relative;
   width: 36px;
   height: 36px;
@@ -6827,7 +6834,7 @@
 }
 
 .loaderFieldRequired {
-  color: #c94b58;
+  color: #a5b8e8;
   font-weight: 700;
 }
 
@@ -6864,7 +6871,7 @@
   height: 10px;
   border-radius: var(--panel-radius);
   overflow: hidden;
-  background: #a32e3b;
+  background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -6872,7 +6879,7 @@
   height: 100%;
   width: 0;
   border-radius: inherit;
-  background: #6e1a24;
+  background: var(--primary-gradient, linear-gradient(135deg, #9783d1 0%, #8db4e2 100%));
   transition: width 0.12s linear;
 }
 
@@ -6968,9 +6975,9 @@
   display: inline-flex;
   padding: 4px 10px;
   border-radius: var(--panel-radius);
-  border: 1px solid rgba(163, 46, 59, 0.45);
-  background: rgba(163, 46, 59, 0.16);
-  color: #f0b4bb;
+  border: 1px solid rgba(151, 131, 209, 0.45);
+  background: rgba(151, 131, 209, 0.16);
+  color: #c5dbf5;
   font-size: 12px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
@@ -6999,6 +7006,107 @@
   justify-content: center;
 }
 
+.addonsPromoPanel :global(.redeem-panel-body) {
+  padding: 18px 20px 22px;
+}
+
+.addonsPromoBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.addonsPromoBody p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #c4c4c4;
+}
+
+.addonsPromoBody p strong {
+  color: #f0f0f0;
+}
+
+.addonsPromoList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.addonsPromoList li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 13px;
+}
+
+.addonsPromoList li strong {
+  color: #f0f0f0;
+  font-weight: 600;
+}
+
+.addonsPromoList li span {
+  color: #b8b8b8;
+  white-space: nowrap;
+}
+
+.addonsPromoActions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.addonsPromoPrimaryActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.addonsPromoPrimaryActions .primaryButton,
+.addonsPromoPrimaryActions .secondaryButton,
+.addonsPromoDeclineButton {
+  justify-content: center;
+}
+
+.addonsPromoPrimaryActions .primaryButton,
+.addonsPromoPrimaryActions .secondaryButton {
+  flex: 1 1 180px;
+}
+
+.addonsPromoDeclineButton {
+  width: 100%;
+}
+
+.themeLight .addonsPromoBody p {
+  color: #5a5a5a;
+}
+
+.themeLight .addonsPromoBody p strong {
+  color: #181818;
+}
+
+.themeLight .addonsPromoList li {
+  border-color: rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.themeLight .addonsPromoList li strong {
+  color: #181818;
+}
+
+.themeLight .addonsPromoList li span {
+  color: #666;
+}
+
 .loaderGeneratePanel :global(.redeem-panel-body) {
   padding: 18px 20px 22px;
 }
@@ -7019,11 +7127,12 @@
 }
 
 .themeLight .loaderGenerateTrack {
-  background: #c94b58;
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.08);
 }
 
 .themeLight .loaderGenerateFill {
-  background: #8f2431;
+  background: var(--primary-gradient, linear-gradient(135deg, #9783d1 0%, #8db4e2 100%));
 }
 
 .loaderOptionHelpText {
@@ -7108,14 +7217,14 @@
   padding: 0;
   border: 0;
   background: none;
-  color: #d48a93;
+  color: #8db4e2;
   font-size: 12px;
   font-weight: 550;
   cursor: pointer;
 }
 
 .loaderLogoRemoveLink:hover {
-  color: #f0b4bb;
+  color: #c5dbf5;
 }
 
 .loaderFormSectionGenerate {
@@ -7145,7 +7254,7 @@
   border-radius: var(--panel-radius);
   background: rgba(248, 113, 113, 0.1);
   border: 1px dashed rgba(248, 113, 113, 0.45);
-  color: #f0c4c4;
+  color: #c5dbf5;
   padding: 18px;
   margin: 0 0 18px;
   line-height: 1.6;
@@ -7174,7 +7283,7 @@
 .loaderBrandBlockedAnnounceBody p {
   margin: 0;
   line-height: 1.6;
-  color: #f0c4c4;
+  color: #c5dbf5;
 }
 
 .themeLight .loaderBrandBlockedAnnounce {
@@ -7601,7 +7710,7 @@
   background: transparent;
 }
 .themeLight .loaderLogoRemoveLink {
-  color: #a32e3b;
+  color: #9783d1;
 }
 .themeLight .loaderPreviewStage {
   border-color: rgba(0, 0, 0, 0.1);
@@ -7748,7 +7857,7 @@
 
 .protectionLogIgnoreInput:hover,
 .protectionLogIgnoreInput:focus {
-  border-color: rgba(163, 46, 59, 0.7);
+  border-color: rgba(151, 131, 209, 0.7);
   background: rgba(255, 255, 255, 0.06);
 }
 
@@ -7779,7 +7888,7 @@
 }
 
 .protectionLogDeleteBtn:hover:not(:disabled) {
-  color: #f0a0a4;
+  color: #c5dbf5;
   border-color: rgba(196, 68, 78, 0.45);
   background: rgba(168, 52, 62, 0.16);
 }
@@ -7826,7 +7935,7 @@
 }
 
 .protectionLogsPageBtn:hover:not(:disabled) {
-  border-color: rgba(163, 46, 59, 0.7);
+  border-color: rgba(151, 131, 209, 0.7);
   background: rgba(255, 255, 255, 0.06);
 }
 
@@ -7958,7 +8067,7 @@
 
 .protectionLogDensityBtnActive {
   color: #f3f5f7;
-  background: rgba(163, 46, 59, 0.35);
+  background: rgba(151, 131, 209, 0.35);
 }
 
 .themeLight .protectionLogDensity {
@@ -7977,7 +8086,7 @@
 
 .themeLight .protectionLogDensityBtnActive {
   color: #fff;
-  background: rgba(163, 46, 59, 0.85);
+  background: rgba(151, 131, 209, 0.85);
 }
 
 @media (max-width: 1280px) {
@@ -8108,7 +8217,7 @@
   font-weight: 800;
   letter-spacing: 0.06em;
   color: #fff;
-  background: #c43a46;
+  background: linear-gradient(135deg, #9783d1 0%, #8db4e2 100%);
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
@@ -8119,7 +8228,7 @@
 }
 
 .protectionLogBadgeFail {
-  color: #f0a0a4;
+  color: #c5dbf5;
   background: rgba(168, 52, 62, 0.16);
   border-color: rgba(196, 68, 78, 0.3);
 }
@@ -8373,8 +8482,8 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  border: 2px solid rgba(163, 46, 59, 0.22);
-  border-top-color: #c94b58;
+  border: 2px solid rgba(151, 131, 209, 0.22);
+  border-top-color: #a5b8e8;
   animation: panelLoadingSpin 0.8s linear infinite;
 }
 
@@ -8657,8 +8766,8 @@
 }
 
 .themeLight .protectionLogScreenshotSpinner {
-  border-color: rgba(163, 46, 59, 0.18);
-  border-top-color: #a32e3b;
+  border-color: rgba(151, 131, 209, 0.18);
+  border-top-color: #9783d1;
 }
 
 .themeLight .protectionLogsPageBtn {
@@ -8669,7 +8778,7 @@
 
 .themeLight .protectionLogsPageBtn:hover:not(:disabled) {
   background: #ffffff;
-  border-color: rgba(163, 46, 59, 0.55);
+  border-color: rgba(151, 131, 209, 0.55);
 }
 
 .themeLight .protectionLogsPageLabel {
@@ -8698,7 +8807,7 @@
 .themeLight .protectionLogIgnoreInput:hover,
 .themeLight .protectionLogIgnoreInput:focus {
   background: #ffffff;
-  border-color: rgba(163, 46, 59, 0.55);
+  border-color: rgba(151, 131, 209, 0.55);
 }
 
 .themeLight .protectionLogIgnoreItem {
@@ -8760,8 +8869,8 @@
 
 .settingsHelpTip:hover,
 .settingsHelpTip:focus-visible {
-  color: #c94b58;
-  background: rgba(163, 46, 59, 0.12);
+  color: #a5b8e8;
+  background: rgba(151, 131, 209, 0.12);
 }
 
 .settingsHelpTipBubble {
@@ -8842,8 +8951,8 @@
   width: calc(50% - 4px);
   height: calc(100% - 8px);
   border-radius: 8px;
-  background: #8f2a35;
-  box-shadow: 0 4px 14px rgba(143, 42, 53, 0.35);
+  background: var(--primary-gradient);
+  box-shadow: var(--primary-glow);
   transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), background 0.28s ease, box-shadow 0.28s ease;
   pointer-events: none;
   z-index: 0;
@@ -8919,9 +9028,9 @@
 }
 
 .themeLight .adminMobileNavBtn[aria-expanded="true"] {
-  background: rgba(163, 46, 59, 0.12);
-  border-color: rgba(163, 46, 59, 0.4);
-  color: #a32e3b;
+  background: rgba(151, 131, 209, 0.12);
+  border-color: rgba(151, 131, 209, 0.4);
+  color: #9783d1;
 }
 
 .themeLight .adminNavBackdrop {
@@ -8958,8 +9067,8 @@
 
 .themeLight .licenseStaffGenButton:hover,
 .themeLight .licenseStaffGenButtonOpen {
-  color: #a32e3b;
-  background: rgba(163, 46, 59, 0.1);
+  color: #9783d1;
+  background: rgba(151, 131, 209, 0.1);
 }
 
 .themeLight .licenseStaffGenCard {
@@ -9034,12 +9143,12 @@
 
 .themeLight .adminNavItemActive,
 .themeLight .adminNavItemActive:hover {
-  background: rgba(163, 46, 59, 0.12);
+  background: rgba(151, 131, 209, 0.12);
   color: #121417;
 }
 
 .themeLight .adminNavItemActive svg {
-  color: #a32e3b;
+  color: #9783d1;
 }
 
 .themeLight .adminNavUnreadDot {
@@ -9063,7 +9172,7 @@
   color: #121417;
   border-left: 1px solid rgba(15, 18, 22, 0.12);
   box-shadow: -18px 0 48px rgba(15, 18, 22, 0.14);
-  scrollbar-color: rgba(163, 46, 59, 0.4) rgba(15, 18, 22, 0.06);
+  scrollbar-color: rgba(151, 131, 209, 0.4) rgba(15, 18, 22, 0.06);
 }
 
 .themeLight .sideDrawerPanel .tableHeader {
@@ -9114,7 +9223,7 @@
 
 .themeLight .sideDrawerPanel::-webkit-scrollbar-thumb,
 .themeLight .licenseDrawerPanel::-webkit-scrollbar-thumb {
-  background: rgba(163, 46, 59, 0.4);
+  background: rgba(151, 131, 209, 0.4);
 }
 
 .themeLight .welcomeQuickLinksHead {
@@ -9156,8 +9265,8 @@
 
 .themeLight .settingsHelpTip:hover,
 .themeLight .settingsHelpTip:focus-visible {
-  color: #a32e3b;
-  background: rgba(163, 46, 59, 0.1);
+  color: #9783d1;
+  background: rgba(151, 131, 209, 0.1);
 }
 
 .themeLight .settingsHelpTipBubble {
@@ -9240,7 +9349,7 @@
 }
 
 .themeLight .tableRowActive {
-  background: rgba(163, 46, 59, 0.08);
+  background: rgba(151, 131, 209, 0.08);
 }
 
 .themeLight .tableRow > div,
@@ -9267,7 +9376,9 @@
 }
 
 .themeLight .secondaryButton:hover {
-  background: #e2e5ea;
+  background: rgba(var(--primary-rgb), 0.08);
+  border-color: rgba(var(--primary-rgb), 0.22);
+  color: #121417;
 }
 
 .themeLight .licenseSearchInput,
@@ -9287,7 +9398,7 @@
 .themeLight .licenseSearchInput:hover:not(:disabled),
 .themeLight .licenseSearchInput:focus:not(:disabled) {
   background: #ffffff;
-  border-color: rgba(163, 46, 59, 0.55);
+  border-color: rgba(151, 131, 209, 0.55);
 }
 
 .themeLight .customSelectMenu {
@@ -9478,8 +9589,8 @@
 }
 
 .redeemCouponInput:focus {
-  border-color: rgba(163, 46, 59, 0.55);
-  box-shadow: 0 0 0 3px rgba(163, 46, 59, 0.16);
+  border-color: rgba(151, 131, 209, 0.55);
+  box-shadow: 0 0 0 3px rgba(151, 131, 209, 0.16);
 }
 
 .redeemCouponInput:disabled {
@@ -9545,8 +9656,8 @@
   grid-column: span 2;
   justify-content: center;
   border-style: dashed;
-  border-color: rgba(163, 46, 59, 0.4);
-  background: rgba(163, 46, 59, 0.06);
+  border-color: rgba(151, 131, 209, 0.4);
+  background: rgba(151, 131, 209, 0.06);
 }
 
 .depositCardInfoIcon {
@@ -9555,8 +9666,8 @@
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: rgba(163, 46, 59, 0.16);
-  color: #e88996;
+  background: rgba(151, 131, 209, 0.16);
+  color: #a8c4ed;
 }
 
 .depositCardInfoText {
@@ -9601,8 +9712,8 @@
 }
 
 .depositCardPopular {
-  border-color: rgba(163, 46, 59, 0.45);
-  background: rgba(163, 46, 59, 0.08);
+  border-color: rgba(151, 131, 209, 0.45);
+  background: rgba(151, 131, 209, 0.08);
 }
 
 .depositPopularBadge {
@@ -9611,7 +9722,7 @@
   right: 10px;
   padding: 3px 8px;
   border-radius: 999px;
-  background: #8f2a35;
+  background: linear-gradient(135deg, #7568a8 0%, #8db4e2 100%);
   color: #fff;
   font-size: 10px;
   font-weight: 700;
@@ -9672,8 +9783,8 @@
 }
 
 .themeLight .depositCardPopular {
-  border-color: rgba(163, 46, 59, 0.35);
-  background: rgba(163, 46, 59, 0.05);
+  border-color: rgba(151, 131, 209, 0.35);
+  background: rgba(151, 131, 209, 0.05);
 }
 
 .themeLight .depositCardTop h3,
@@ -9692,8 +9803,8 @@
 }
 
 .themeLight .depositCardInfo {
-  border-color: rgba(163, 46, 59, 0.3);
-  background: rgba(163, 46, 59, 0.04);
+  border-color: rgba(151, 131, 209, 0.3);
+  background: rgba(151, 131, 209, 0.04);
 }
 
 .themeLight .depositCardInfoText {
@@ -9705,8 +9816,8 @@
 }
 
 .themeLight .depositCardInfoIcon {
-  background: rgba(163, 46, 59, 0.1);
-  color: #a32e3b;
+  background: rgba(151, 131, 209, 0.1);
+  color: #9783d1;
 }
 
 .depositRedeemBlock {
@@ -9775,7 +9886,7 @@
 }
 
 .depositDiscountConnectorOn {
-  background: linear-gradient(90deg, rgba(125, 222, 168, 0.55), rgba(163, 46, 59, 0.55));
+  background: linear-gradient(90deg, rgba(125, 222, 168, 0.55), rgba(151, 131, 209, 0.55));
 }
 
 .depositDiscountTier {
@@ -9983,9 +10094,9 @@
 /* Same look as site .loader-note — sits outside the title/table card */
 .transactionsAnnounce {
   border-radius: var(--panel-radius);
-  background: rgba(163, 46, 59, 0.1);
-  border: 1px dashed rgba(163, 46, 59, 0.45);
-  color: #e6c7cb;
+  background: rgba(151, 131, 209, 0.1);
+  border: 1px dashed rgba(151, 131, 209, 0.45);
+  color: var(--primary);
   padding: 18px;
   margin: 0;
   line-height: 1.6;
@@ -9996,12 +10107,13 @@
 .transactionsAnnounce p {
   margin: 0;
   line-height: 1.6;
+  color: inherit;
 }
 
 .themeLight .transactionsAnnounce {
-  background: rgba(163, 46, 59, 0.08);
-  border-color: rgba(163, 46, 59, 0.35);
-  color: #7a3a44;
+  background: rgba(151, 131, 209, 0.08);
+  border-color: rgba(151, 131, 209, 0.35);
+  color: var(--primary);
 }
 
 .announceInlineLink {
@@ -10010,7 +10122,7 @@
   padding: 0;
   border: 0;
   background: none;
-  color: #f0a8b1;
+  color: var(--primary);
   font: inherit;
   font-weight: 700;
   text-decoration: underline;
@@ -10023,7 +10135,7 @@
 }
 
 .themeLight .announceInlineLink {
-  color: #a32e3b;
+  color: #9783d1;
 }
 
 .themeLight .announceInlineLink:hover {
@@ -10104,7 +10216,7 @@
   border-radius: var(--panel-radius);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background:
-    radial-gradient(120% 90% at 0% 0%, rgba(163, 46, 59, 0.18), transparent 55%),
+    radial-gradient(120% 90% at 0% 0%, rgba(151, 131, 209, 0.18), transparent 55%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(0, 0, 0, 0.18));
 }
 
@@ -10114,9 +10226,9 @@
   gap: 7px;
   padding: 5px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(201, 75, 88, 0.35);
-  background: rgba(163, 46, 59, 0.16);
-  color: #f0a8b1;
+  border: 1px solid rgba(165, 184, 232, 0.35);
+  background: rgba(151, 131, 209, 0.16);
+  color: #c5dbf5;
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.04em;
@@ -10160,9 +10272,9 @@
 
 .faqItemOpen,
 .faqItemOpen:hover {
-  border-color: rgba(201, 75, 88, 0.4);
-  background: rgba(163, 46, 59, 0.08);
-  box-shadow: 0 0 0 1px rgba(163, 46, 59, 0.12);
+  border-color: rgba(165, 184, 232, 0.4);
+  background: rgba(151, 131, 209, 0.08);
+  box-shadow: 0 0 0 1px rgba(151, 131, 209, 0.12);
 }
 
 .faqQuestion {
@@ -10194,14 +10306,14 @@
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: rgba(163, 46, 59, 0.14);
-  color: #c94b58;
+  background: rgba(151, 131, 209, 0.14);
+  color: #a5b8e8;
   flex: 0 0 auto;
 }
 
 .faqItemOpen .faqIconWrap {
-  background: rgba(163, 46, 59, 0.24);
-  color: #f0a8b1;
+  background: rgba(151, 131, 209, 0.24);
+  color: #c5dbf5;
 }
 
 .faqQuestionCopy {
@@ -10220,7 +10332,7 @@
 }
 
 .faqItemOpen .faqTag {
-  color: #c94b58;
+  color: #a5b8e8;
 }
 
 .faqQuestionText {
@@ -10247,7 +10359,7 @@
 
 .faqItemOpen .faqChevron {
   transform: rotate(180deg);
-  color: #c94b58;
+  color: #a5b8e8;
 }
 
 .faqAnswerPanel {
@@ -10284,7 +10396,7 @@
   padding: 0;
   border: 0;
   background: none;
-  color: #f0a8b1;
+  color: #c5dbf5;
   font: inherit;
   font-weight: 700;
   text-decoration: underline;
@@ -10303,9 +10415,9 @@
   gap: 16px;
   padding: 16px 18px;
   border-radius: var(--panel-radius);
-  border: 1px solid rgba(201, 75, 88, 0.28);
+  border: 1px solid rgba(165, 184, 232, 0.28);
   background:
-    linear-gradient(135deg, rgba(163, 46, 59, 0.16), rgba(0, 0, 0, 0.2));
+    linear-gradient(135deg, rgba(151, 131, 209, 0.16), rgba(0, 0, 0, 0.2));
 }
 
 .faqSupportCopy {
@@ -10334,8 +10446,8 @@
   flex: 0 0 auto;
   padding: 10px 14px;
   border-radius: 10px;
-  border: 1px solid rgba(201, 75, 88, 0.45);
-  background: rgba(163, 46, 59, 0.85);
+  border: 1px solid rgba(165, 184, 232, 0.45);
+  background: rgba(151, 131, 209, 0.85);
   color: #fff;
   font-size: 13px;
   font-weight: 650;
@@ -10345,14 +10457,14 @@
 }
 
 .faqSupportButton:hover {
-  background: rgba(163, 46, 59, 1);
-  border-color: rgba(240, 168, 177, 0.55);
+  background: rgba(151, 131, 209, 1);
+  border-color: rgba(var(--primary-rgb), 0.55);
 }
 
 .themeLight .faqHero {
   border-color: rgba(15, 18, 22, 0.1);
   background:
-    radial-gradient(120% 90% at 0% 0%, rgba(163, 46, 59, 0.1), transparent 55%),
+    radial-gradient(120% 90% at 0% 0%, rgba(151, 131, 209, 0.1), transparent 55%),
     linear-gradient(180deg, #ffffff, #f7f8fa);
 }
 
@@ -10378,8 +10490,8 @@
 
 .themeLight .faqItemOpen,
 .themeLight .faqItemOpen:hover {
-  background: rgba(163, 46, 59, 0.05);
-  border-color: rgba(163, 46, 59, 0.28);
+  background: rgba(151, 131, 209, 0.05);
+  border-color: rgba(151, 131, 209, 0.28);
   box-shadow: none;
 }
 
@@ -10393,7 +10505,7 @@
 }
 
 .themeLight .faqInlineLink {
-  color: #a32e3b;
+  color: #9783d1;
 }
 
 .themeLight .faqInlineLink:hover {
@@ -10405,8 +10517,8 @@
 }
 
 .themeLight .faqSupportCard {
-  background: linear-gradient(135deg, rgba(163, 46, 59, 0.08), #ffffff);
-  border-color: rgba(163, 46, 59, 0.22);
+  background: linear-gradient(135deg, rgba(151, 131, 209, 0.08), #ffffff);
+  border-color: rgba(151, 131, 209, 0.22);
 }
 
 @media (max-width: 720px) {
@@ -10672,7 +10784,7 @@
 
 .notificationWebhookCardOpen .notificationWebhookCardChevron {
   transform: rotate(180deg);
-  color: #c94b58;
+  color: #a5b8e8;
 }
 
 .notificationWebhookCardPanel {
@@ -10716,7 +10828,7 @@
 }
 
 .themeLight .notificationWebhookCardOpen .notificationWebhookCardChevron {
-  color: #c94b58;
+  color: #a5b8e8;
 }
 
 .notificationWebhookCardLocked {
@@ -11894,7 +12006,7 @@
 
 .notificationBadgeSwatchActive {
   border-color: #ffffff;
-  box-shadow: 0 0 0 2px rgba(163, 46, 59, 0.55);
+  box-shadow: 0 0 0 2px rgba(151, 131, 209, 0.55);
 }
 
 .notificationCardTop {
@@ -12044,7 +12156,7 @@
 
 .themeLight .notificationBadgeSwatchActive {
   border-color: #15191f;
-  box-shadow: 0 0 0 2px rgba(163, 46, 59, 0.35);
+  box-shadow: 0 0 0 2px rgba(151, 131, 209, 0.35);
 }
 
 @media (max-width: 720px) {
@@ -12115,7 +12227,7 @@
 
 /* Reuse product-page feature card markup; recolor checks for dashboard. */
 .featuresPanel :global(.product-feature-card li svg) {
-  color: #a32e3b;
+  color: #9783d1;
 }
 
 .themeLight .featuresPanel :global(.product-feature-card) {
@@ -12195,7 +12307,7 @@
   width: 2px;
   background: repeating-linear-gradient(
     to bottom,
-    rgba(163, 46, 59, 0.34) 0 5px,
+    rgba(151, 131, 209, 0.34) 0 5px,
     transparent 5px 9px
   );
   pointer-events: none;
@@ -12207,7 +12319,7 @@
   left: 0;
   top: 0;
   width: 2px;
-  background: #a32e3b;
+  background: linear-gradient(135deg, #9783d1 0%, #8db4e2 100%);
   transition: height 0.08s linear;
 }
 
@@ -12215,7 +12327,7 @@
 .guideTimelineTrackFade {
   background: repeating-linear-gradient(
     to bottom,
-    rgba(163, 46, 59, 0.42) 0 5px,
+    rgba(151, 131, 209, 0.42) 0 5px,
     transparent 5px 9px
   );
   -webkit-mask-image: linear-gradient(
@@ -12278,24 +12390,24 @@
 }
 
 .guideStepActive .guideStepIndex {
-  border: 1.5px solid #a32e3b;
-  background: linear-gradient(160deg, rgba(163, 46, 59, 0.22), rgba(20, 20, 20, 0.95));
-  color: #ff6b78;
-  box-shadow: 0 0 0 4px rgba(163, 46, 59, 0.12);
+  border: 1.5px solid #9783d1;
+  background: linear-gradient(160deg, rgba(151, 131, 209, 0.22), rgba(20, 20, 20, 0.95));
+  color: #9bb5e8;
+  box-shadow: 0 0 0 4px rgba(151, 131, 209, 0.12);
 }
 
 .guideStepDone .guideStepIndex {
-  border: 1.5px solid #a32e3b;
-  background: linear-gradient(160deg, rgba(163, 46, 59, 0.22), rgba(20, 20, 20, 0.95));
-  color: #ff6b78;
-  box-shadow: 0 0 0 4px rgba(163, 46, 59, 0.12);
+  border: 1.5px solid #9783d1;
+  background: linear-gradient(160deg, rgba(151, 131, 209, 0.22), rgba(20, 20, 20, 0.95));
+  color: #9bb5e8;
+  box-shadow: 0 0 0 4px rgba(151, 131, 209, 0.12);
 }
 
 .guideStepDone.guideStepActive .guideStepIndex {
-  border: 1.5px solid #a32e3b;
-  background: linear-gradient(160deg, rgba(163, 46, 59, 0.22), rgba(20, 20, 20, 0.95));
-  color: #ff6b78;
-  box-shadow: 0 0 0 4px rgba(163, 46, 59, 0.12);
+  border: 1.5px solid #9783d1;
+  background: linear-gradient(160deg, rgba(151, 131, 209, 0.22), rgba(20, 20, 20, 0.95));
+  color: #9bb5e8;
+  box-shadow: 0 0 0 4px rgba(151, 131, 209, 0.12);
 }
 
 .guideStepBody {
@@ -12362,8 +12474,8 @@
   display: grid;
   place-items: center;
   border-radius: 7px;
-  background: rgba(163, 46, 59, 0.18);
-  color: #ff8a94;
+  background: rgba(151, 131, 209, 0.18);
+  color: #a8c4ed;
   font-size: 12px;
   font-weight: 700;
 }
@@ -12410,8 +12522,8 @@
   gap: 8px;
   padding: 12px 14px;
   border-radius: 10px;
-  border: 1px solid rgba(163, 46, 59, 0.22);
-  background: rgba(163, 46, 59, 0.08);
+  border: 1px solid rgba(151, 131, 209, 0.22);
+  background: rgba(151, 131, 209, 0.08);
   color: rgba(255, 255, 255, 0.82);
   font-size: 13px;
   font-weight: 500;
@@ -12420,7 +12532,7 @@
 
 .guideToggleChip svg {
   flex-shrink: 0;
-  color: #a32e3b;
+  color: #9783d1;
 }
 
 .guideStepMedia {
@@ -12436,7 +12548,7 @@
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background:
-    radial-gradient(ellipse at 30% 0%, rgba(163, 46, 59, 0.18), transparent 55%),
+    radial-gradient(ellipse at 30% 0%, rgba(151, 131, 209, 0.18), transparent 55%),
     #0d0d0d;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
   aspect-ratio: 16 / 9;
@@ -12470,6 +12582,17 @@
   align-items: flex-start;
 }
 
+.guideTipsStack .guideStepList {
+  margin-top: 12px;
+}
+
+.guideTipsStack .guideTipNote {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  line-height: 1.45;
+}
+
 .guideErrorCard .guideTipNote {
   margin-top: 12px;
 }
@@ -12491,8 +12614,8 @@
   margin: 10px 0 0;
   padding: 8px 12px;
   border-radius: 8px;
-  border: 1px solid rgba(163, 46, 59, 0.22);
-  background: rgba(163, 46, 59, 0.06);
+  border: 1px solid rgba(151, 131, 209, 0.22);
+  background: rgba(151, 131, 209, 0.06);
   color: rgba(255, 255, 255, 0.58);
   font-size: 12.5px;
   line-height: 1.3;
@@ -12507,8 +12630,8 @@
 
 .themeLight .guideTipNote {
   color: rgba(15, 18, 22, 0.62);
-  border-color: rgba(163, 46, 59, 0.2);
-  background: rgba(163, 46, 59, 0.05);
+  border-color: rgba(151, 131, 209, 0.2);
+  background: rgba(151, 131, 209, 0.05);
 }
 
 .guideTipCards {
@@ -12534,7 +12657,7 @@
 .guideTipCard svg {
   flex-shrink: 0;
   margin-top: 2px;
-  color: #a32e3b;
+  color: #9783d1;
 }
 
 .guideTipCard strong {
@@ -12552,12 +12675,56 @@
   line-height: 1.5;
 }
 
+.guideWarningBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0 0 22px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(245, 197, 24, 0.35);
+  background: rgba(245, 197, 24, 0.08);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.guideWarningBanner svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #efc56a;
+}
+
+.guideWarningBanner p {
+  margin: 0;
+}
+
+.guideWarningBanner strong {
+  color: #efc56a;
+  font-weight: 700;
+}
+
+.guideReadyConfigsStack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.guideReadyConfigsStack .guideWarningBanner {
+  margin-bottom: 0;
+}
+
+.guideReadyConfigsStack .guideStepNote {
+  margin-top: 0;
+}
+
 .guideStepNote {
   margin: 2px 0 0;
   padding: 14px 16px;
   border-radius: 10px;
-  border: 1px solid rgba(163, 46, 59, 0.22);
-  background: rgba(163, 46, 59, 0.06);
+  border: 1px solid rgba(151, 131, 209, 0.22);
+  background: rgba(151, 131, 209, 0.06);
   color: rgba(255, 255, 255, 0.58);
   font-size: 13.5px;
   line-height: 1.55;
@@ -12566,7 +12733,7 @@
 .guideNoteLabel {
   display: inline;
   margin-right: 6px;
-  color: #a32e3b;
+  color: #9783d1;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
@@ -12586,7 +12753,7 @@
   height: 100%;
   width: 100%;
   transform-origin: left center;
-  background: linear-gradient(90deg, #8f2a35, #d44a58);
+  background: linear-gradient(135deg, #9783d1 0%, #8db4e2 100%);
   transition: transform 0.12s linear;
 }
 
@@ -12608,12 +12775,23 @@
 .themeLight .guideTipCard span,
 .themeLight .guideStepNote {
   color: rgba(15, 18, 22, 0.62);
-  border-color: rgba(163, 46, 59, 0.2);
-  background: rgba(163, 46, 59, 0.05);
+  border-color: rgba(151, 131, 209, 0.2);
+  background: rgba(151, 131, 209, 0.05);
+}
+
+.themeLight .guideWarningBanner {
+  border-color: rgba(196, 146, 18, 0.35);
+  background: rgba(245, 197, 24, 0.12);
+  color: #5a4a12;
+}
+
+.themeLight .guideWarningBanner svg,
+.themeLight .guideWarningBanner strong {
+  color: #9a7209;
 }
 
 .themeLight .guideNoteLabel {
-  color: #a32e3b;
+  color: #9783d1;
 }
 
 .themeLight .guideStepIndex {
@@ -12631,10 +12809,10 @@
 .themeLight .guideStepActive .guideStepIndex,
 .themeLight .guideStepDone .guideStepIndex,
 .themeLight .guideStepDone.guideStepActive .guideStepIndex {
-  background: rgba(163, 46, 59, 0.1);
-  border-color: #a32e3b;
-  color: #a32e3b;
-  box-shadow: 0 0 0 4px rgba(163, 46, 59, 0.1);
+  background: rgba(151, 131, 209, 0.1);
+  border-color: #9783d1;
+  color: #9783d1;
+  box-shadow: 0 0 0 4px rgba(151, 131, 209, 0.1);
 }
 
 .themeLight .guideStepList li,
@@ -12644,8 +12822,8 @@
 }
 
 .themeLight .guideToggleChip {
-  background: rgba(163, 46, 59, 0.06);
-  border-color: rgba(163, 46, 59, 0.18);
+  background: rgba(151, 131, 209, 0.06);
+  border-color: rgba(151, 131, 209, 0.18);
   color: #121417;
 }
 
@@ -12671,7 +12849,7 @@
 .themeLight .guideTimelineTrack {
   background: repeating-linear-gradient(
     to bottom,
-    rgba(163, 46, 59, 0.28) 0 5px,
+    rgba(151, 131, 209, 0.28) 0 5px,
     transparent 5px 9px
   );
 }
@@ -12679,7 +12857,7 @@
 .themeLight .guideTimelineTrackFade {
   background: repeating-linear-gradient(
     to bottom,
-    rgba(163, 46, 59, 0.34) 0 5px,
+    rgba(151, 131, 209, 0.34) 0 5px,
     transparent 5px 9px
   );
 }
@@ -12704,7 +12882,7 @@
   width: min(480px, 80%);
   height: 120px;
   transform: translate(-50%, -50%);
-  background: radial-gradient(ellipse at center, rgba(163, 46, 59, 0.28), transparent 70%);
+  background: radial-gradient(ellipse at center, rgba(151, 131, 209, 0.28), transparent 70%);
   filter: blur(8px);
   pointer-events: none;
   animation: guideReadyPulse 3.2s ease-in-out infinite;
@@ -12746,7 +12924,7 @@
     105deg,
     #ffffff 0%,
     #ffffff 38%,
-    #ff8a94 48%,
+    #a8c4ed 48%,
     #ffffff 58%,
     #ffffff 100%
   );
@@ -12756,7 +12934,7 @@
   color: transparent;
   -webkit-text-fill-color: transparent;
   animation: guideReadyShimmer 3.8s ease-in-out infinite;
-  filter: drop-shadow(0 0 18px rgba(163, 46, 59, 0.35));
+  filter: drop-shadow(0 0 18px rgba(151, 131, 209, 0.35));
 }
 
 .guideReadySub {
@@ -12805,7 +12983,7 @@
 }
 
 .themeLight .guideReadyEyebrow {
-  color: #a32e3b;
+  color: #9783d1;
 }
 
 .themeLight .guideReadyTitle {
@@ -12817,14 +12995,14 @@
     105deg,
     #121417 0%,
     #121417 38%,
-    #a32e3b 48%,
+    #9783d1 48%,
     #121417 58%,
     #121417 100%
   );
   background-size: 220% 100%;
   -webkit-background-clip: text;
   background-clip: text;
-  filter: drop-shadow(0 0 12px rgba(163, 46, 59, 0.2));
+  filter: drop-shadow(0 0 12px rgba(151, 131, 209, 0.2));
 }
 
 .themeLight .guideReadySub {
@@ -12832,7 +13010,7 @@
 }
 
 .themeLight .guideReadyGlow {
-  background: radial-gradient(ellipse at center, rgba(163, 46, 59, 0.18), transparent 70%);
+  background: radial-gradient(ellipse at center, rgba(151, 131, 209, 0.18), transparent 70%);
 }
 
 .guideContinue {
@@ -12852,7 +13030,7 @@
   height: 1px;
   background: linear-gradient(
     90deg,
-    rgba(163, 46, 59, 0.45),
+    rgba(151, 131, 209, 0.45),
     rgba(255, 255, 255, 0.1) 40%,
     transparent 100%
   );
@@ -12922,7 +13100,7 @@
 
 .guideProductPickBtn svg {
   flex-shrink: 0;
-  color: #a32e3b;
+  color: #9783d1;
 }
 
 .guideProductPickBtn .guideContinueArrow {
@@ -12932,14 +13110,14 @@
 
 .guideProductPickBtn:hover {
   transform: translateY(-1px);
-  border-color: rgba(163, 46, 59, 0.4);
-  background: rgba(163, 46, 59, 0.1);
+  border-color: rgba(151, 131, 209, 0.4);
+  background: rgba(151, 131, 209, 0.1);
 }
 
 .themeLight .guideContinueRule {
   background: linear-gradient(
     90deg,
-    rgba(163, 46, 59, 0.4),
+    rgba(151, 131, 209, 0.4),
     rgba(15, 18, 22, 0.1) 40%,
     transparent 100%
   );
@@ -12961,8 +13139,8 @@
 }
 
 .themeLight .guideProductPickBtn:hover {
-  border-color: rgba(163, 46, 59, 0.35);
-  background: rgba(163, 46, 59, 0.06);
+  border-color: rgba(151, 131, 209, 0.35);
+  background: rgba(151, 131, 209, 0.06);
 }
 
 .guideStepBodySingle {
@@ -12983,8 +13161,8 @@
 }
 
 .guideTipCardButton:hover {
-  border-color: rgba(163, 46, 59, 0.4);
-  background: rgba(163, 46, 59, 0.1);
+  border-color: rgba(151, 131, 209, 0.4);
+  background: rgba(151, 131, 209, 0.1);
 }
 
 .guideTipCardButton .guideContinueArrow {
@@ -13046,8 +13224,8 @@
   margin-left: auto;
   padding: 7px 11px;
   border-radius: 8px;
-  border: 1px solid rgba(163, 46, 59, 0.5);
-  background: rgba(163, 46, 59, 0.2);
+  border: 1px solid rgba(151, 131, 209, 0.5);
+  background: rgba(151, 131, 209, 0.2);
   color: #fff;
   font: inherit;
   font-size: 12.5px;
@@ -13059,15 +13237,15 @@
 
 .guideErrorHelpBtn:hover,
 .guideErrorHelpBtnPrimary:hover {
-  border-color: rgba(163, 46, 59, 0.7);
-  background: rgba(163, 46, 59, 0.32);
+  border-color: rgba(151, 131, 209, 0.7);
+  background: rgba(151, 131, 209, 0.32);
   color: #fff;
 }
 
 .guideErrorHelpBtnPrimary {
   color: #fff;
-  border-color: rgba(163, 46, 59, 0.5);
-  background: rgba(163, 46, 59, 0.2);
+  border-color: rgba(151, 131, 209, 0.5);
+  background: rgba(151, 131, 209, 0.2);
 }
 
 .guideErrorSearch {
@@ -13120,8 +13298,8 @@
 
 .guideErrorFilterActive {
   color: #fff;
-  border-color: rgba(163, 46, 59, 0.45);
-  background: rgba(163, 46, 59, 0.16);
+  border-color: rgba(151, 131, 209, 0.45);
+  background: rgba(151, 131, 209, 0.16);
 }
 
 .guideErrorCount {
@@ -13187,8 +13365,8 @@
   padding: 10px 12px 10px 14px;
   border: 0;
   border-radius: 0 8px 8px 0;
-  border-left: 2px solid #a32e3b;
-  background: rgba(163, 46, 59, 0.16);
+  border-left: 2px solid #9783d1;
+  background: rgba(151, 131, 209, 0.16);
 }
 
 .guideErrorBadges {
@@ -13261,24 +13439,24 @@
 }
 
 .guideErrorSeverityHigh {
-  border-color: rgba(163, 46, 59, 0.35);
+  border-color: rgba(239, 68, 68, 0.35);
 }
 
 .guideErrorSeverityHigh .guideErrorSeverityBadge {
-  color: #ff9aa3;
-  background: rgba(163, 46, 59, 0.22);
-  border-color: rgba(163, 46, 59, 0.4);
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.42);
 }
 
 .guideErrorSeverityHigh .guideErrorFixBadge {
-  color: #ff9aa3;
-  background: rgba(163, 46, 59, 0.12);
-  border-color: rgba(163, 46, 59, 0.3);
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
 .guideErrorSeverityHigh .guideErrorExactRow {
-  border-left-color: #a32e3b;
-  background: rgba(163, 46, 59, 0.16);
+  border-left-color: #ef4444;
+  background: rgba(239, 68, 68, 0.16);
 }
 
 .guideErrorExact {
@@ -13353,16 +13531,16 @@
 
 .themeLight .guideErrorHelpBtn,
 .themeLight .guideErrorHelpBtnPrimary {
-  color: #a32e3b;
-  border-color: rgba(163, 46, 59, 0.35);
-  background: rgba(163, 46, 59, 0.08);
+  color: #9783d1;
+  border-color: rgba(151, 131, 209, 0.35);
+  background: rgba(151, 131, 209, 0.08);
 }
 
 .themeLight .guideErrorHelpBtn:hover,
 .themeLight .guideErrorHelpBtnPrimary:hover {
   color: #8a2531;
-  border-color: rgba(163, 46, 59, 0.5);
-  background: rgba(163, 46, 59, 0.14);
+  border-color: rgba(151, 131, 209, 0.5);
+  background: rgba(151, 131, 209, 0.14);
 }
 
 .themeLight .guideErrorSearch {
@@ -13386,9 +13564,9 @@
 }
 
 .themeLight .guideErrorFilterActive {
-  color: #a32e3b;
-  border-color: rgba(163, 46, 59, 0.35);
-  background: rgba(163, 46, 59, 0.08);
+  color: #9783d1;
+  border-color: rgba(151, 131, 209, 0.35);
+  background: rgba(151, 131, 209, 0.08);
 }
 
 .themeLight .guideErrorCount {
@@ -13440,14 +13618,14 @@
 
 .themeLight .guideErrorSeverityHigh .guideErrorSeverityBadge,
 .themeLight .guideErrorSeverityHigh .guideErrorFixBadge {
-  color: #a32e3b;
-  background: rgba(163, 46, 59, 0.1);
-  border-color: rgba(163, 46, 59, 0.28);
+  color: #b91c1c;
+  background: rgba(220, 38, 38, 0.1);
+  border-color: rgba(220, 38, 38, 0.28);
 }
 
 .themeLight .guideErrorSeverityHigh .guideErrorExactRow {
-  border-left-color: #a32e3b;
-  background: rgba(163, 46, 59, 0.12);
+  border-left-color: #dc2626;
+  background: rgba(220, 38, 38, 0.1);
 }
 
 .themeLight .guideErrorMeta dt {
@@ -13487,7 +13665,7 @@
 
 .guideExpandCardSummary svg:first-child {
   flex-shrink: 0;
-  color: #a32e3b;
+  color: #9783d1;
 }
 
 .guideExpandCardTitle {
@@ -13611,8 +13789,8 @@
 
 .guideProductNavCardActive {
   color: #ffffff;
-  background: rgba(163, 46, 59, 0.16);
-  border-left: 2px solid #a32e3b;
+  background: rgba(151, 131, 209, 0.16);
+  border-left: 2px solid #9783d1;
 }
 
 .guideProductNavCardActive svg {
@@ -13655,7 +13833,7 @@
   padding: 0;
   border: 0;
   background: none;
-  color: #ff8a94;
+  color: #a8c4ed;
   font: inherit;
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -13663,7 +13841,7 @@
 }
 
 .guideInlineLink:hover {
-  color: #ffb0b7;
+  color: #c5dbf5;
 }
 
 .guideKbd {
@@ -13686,7 +13864,7 @@
 }
 
 .themeLight .guideInlineLink {
-  color: #a32e3b;
+  color: #9783d1;
 }
 
 .themeLight .guideKbd {
@@ -13711,12 +13889,12 @@
 .themeLight .guideProductNavCardActive,
 .themeLight .guideProductNavCardActive:hover {
   color: #121417;
-  background: rgba(163, 46, 59, 0.12);
-  border-left-color: #a32e3b;
+  background: rgba(151, 131, 209, 0.12);
+  border-left-color: #9783d1;
 }
 
 .themeLight .guideProductNavCardActive svg {
-  color: #a32e3b;
+  color: #9783d1;
 }
 
 .guideProductMiniCard {
@@ -13725,24 +13903,24 @@
 
 .guideStepList a,
 .guideStepText a {
-  color: #ff8a94;
+  color: #a8c4ed;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .guideStepList a:hover,
 .guideStepText a:hover {
-  color: #ffb0b7;
+  color: #c5dbf5;
 }
 
 .themeLight .guideTipCardButton:hover {
-  border-color: rgba(163, 46, 59, 0.35);
-  background: rgba(163, 46, 59, 0.06);
+  border-color: rgba(151, 131, 209, 0.35);
+  background: rgba(151, 131, 209, 0.06);
 }
 
 .themeLight .guideStepList a,
 .themeLight .guideStepText a {
-  color: #a32e3b;
+  color: #9783d1;
 }
 
 .guideInlineCode {
@@ -13763,9 +13941,9 @@
   width: fit-content;
   padding: 11px 14px;
   border-radius: 10px;
-  border: 1px solid rgba(163, 46, 59, 0.35);
-  background: linear-gradient(160deg, rgba(163, 46, 59, 0.22), rgba(163, 46, 59, 0.08));
-  color: #ff8a94;
+  border: 1px solid rgba(151, 131, 209, 0.35);
+  background: linear-gradient(160deg, rgba(151, 131, 209, 0.22), rgba(151, 131, 209, 0.08));
+  color: #a8c4ed;
   font-size: 13.5px;
   font-weight: 600;
   text-decoration: none;
@@ -13774,8 +13952,8 @@
 
 .guideDownloadLink:hover {
   transform: translateY(-1px);
-  border-color: rgba(163, 46, 59, 0.55);
-  background: linear-gradient(160deg, rgba(163, 46, 59, 0.3), rgba(163, 46, 59, 0.12));
+  border-color: rgba(151, 131, 209, 0.55);
+  background: linear-gradient(160deg, rgba(151, 131, 209, 0.3), rgba(151, 131, 209, 0.12));
 }
 
 .guideSubheading {
@@ -13879,7 +14057,7 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   background:
     radial-gradient(ellipse at 0% 0%, rgba(255, 255, 255, 0.1), transparent 50%),
-    radial-gradient(ellipse at 100% 100%, rgba(163, 46, 59, 0.22), transparent 48%),
+    radial-gradient(ellipse at 100% 100%, rgba(151, 131, 209, 0.22), transparent 48%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
   overflow: hidden;
 }
@@ -13911,7 +14089,7 @@
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #a32e3b;
+  color: #9783d1;
 }
 
 .guideBiosHeading {
@@ -13963,8 +14141,8 @@
 }
 
 .guideBiosLegendRequired i {
-  background: #a32e3b;
-  box-shadow: 0 0 0 3px rgba(163, 46, 59, 0.2);
+  background: linear-gradient(135deg, #9783d1 0%, #8db4e2 100%);
+  box-shadow: 0 0 0 3px rgba(151, 131, 209, 0.2);
 }
 
 .guideBiosSearchBar {
@@ -13995,9 +14173,9 @@
   font-style: normal;
   padding: 3px 8px;
   border-radius: 6px;
-  background: rgba(163, 46, 59, 0.16);
-  border: 1px solid rgba(163, 46, 59, 0.28);
-  color: #ff8a94;
+  background: rgba(151, 131, 209, 0.16);
+  border: 1px solid rgba(151, 131, 209, 0.28);
+  color: #a8c4ed;
 }
 
 .guideBiosSearchHint {
@@ -14037,15 +14215,15 @@
 }
 
 .guideBiosRowRequired {
-  border-color: rgba(163, 46, 59, 0.35);
+  border-color: rgba(151, 131, 209, 0.35);
   background:
-    linear-gradient(135deg, rgba(163, 46, 59, 0.14), transparent 42%),
+    linear-gradient(135deg, rgba(151, 131, 209, 0.14), transparent 42%),
     rgba(12, 12, 12, 0.55);
-  box-shadow: inset 0 0 0 1px rgba(163, 46, 59, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(151, 131, 209, 0.1);
 }
 
 .guideBiosRowRequired:hover {
-  border-color: rgba(163, 46, 59, 0.5);
+  border-color: rgba(151, 131, 209, 0.5);
 }
 
 .guideBiosRowIcon {
@@ -14060,9 +14238,9 @@
 }
 
 .guideBiosRowRequired .guideBiosRowIcon {
-  border-color: rgba(163, 46, 59, 0.35);
-  background: rgba(163, 46, 59, 0.14);
-  color: #ff6b78;
+  border-color: rgba(151, 131, 209, 0.35);
+  background: rgba(151, 131, 209, 0.14);
+  color: #9bb5e8;
 }
 
 .guideBiosRowBody {
@@ -14147,9 +14325,9 @@
 }
 
 .guideBiosStateOff {
-  border-color: rgba(163, 46, 59, 0.4);
-  background: rgba(163, 46, 59, 0.14);
-  color: #ff6b78;
+  border-color: rgba(151, 131, 209, 0.4);
+  background: rgba(151, 131, 209, 0.14);
+  color: #9bb5e8;
 }
 
 .guideBiosBadgeOptional,
@@ -14171,9 +14349,9 @@
 }
 
 .guideBiosBadgeRequired {
-  border: 1px solid rgba(163, 46, 59, 0.4);
-  background: rgba(163, 46, 59, 0.14);
-  color: #ff6b78;
+  border: 1px solid rgba(151, 131, 209, 0.4);
+  background: rgba(151, 131, 209, 0.14);
+  color: #9bb5e8;
 }
 
 .guideCheckTool {
@@ -14186,7 +14364,7 @@
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background:
-    linear-gradient(135deg, rgba(163, 46, 59, 0.12), transparent 40%),
+    linear-gradient(135deg, rgba(151, 131, 209, 0.12), transparent 40%),
     rgba(255, 255, 255, 0.025);
 }
 
@@ -14225,9 +14403,9 @@
 }
 
 .themeLight .guideDownloadLink {
-  color: #a32e3b;
-  border-color: rgba(163, 46, 59, 0.28);
-  background: rgba(163, 46, 59, 0.08);
+  color: #9783d1;
+  border-color: rgba(151, 131, 209, 0.28);
+  background: rgba(151, 131, 209, 0.08);
 }
 
 .themeLight .guideSubheading,
@@ -14247,7 +14425,7 @@
   border-color: rgba(15, 18, 22, 0.1);
   background:
     radial-gradient(ellipse at 0% 0%, rgba(255, 255, 255, 0.95), transparent 52%),
-    radial-gradient(ellipse at 100% 100%, rgba(163, 46, 59, 0.12), transparent 48%),
+    radial-gradient(ellipse at 100% 100%, rgba(151, 131, 209, 0.12), transparent 48%),
     linear-gradient(180deg, #fff, #f7f8fa);
 }
 
@@ -14273,22 +14451,22 @@
 
 .themeLight .guideBiosRowRequired {
   background:
-    linear-gradient(135deg, rgba(163, 46, 59, 0.1), transparent 42%),
+    linear-gradient(135deg, rgba(151, 131, 209, 0.1), transparent 42%),
     #fff;
-  border-color: rgba(163, 46, 59, 0.28);
+  border-color: rgba(151, 131, 209, 0.28);
 }
 
 .themeLight .guideBiosRowRequired .guideBiosRowIcon {
-  border-color: rgba(163, 46, 59, 0.28);
-  background: rgba(163, 46, 59, 0.08);
-  color: #a32e3b;
+  border-color: rgba(151, 131, 209, 0.28);
+  background: rgba(151, 131, 209, 0.08);
+  color: #9783d1;
 }
 
 .themeLight .guideBiosBadgeRequired,
 .themeLight .guideBiosStateOff {
-  border-color: rgba(163, 46, 59, 0.3);
-  background: rgba(163, 46, 59, 0.08);
-  color: #a32e3b;
+  border-color: rgba(151, 131, 209, 0.3);
+  background: rgba(151, 131, 209, 0.08);
+  color: #9783d1;
 }
 
 .themeLight .guideBiosRowIcon {
@@ -14308,7 +14486,7 @@
 .themeLight .guideCheckTool {
   border-color: rgba(15, 18, 22, 0.1);
   background:
-    linear-gradient(135deg, rgba(163, 46, 59, 0.08), transparent 40%),
+    linear-gradient(135deg, rgba(151, 131, 209, 0.08), transparent 40%),
     #fff;
 }
 

@@ -1,7 +1,7 @@
 import LoaderLayoutClient from "./LoaderLayoutClient";
 
 export const metadata = {
-  title: "Loader | unbanhwid.com",
+  title: "Loader | phantom-cheats.com",
 };
 
 export default function LoaderLayout({ children }) {

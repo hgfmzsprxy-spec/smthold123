@@ -25,8 +25,8 @@ import {
 import { DiscordMarkdownPreview } from "./DiscordMarkdownPreview";
 import styles from "./AdminPage.module.css";
 
-const DISCORD_WEBHOOK_SETTINGS_KEY = "unbanhwid.resell-panel.discordWebhookSettings";
-const DISCORD_WEBHOOK_CARD_OPEN_KEY = "unbanhwid.panel.discordWebhookCardOpen";
+const DISCORD_WEBHOOK_SETTINGS_KEY = "phantom-cheats.resell-panel.discordWebhookSettings";
+const DISCORD_WEBHOOK_CARD_OPEN_KEY = "phantom-cheats.panel.discordWebhookCardOpen";
 
 function discordWebhookSettingsStorageKey(persistId) {
   const id = String(persistId || "").trim();
@@ -213,7 +213,7 @@ export function DiscordNotificationWebhookPanel({
       title: "Fortnite",
       description: "Updated to latest game patch",
       badges: [
-        { label: "UPDATE", color: "#a32e3b" },
+        { label: "UPDATE", color: "#9783d1" },
         { label: "SECOND BADGE", color: "#1d4ed8" },
       ],
       created_at: new Date().toISOString(),
@@ -483,7 +483,7 @@ export function DiscordNotificationWebhookPanel({
       : "";
   const previewColor = previewBrand.custom_color_enabled
     ? previewBrand.custom_color || "#4baf72"
-    : normalizedBadgeColor || "#a32e3b";
+    : normalizedBadgeColor || "#9783d1";
   const previewName = previewBrand.display_name || "Webhook";
   const previewAvatar =
     previewBrand.avatar_url || "https://cdn.discordapp.com/embed/avatars/4.png";

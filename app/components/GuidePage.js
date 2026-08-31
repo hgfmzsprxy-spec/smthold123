@@ -12,10 +12,12 @@ import {
   Globe,
   HardDrive,
   ListChecks,
+  Layers,
   Menu,
   MessageCircle,
   Monitor,
   Moon,
+  Rocket,
   Search,
   Shield,
   ShieldOff,
@@ -23,6 +25,7 @@ import {
   Timer,
   ArrowRight,
   Crosshair,
+  Gamepad2,
   Settings2,
   Syringe,
   X,
@@ -33,6 +36,11 @@ import GuideCheatIssuesSection, { CHEAT_ISSUES_VIEW } from "./GuideCheatIssuesSe
 import GuideDriverErrorsSection, { DRIVER_ERRORS_VIEW } from "./GuideDriverErrorsSection";
 import GuideLoaderErrorsSection, { LOADER_ERRORS_VIEW } from "./GuideLoaderErrorsSection";
 import GuideLoaderSection from "./GuideLoaderSection";
+import GuideControllerEmulatorSection, {
+  CONTROLLER_EMULATOR_SECTION_VIEWS,
+  CONTROLLER_EMULATOR_STEPPER_VIEWS,
+  CONTROLLER_EMULATOR_VIEW,
+} from "./GuideControllerEmulatorSection";
 import GuidePermanentSpooferSection, {
   PERMANENT_SPOOFER_CLEANUP_VIEW,
   PERMANENT_SPOOFER_SECTION_VIEWS,
@@ -48,7 +56,7 @@ import GuideSystemSection from "./GuideSystemSection";
 import GuideTempSpooferSection, { TEMP_SPOOFER_VIEW } from "./GuideTempSpooferSection";
 import styles from "./AdminPage.module.css";
 
-const GUIDE_THEME_KEY = "unbanhwid.guide.theme";
+const GUIDE_THEME_KEY = "phantom-cheats.guide.theme";
 const ANTIVIRUS_VIDEO_SRC = "/images/guides-data/antivirus.mp4";
 
 const PRODUCT_NAV_CHILDREN = [
@@ -102,7 +110,17 @@ const GUIDE_NAV = [
       buildProductNavItem("fortnite-private", "Fortnite Private", "/images/guide-icons/fortnite.png"),
       buildProductNavItem("call-of-duty", "Call of Duty", "/images/guide-icons/call-of-duty.png"),
       buildProductNavItem("apex-legends", "Apex Legends", "/images/guide-icons/apex-legends.png"),
-      buildProductNavItem("arc-raiders", "Arc Raiders", "/images/guide-icons/arc-raiders.png"),
+      {
+        id: CONTROLLER_EMULATOR_VIEW,
+        label: "Controller Emulator",
+        icon: Gamepad2,
+        children: [
+          { id: "controller-emulator-setup", label: "Setup", icon: Rocket },
+          { id: "controller-emulator-configuration", label: "Configuration", icon: Gamepad2 },
+          { id: "controller-emulator-tips", label: "Tips & Settings", icon: Settings2 },
+          { id: "controller-emulator-ready-configs", label: "Ready Game Configs", icon: Layers },
+        ],
+      },
       {
         id: PERMANENT_SPOOFER_VIEW,
         label: "Permanent Spoofer",
@@ -514,6 +532,7 @@ export default function GuidePage({ initialView }) {
   const [productStep, setProductStep] = useState(1);
   const [tempSpooferStep, setTempSpooferStep] = useState(1);
   const [permanentSpooferStep, setPermanentSpooferStep] = useState(1);
+  const [controllerEmulatorStep, setControllerEmulatorStep] = useState(1);
   const [stepperProgress, setStepperProgress] = useState(0);
   const contentRef = useRef(null);
 
@@ -572,6 +591,13 @@ export default function GuidePage({ initialView }) {
       PERMANENT_SPOOFER_SECTION_VIEWS.includes(view)
     ) {
       setPermanentSpooferStep(1);
+      setStepperProgress(0);
+    }
+    if (
+      view === CONTROLLER_EMULATOR_VIEW ||
+      CONTROLLER_EMULATOR_SECTION_VIEWS.includes(view)
+    ) {
+      setControllerEmulatorStep(1);
       setStepperProgress(0);
     }
   }, [view]);
@@ -639,6 +665,8 @@ export default function GuidePage({ initialView }) {
   const showTempSpoofer = view === TEMP_SPOOFER_VIEW;
   const showPermanentSpoofer =
     view === PERMANENT_SPOOFER_VIEW || PERMANENT_SPOOFER_SECTION_VIEWS.includes(view);
+  const showControllerEmulator =
+    view === CONTROLLER_EMULATOR_VIEW || CONTROLLER_EMULATOR_SECTION_VIEWS.includes(view);
   const showLoaderErrors = view === LOADER_ERRORS_VIEW;
   const showDriverErrors = view === DRIVER_ERRORS_VIEW;
   const showCheatIssues = view === CHEAT_ISSUES_VIEW;
@@ -652,6 +680,7 @@ export default function GuidePage({ initialView }) {
     showProduct ||
     showTempSpoofer ||
     showPermanentSpoofer ||
+    showControllerEmulator ||
     showLoaderErrors ||
     showDriverErrors ||
     showCheatIssues;
@@ -661,7 +690,8 @@ export default function GuidePage({ initialView }) {
     showLoader ||
     showProductStepper ||
     showTempSpoofer ||
-    showPermanentSpoofer;
+    showPermanentSpoofer ||
+    CONTROLLER_EMULATOR_STEPPER_VIEWS.includes(view);
   const progressValue = showProgressBar
     ? Math.max(scrollProgress * 0.35 + stepperProgress * 0.65, 0.04)
     : 0;
@@ -681,8 +711,8 @@ export default function GuidePage({ initialView }) {
             {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
           <a href="/" className={styles.adminTopbarBrand}>
-            <img src="/images/unbanhwid-logo.png" alt="unbanhwid.com" />
-            <span>unbanhwid.com</span>
+            <img src="/images/phantom-cheats-logo.png" alt="phantom-cheats.com" />
+            <span>phantom-cheats.com</span>
           </a>
           <div className={styles.adminTopbarSearchWrap}>
             <button type="button" className={styles.adminTopbarSearch} aria-label="Search">
@@ -692,7 +722,7 @@ export default function GuidePage({ initialView }) {
             </button>
           </div>
           <nav className={styles.adminTopbarNav}>
-            <a href="https://unbanhwid.com" target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
+            <a href="https://phantom-cheats.com" target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
               <Globe size={13} /> <span className={styles.adminTopbarLinkLabel}>Website</span>
             </a>
             <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
@@ -877,6 +907,11 @@ export default function GuidePage({ initialView }) {
                       }
                     }}
                     onSelectProduct={(productId) => {
+                      if (productId === CONTROLLER_EMULATOR_VIEW || productId === "kbm-aim-assist") {
+                        setView("controller-emulator-setup");
+                        setExpandedNav(new Set([CONTROLLER_EMULATOR_VIEW]));
+                        return;
+                      }
                       const hasProductSections = PRODUCT_GUIDE_IDS.includes(productId);
                       if (productId === PERMANENT_SPOOFER_VIEW) {
                         setView(PERMANENT_SPOOFER_SPOOFING_VIEW);
@@ -923,6 +958,33 @@ export default function GuidePage({ initialView }) {
                       setView(nextView);
                       if (PERMANENT_SPOOFER_SECTION_VIEWS.includes(nextView)) {
                         setExpandedNav(new Set([PERMANENT_SPOOFER_VIEW]));
+                        return;
+                      }
+                      if (
+                        nextView === "requirements-antivirus" ||
+                        nextView === "requirements-system"
+                      ) {
+                        setExpandedNav(new Set(["requirements"]));
+                      } else {
+                        setExpandedNav(new Set());
+                      }
+                    }}
+                  />
+                ) : showControllerEmulator ? (
+                  <GuideControllerEmulatorSection
+                    viewId={
+                      view === CONTROLLER_EMULATOR_VIEW
+                        ? "controller-emulator-setup"
+                        : view
+                    }
+                    activeStep={controllerEmulatorStep}
+                    setActiveStep={setControllerEmulatorStep}
+                    scrollRootRef={contentRef}
+                    onLineProgress={setStepperProgress}
+                    onNavigate={(nextView) => {
+                      setView(nextView);
+                      if (CONTROLLER_EMULATOR_SECTION_VIEWS.includes(nextView)) {
+                        setExpandedNav(new Set([CONTROLLER_EMULATOR_VIEW]));
                         return;
                       }
                       if (

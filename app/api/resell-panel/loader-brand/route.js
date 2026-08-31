@@ -44,7 +44,7 @@ export async function PUT(request) {
       return Response.json({ error: "Invalid request body." }, { status: 400 });
     }
 
-    const color = normalizeHex(body.color) || "#a32e3b";
+    const color = normalizeHex(body.color) || "#9783d1";
     const brandName = String(body.brandName || body.brand_name || "").trim().slice(0, 48);
     const logo = String(body.logo || "").trim();
     const discordLink = String(body.discordLink || body.discord_link || "").trim();

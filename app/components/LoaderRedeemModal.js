@@ -36,10 +36,10 @@ function RedeemThankyouStage({ playing }) {
       <svg className="redeem-thankyou-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
         <defs>
           <linearGradient id="redeemOutroGrad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#7b202a" />
-            <stop offset="28%" stopColor="#a32e3b" />
-            <stop offset="62%" stopColor="#c43a4a" />
-            <stop offset="100%" stopColor="#7b202a" />
+            <stop offset="0%" stopColor="#7568a8" />
+            <stop offset="28%" stopColor="#9783d1" />
+            <stop offset="62%" stopColor="#8db4e2" />
+            <stop offset="100%" stopColor="#7568a8" />
           </linearGradient>
         </defs>
         <rect className="redeem-outro-bar" x="122" y="376" width="556" height="10" rx="5" fill="url(#redeemOutroGrad)" />
@@ -54,23 +54,23 @@ function RedeemThankyouStage({ playing }) {
           </text>
         </g>
         <g className="redeem-outro-confetti">
-          <rect x="180" y="178" width="12" height="8" fill="#a32e3b" />
+          <rect x="180" y="178" width="12" height="8" fill="#9783d1" />
           <rect x="220" y="152" width="11" height="7" fill="#fbda4f" />
           <rect x="272" y="190" width="10" height="8" fill="#ab63df" />
           <rect x="318" y="150" width="13" height="8" fill="#5fc581" />
-          <rect x="372" y="170" width="12" height="8" fill="#a32e3b" />
+          <rect x="372" y="170" width="12" height="8" fill="#9783d1" />
           <rect x="422" y="146" width="11" height="7" fill="#fbda4f" />
           <rect x="468" y="186" width="10" height="8" fill="#ab63df" />
           <rect x="520" y="156" width="13" height="8" fill="#5fc581" />
-          <rect x="575" y="182" width="12" height="8" fill="#a32e3b" />
+          <rect x="575" y="182" width="12" height="8" fill="#9783d1" />
           <rect x="626" y="160" width="11" height="7" fill="#fbda4f" />
           <rect x="668" y="196" width="10" height="8" fill="#ab63df" />
           <rect x="210" y="214" width="12" height="8" fill="#5fc581" />
-          <rect x="260" y="228" width="10" height="7" fill="#a32e3b" />
+          <rect x="260" y="228" width="10" height="7" fill="#9783d1" />
           <rect x="308" y="210" width="13" height="8" fill="#fbda4f" />
           <rect x="360" y="224" width="12" height="8" fill="#ab63df" />
           <rect x="414" y="212" width="11" height="7" fill="#5fc581" />
-          <rect x="462" y="232" width="10" height="8" fill="#a32e3b" />
+          <rect x="462" y="232" width="10" height="8" fill="#9783d1" />
           <rect x="518" y="216" width="13" height="8" fill="#fbda4f" />
         </g>
       </svg>
@@ -86,10 +86,7 @@ export function LoaderRedeemModal({
   linkedLicenseKey = "",
   onCompleted,
   onOpenDownload,
-  variant = "default",
-  onOpenLoader,
 }) {
-  const isEmulatorVariant = variant === "emulator";
   const [step, setStep] = useState(1);
   const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [licenseInput, setLicenseInput] = useState("");
@@ -339,9 +336,7 @@ export function LoaderRedeemModal({
     if (!open) return undefined;
 
     const unlockScroll = lockBodyScroll();
-    const timer = isEmulatorVariant
-      ? null
-      : window.setTimeout(() => licenseInputRef.current?.focus(), 30);
+    const timer = window.setTimeout(() => licenseInputRef.current?.focus(), 30);
 
     const onKeyDown = (event) => {
       if (event.key === "Escape" && !playingOutroRef.current) closeRequestRef.current();
@@ -349,11 +344,11 @@ export function LoaderRedeemModal({
 
     window.addEventListener("keydown", onKeyDown);
     return () => {
-      if (timer) window.clearTimeout(timer);
+      window.clearTimeout(timer);
       window.removeEventListener("keydown", onKeyDown);
       unlockScroll();
     };
-  }, [isEmulatorVariant, open]);
+  }, [open]);
 
   useEffect(
     () => () => {
@@ -481,11 +476,6 @@ export function LoaderRedeemModal({
     onOpenDownloadRef.current?.(access);
   }
 
-  function handleOpenLoaderClick() {
-    onOpenLoader?.();
-    onOpenChangeRef.current(false);
-  }
-
   if (!open || typeof document === "undefined") return null;
 
   const progressScale = REDEEM_STEP_SCALES[step - 1] || REDEEM_STEP_SCALES[0];
@@ -503,8 +493,8 @@ export function LoaderRedeemModal({
       <div className="redeem-panel">
         <div className="redeem-panel-header">
           <div>
-            <div className="redeem-panel-kicker">{isEmulatorVariant ? "Loader Launch" : "Loader Access"}</div>
-            <h3 id="redeem-modal-title">{isEmulatorVariant ? "Mouse Emulator" : "Redeem License"}</h3>
+            <div className="redeem-panel-kicker">Loader Access</div>
+            <h3 id="redeem-modal-title">Redeem License</h3>
           </div>
           <button className="redeem-close" type="button" aria-label="Close redeem panel" onClick={handleCloseRequest}>
             <X size={18} />
@@ -512,46 +502,17 @@ export function LoaderRedeemModal({
         </div>
 
         <div className="redeem-panel-body">
-          {!isEmulatorVariant ? (
-            <div className="redeem-progress" aria-label="Redeem progress">
-              <div className="redeem-progress-meta">
-                <span>Step {step} of 3</span>
-                <span>{REDEEM_STEP_LABELS[step - 1] || REDEEM_STEP_LABELS[0]}</span>
-              </div>
-              <div className="redeem-progress-track" aria-hidden="true">
-                <div className="redeem-progress-fill" style={{ "--redeem-progress-scale": progressScale }} />
-              </div>
+          <div className="redeem-progress" aria-label="Redeem progress">
+            <div className="redeem-progress-meta">
+              <span>Step {step} of 3</span>
+              <span>{REDEEM_STEP_LABELS[step - 1] || REDEEM_STEP_LABELS[0]}</span>
             </div>
-          ) : null}
-
-          {isEmulatorVariant ? (
-            <div className="redeem-section">
-              <div className="redeem-field">
-                <label htmlFor="redeem-loader-status">Launch Status</label>
-                <div className="redeem-input-row">
-                  <input
-                    id="redeem-loader-status"
-                    className="redeem-input"
-                    type="text"
-                    value="Waiting for launch..."
-                    readOnly
-                    aria-readonly="true"
-                  />
-                </div>
-              </div>
-              <div className="redeem-actions">
-                <button className="redeem-button redeem-button-primary" type="button" onClick={handleOpenLoaderClick}>
-                  Open Loader
-                </button>
-              </div>
-              <p className="redeem-muted">
-                Open the emulator loader locally, wait until it shows <strong>Waiting for launch...</strong>, then come
-                back here and press <strong>Launch</strong> on the page to continue automatically.
-              </p>
+            <div className="redeem-progress-track" aria-hidden="true">
+              <div className="redeem-progress-fill" style={{ "--redeem-progress-scale": progressScale }} />
             </div>
-          ) : null}
+          </div>
 
-          {!isEmulatorVariant && step === 1 && !showInfoPanel ? (
+          {step === 1 && !showInfoPanel ? (
             <div className="redeem-section">
               <div className="redeem-field">
                 <label htmlFor="redeem-license-input">License Key</label>
@@ -605,7 +566,7 @@ export function LoaderRedeemModal({
             </div>
           ) : null}
 
-          {!isEmulatorVariant && step === 1 && showInfoPanel ? (
+          {step === 1 && showInfoPanel ? (
             <div className="redeem-section">
               <div className="redeem-info-card">
                 <button className="redeem-info-back" type="button" onClick={() => setShowInfoPanel(false)}>
@@ -622,7 +583,7 @@ export function LoaderRedeemModal({
             </div>
           ) : null}
 
-          {!isEmulatorVariant && step === 2 ? (
+          {step === 2 ? (
             <div className="redeem-section">
               <p className="redeem-muted">
                 License is valid. Connect your Discord account to assign it to this key before downloading the loader.
@@ -657,7 +618,7 @@ export function LoaderRedeemModal({
             </div>
           ) : null}
 
-          {!isEmulatorVariant && step === 3 ? (
+          {step === 3 ? (
             <div className="redeem-section">
               <p className="redeem-muted">
                 Discord account connected successfully. You can continue to the loader download now, or skip this step

@@ -65,11 +65,11 @@ import {
 } from "lucide-react";
 import { computeAverageRating } from "../../lib/myvouches";
 import {
-  arcRaidersFeatures,
   apexLegendsFeatures,
   callOfDutyFeatures,
   fortniteFeatures,
   hwidSpooferFeatures,
+  kbmAimAssistFeatures,
   productFeatures,
   temporarySpooferFeatures,
 } from "../../lib/product-features";
@@ -248,8 +248,8 @@ function scrollTop() {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-const CART_STORAGE_KEY = "unbanhwid.com-cart";
-const CART_EVENT = "unbanhwid.com-cart-change";
+const CART_STORAGE_KEY = "phantom-cheats.com-cart";
+const CART_EVENT = "phantom-cheats.com-cart-change";
 
 function CartBasketIcon({ size = 19 }) {
   return (
@@ -329,7 +329,7 @@ function readCartItems() {
   const cookieItems = readCookieCartItems();
   if (cookieItems.length) return cookieItems;
 
-  return normalizeCartItems(window.__unbanhwidComCartItems || []);
+  return normalizeCartItems(window.__phantomCheatsComCartItems || []);
 }
 
 function persistCartItems(items) {
@@ -345,7 +345,7 @@ function persistCartItems(items) {
     // Keep cart usable when browser storage is unavailable.
   }
 
-  window.__unbanhwidComCartItems = normalized;
+  window.__phantomCheatsComCartItems = normalized;
   writeCookieCartItems(normalized);
   window.dispatchEvent(new CustomEvent(CART_EVENT, { detail: normalized }));
 
@@ -603,7 +603,7 @@ function CustomScrollbar() {
 
 function applyBrandName(text, brandName) {
   if (!brandName || !text) return text;
-  return String(text).replace(/unbanhwid\.com/gi, brandName);
+  return String(text).replace(/phantom-cheats\.com/gi, brandName);
 }
 
 function hexToRgbTuple(hex) {
@@ -635,11 +635,19 @@ function buildBrandColorVars(color) {
     Math.round(g * 0.75),
     Math.round(b * 0.75),
   ];
+  const light = [
+    Math.min(255, Math.round(r + (255 - r) * 0.22)),
+    Math.min(255, Math.round(g + (255 - g) * 0.22)),
+    Math.min(255, Math.round(b + (255 - b) * 0.22)),
+  ];
   return {
     "--primary": `rgb(${r}, ${g}, ${b})`,
     "--primary-rgb": `${r}, ${g}, ${b}`,
     "--primary-dark": `rgb(${dark[0]}, ${dark[1]}, ${dark[2]})`,
     "--primary-soft": `rgba(${r}, ${g}, ${b}, 0.2)`,
+    "--primary-start": `rgb(${r}, ${g}, ${b})`,
+    "--primary-end": `rgb(${light[0]}, ${light[1]}, ${light[2]})`,
+    "--primary-gradient": `linear-gradient(135deg, rgb(${r}, ${g}, ${b}) 0%, rgb(${light[0]}, ${light[1]}, ${light[2]}) 100%)`,
     "--loader-brand-color": `rgb(${r}, ${g}, ${b})`,
   };
 }
@@ -709,19 +717,19 @@ function Brand({ compact = false, brand }) {
           {brand.logo ? (
             <img src={brand.logo} alt={brand.brandName || "Brand"} />
           ) : (
-            <img src="/images/unbanhwid-logo.png" alt={brand.brandName || "Brand"} />
+            <img src="/images/phantom-cheats-logo.png" alt={brand.brandName || "Brand"} />
           )}
         </span>
-        <span className="brand-name">{brand.brandName || "unbanhwid.com"}</span>
+        <span className="brand-name">{brand.brandName || "phantom-cheats.com"}</span>
       </span>
     );
   }
   return (
     <Link className={`brand-link ${compact ? "brand-link--compact" : ""}`} href="/">
       <span className="brand-logo">
-        <img src="/images/unbanhwid-logo.png" alt="unbanhwid.com" />
+        <img src="/images/phantom-cheats-logo.png" alt="phantom-cheats.com" />
       </span>
-      <span className="brand-name">unbanhwid.com</span>
+      <span className="brand-name">phantom-cheats.com</span>
     </Link>
   );
 }
@@ -1048,7 +1056,7 @@ function Footer() {
             <div className="footer-contact-card" data-reveal>
               <span>
                 <small>CONTACT US AT</small>
-                <strong>admin@unbanhwid.com</strong>
+                <strong>admin@phantom-cheats.com</strong>
               </span>
               <a className="footer-contact-action" href={DISCORD_INVITE_URL} aria-label="Contact support on Discord">
                 <ArrowRight size={21} strokeWidth={3.2} />
@@ -1072,13 +1080,13 @@ function Footer() {
           <div className="footer-links">
             <Link href="/pomoc#regulamin">Terms</Link>
             <Link href="/pomoc#polityka-prywatnosci">Refunds & Privacy Policy</Link>
-            <a className="powered-by" href="https://unbanhwid.com">
+            <a className="powered-by" href="https://phantom-cheats.com">
               <span className="powered-by-icon">
-                <img src="/images/unbanhwid-logo.png" alt="" />
+                <img src="/images/phantom-cheats-logo.png" alt="" />
               </span>
               <span>
                 <small>Powered by</small>
-                UNBANHWID.COM
+                PHANTOM-CHEATS.COM
               </span>
             </a>
           </div>
@@ -1096,7 +1104,7 @@ function HeaderStatus() {
 
   async function copyIp() {
     try {
-      await navigator.clipboard.writeText("unbanhwid.com");
+      await navigator.clipboard.writeText("phantom-cheats.com");
       setCopied(true);
       setTimeout(() => setCopied(false), 1400);
     } catch {
@@ -1113,7 +1121,7 @@ function HeaderStatus() {
       <div className="status-content">
         <div className="status-row">
           <div className="status-name">
-            <strong>unbanhwid.com</strong>
+            <strong>phantom-cheats.com</strong>
             <button className="copy-ip" type="button" onClick={copyIp} aria-label="Copy address">
               {copied ? <Check size={18} /> : <Copy size={18} />}
             </button>
@@ -1138,7 +1146,7 @@ function HomeHero() {
       <div className="container">
         <div className="hero-banner" data-reveal data-reveal-group data-reveal-base="140">
           <div data-reveal>
-            <h1>unbanhwid.com</h1>
+            <h1>phantom-cheats.com</h1>
             <h2>Elevate your gameplay with cheats!</h2>
           </div>
           <p data-reveal>Top Provider of Undetected Premium Game Cheats - Instant Delivery &amp; 24/7 Support</p>
@@ -1299,7 +1307,7 @@ function HeroStats({ reviewCount = 0, averageRating = null }) {
   );
 
   return (
-    <section className="hero-stats-section" aria-label="unbanhwid.com stats">
+    <section className="hero-stats-section" aria-label="phantom-cheats.com stats">
       <div className="container">
         <div className="hero-stats-panel" data-reveal-group data-reveal-base="70">
           {heroStats.map((stat) => (
@@ -1375,14 +1383,6 @@ const bestSellerProducts = [
     tags: ["# UNDETECTED "],
   },
   {
-    slug: "arc-raiders",
-    name: "Arc Raiders",
-    price: "4.99 USD",
-    oldPrice: "9.99 USD",
-    image: "/images/arc_raiders.png",
-    tags: ["# UNDETECTED"],
-  },
-  {
     slug: "call-of-duty",
     name: "Call of Duty",
     price: "4.99 USD",
@@ -1397,6 +1397,14 @@ const bestSellerProducts = [
     oldPrice: "9.99 USD",
     image: "/images/apex-legends.png",
     tags: ["# UNDETECTED"],
+  },
+  {
+    slug: "kbm-aim-assist",
+    name: "KBM Aim Assist",
+    price: "19.99 USD",
+    oldPrice: "29.99 USD",
+    image: "/images/aim-assist.png",
+    tags: ["# NEW"],
   },
   {
     slug: "permanent-spoofer",
@@ -1449,41 +1457,16 @@ const whyChooseUsBenefits = [
   },
 ];
 
-const beforeSpoofPoints = [
-  "Hardware serials banned",
-  "Blocked Matchmaking & Lobbies",
-  "Fear of Losing Progress",
-  "Wasting Time on Ban Appeals",
-  "Failed manual bypass attempts",
-  "Friends play without you",
-  "Wasting your skill progress",
-];
-
-const afterSpoofPoints = [
-  "Permanently HWID unbanned",
-  "Fresh hardware serials identity",
-  "Play again without instant kicks",
-  "No worries and determination",
-  "Ranked ladder await once more",
-  "A Fresh and Clean Start",
-  "Friends can join you",
-];
-
-const RECENT_PURCHASES_STORAGE_KEY = "unbanhwid.com-recent-purchases-v2";
+const RECENT_PURCHASES_STORAGE_KEY = "phantom-cheats.com-recent-purchases-v2";
 const RECENT_PURCHASES_MAX = 4;
 const RECENT_PURCHASE_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const RECENT_PURCHASE_MAX_INTERVAL_MS = 300 * 60 * 1000;
 
 const recentPurchaseProducts = [
   { slug: "fortnite-private", name: "Fortnite Private", image: "/images/fortnite.png" },
-  {
-    slug: "emulator",
-    name: "Mouse Emulator",
-    image: "/images/emulator.png",
-  },
-  { slug: "arc-raiders", name: "Arc Raiders", image: "/images/arc_raiders.png" },
   { slug: "call-of-duty", name: "Call of Duty", image: "/images/cod.png" },
   { slug: "apex-legends", name: "Apex Legends", image: "/images/apex-legends.png" },
+  { slug: "kbm-aim-assist", name: "KBM Aim Assist", image: "/images/aim-assist.png" },
   { slug: "permanent-spoofer", name: "Permanent Spoofer", image: "/images/perm-spoofer.png" },
   { slug: "temporary-spoofer", name: "Temporary Spoofer", image: "/images/temp-spoofer.png" },
 ];
@@ -1694,6 +1677,15 @@ const temporarySpooferRequirements = [
   { label: "Spoofer Type", value: "Temporary", icon: Fingerprint },
   { label: "Disk Spoofing", value: "Yes", icon: HardDrive },
   { label: "TPM Spoofing", value: "Yes", icon: KeyRound },
+];
+
+const kbmAimAssistRequirements = [
+  { label: "Operating System", value: "Windows 10 & 11", icon: Monitor },
+  { label: "Processors", value: "AMD & Intel", icon: Cpu },
+  { label: "Input", value: "Mouse & Keyboard", icon: Gamepad2 },
+  { label: "Output", value: "Virtual Xbox 360 Pad", icon: Gamepad2 },
+  { label: "Driver", value: "ViGEm Bus (auto-install)", icon: ShieldCheck },
+  { label: "Platform", value: "Any controller-only game", icon: Layers },
 ];
 
 const apexLegendsRequirements = [
@@ -1917,7 +1909,7 @@ const checkoutProducts = [
     price: "9.99 USD",
     image: "/images/best-seller-product.png",
     description:
-      "A clean unbanhwid.com build for Rainbow Six players who want a lightweight setup, instant delivery, and simple configuration.",
+      "A clean phantom-cheats.com build for Rainbow Six players who want a lightweight setup, instant delivery, and simple configuration.",
     variants: [
       { label: "1 Day", price: "9.99 USD" },
       { label: "3 Days", price: "14.99 USD" },
@@ -1932,13 +1924,36 @@ const checkoutProducts = [
     price: "14.99 USD",
     image: "/images/best-seller-product.png",
     description:
-      "The balanced unbanhwid.com package with more tools, stronger visuals, and premium configuration options for Rainbow Six.",
+      "The balanced phantom-cheats.com package with more tools, stronger visuals, and premium configuration options for Rainbow Six.",
     variants: [
       { label: "1 Day", price: "14.99 USD" },
       { label: "3 Days", price: "24.99 USD" },
       { label: "1 Week", price: "39.99 USD" },
       { label: "1 Month", price: "59.99 USD" },
     ],
+  },
+  {
+    slug: "kbm-aim-assist",
+    name: "KBM Aim Assist",
+    shortName: "Aim Assist",
+    price: "19.99 USD",
+    image: "/images/aim-assist.png",
+    description:
+      "Turn mouse and keyboard into a virtual Xbox 360 controller with sticky aim, recoil control, and full stick tuning for controller-only games.",
+    variants: [
+      { label: "7 Days License", price: "19.99 USD" },
+      { label: "30 Days License", price: "29.99 USD" },
+      { label: "365 Days License", price: "89.99 USD" },
+    ],
+    secondaryImages: [
+      { src: "/images/secondary-images/emu1.png", alt: "KBM Aim Assist | Main Panel" },
+      { src: "/images/secondary-images/emu2.png", alt: "KBM Aim Assist | Stick Settings" },
+      { src: "/images/secondary-images/emu3.png", alt: "KBM Aim Assist | Keybinds" },
+      { src: "/images/secondary-images/emu4.png", alt: "KBM Aim Assist | Aim Assist" },
+      { src: "/images/secondary-images/emu5.png", alt: "KBM Aim Assist | Crosshair & Configs" },
+    ],
+    requirements: kbmAimAssistRequirements,
+    features: kbmAimAssistFeatures,
   },
   {
     slug: "permanent-spoofer",
@@ -1953,8 +1968,8 @@ const checkoutProducts = [
       { label: "Lifetime License", price: "29.99 USD" },
     ],
     secondaryImages: [
-      { src: "/images/secondary-images/beforespoof.png", alt: "Before Spoof" },
       { src: "/images/secondary-images/spoofing.png", alt: "Spoofing" },
+      { src: "/images/secondary-images/beforespoof.png", alt: "Before Spoof" },
       { src: "/images/secondary-images/afterspoof.png", alt: "After Spoof" },
     ],
     requirements: hwidSpooferRequirements,
@@ -1983,34 +1998,13 @@ const checkoutProducts = [
     features: temporarySpooferFeatures,
   },
   {
-    slug: "arc-raiders",
-    name: "Arc Raiders",
-    shortName: "Arc Raiders",
-    price: "4.99 USD",
-    image: "/images/arc_raiders.png",
-    description:
-      "A stable Arc Raiders product with fast setup, instant access, and the unbanhwid.com product panel.",
-    variants: [
-      { label: "1 Day License", price: "4.99 USD" },
-      { label: "7 Days License", price: "19.99 USD" },
-      { label: "30 Days License", price: "49.99 USD" },
-    ],
-    features: arcRaidersFeatures,
-    secondaryImages: [
-      { src: "/images/secondary-images/arc_menu.png", alt: "Arc Raiders Menu" },
-      { src: "/images/secondary-images/arc_aimbot.png", alt: "Arc Raiders Aimbot" },
-      { src: "/images/secondary-images/arc_esp.png", alt: "Arc Raiders ESP" },
-      { src: "/images/secondary-images/arc_world_esp.png", alt: "Arc Raiders World ESP", lightboxOnly: true },
-    ],
-  },
-  {
     slug: "call-of-duty",
     name: "Call of Duty",
     shortName: "Call of Duty",
     price: "4.99 USD",
     image: "/images/cod.png",
     description:
-      "A stable Call of Duty product with fast setup, instant access, and the unbanhwid.com product panel.",
+      "A stable Call of Duty product with fast setup, instant access, and the phantom-cheats.com product panel.",
     variants: [
       { label: "1 Day License", price: "4.99 USD" },
       { label: "7 Days License", price: "14.99 USD" },
@@ -2036,7 +2030,7 @@ const checkoutProducts = [
     price: "4.99 USD",
     image: "/images/apex-legends.png",
     description:
-      "A stable Apex Legends product with fast setup, instant access, and the unbanhwid.com product panel.",
+      "A stable Apex Legends product with fast setup, instant access, and the phantom-cheats.com product panel.",
     variants: [
       { label: "1 Day License", price: "4.99 USD" },
       { label: "7 Days License", price: "14.99 USD" },
@@ -2102,50 +2096,12 @@ const loaderProducts = [
     note: "Use the latest game build and disable overlays before launch for the cleanest session.",
     subscription: "Redeem your active license to unlock the current Fortnite Private loader build and sync access instantly.",
     steps: [
-      "Open the unbanhwid.com launcher and sign in to your active license.",
+      "Open the phantom-cheats.com launcher and sign in to your active license.",
       "Select Fortnite Private and let the loader sync the current build.",
       "Start the game in borderless or windowed mode and wait for the session check.",
       "Press Launch Loader and confirm the in-game ready status before playing.",
     ],
     modules: ["Aimbot", "Visuals", "Radar", "Streamproof", "Config Sync", "FOV Control", "Quick Launch", "Hotkeys"],
-  },
-  {
-    slug: "emulator",
-    name: "Mouse Emulator",
-    image: "/images/emulator.png",
-    featurePreviewCount: 3,
-    version: "v1.0.0",
-    updated: "15.08.2026",
-    compatibility: "Windows 10/11",
-    description: "Private emulator loader with website redeem flow and direct handoff into the local menu.",
-    note: "Run the local emulator as administrator and keep it open before pressing Launch on this page.",
-    subscription: "Redeem your emulator license here, then press Launch to continue the local setup directly inside the emulator.",
-    steps: [
-      "Redeem your active emulator license on this page.",
-      "Run the local emulator as administrator and wait until its menu says Waiting for launch.",
-      "Press Launch on the website to continue the emulator automatically into the find mouse step.",
-      "Confirm your mouse, initialize the driver, then open the Home menu.",
-    ],
-    modules: ["Mouse Sync", "Driver Status", "Launch Bridge", "Guided Flow", "Auth Sync", "Home Menu", "Engine Control", "Overlay"],
-  },
-  {
-    slug: "arc-raiders",
-    name: "Arc Raiders",
-    image: "/images/arc_raiders.png",
-    featurePreviewCount: 3,
-    version: "v1.8.4",
-    updated: "26.06.2026",
-    compatibility: "Windows 10/11",
-    description: "External Cheat, remains undetected at all times, making it perfect for long-term casual gameplay.",
-    note: "Always let the loader finish file verification before attaching to the running game process.",
-    subscription: "Redeem your Arc Raiders key to activate the loader subscription and pull the latest verified package.",
-    steps: [
-      "Log in to the unbanhwid.com panel and choose the Arc Raiders license.",
-      "Run the pre-launch verification to sync the current loader package.",
-      "Open Arc Raiders, stay in the lobby, and return to the loader panel.",
-      "Inject the selected module pack and wait for the ready confirmation.",
-    ],
-    modules: ["Aimbot", "Visuals", "Radar", "Triggerbot", "Realtime Status", "Config Presets"],
   },
   {
     slug: "call-of-duty",
@@ -2159,7 +2115,7 @@ const loaderProducts = [
     note: "Launch Call of Duty in borderless or windowed mode and stay in the lobby before injecting.",
     subscription: "Redeem your Call of Duty key to unlock the loader subscription and sync the latest package.",
     steps: [
-      "Open the unbanhwid.com panel and select the Call of Duty license.",
+      "Open the phantom-cheats.com panel and select the Call of Duty license.",
       "Let the loader verify and sync the current build.",
       "Start Call of Duty, stay in the lobby, then return to the loader.",
       "Press Launch and wait for the in-game ready confirmation.",
@@ -2178,12 +2134,31 @@ const loaderProducts = [
     note: "Launch Apex in borderless or windowed mode and stay in the lobby before injecting.",
     subscription: "Redeem your Apex Legends key to unlock the loader subscription and sync the latest package.",
     steps: [
-      "Open the unbanhwid.com panel and select the Apex Legends license.",
+      "Open the phantom-cheats.com panel and select the Apex Legends license.",
       "Let the loader verify and sync the current build.",
       "Start Apex Legends, stay in the lobby, then return to the loader.",
       "Press Launch and wait for the in-game ready confirmation.",
     ],
     modules: ["Aimbot", "Visuals", "Radar", "Skinchanger", "World ESP", "Configs", "Spectators", "V-Sync"],
+  },
+  {
+    slug: "kbm-aim-assist",
+    name: "KBM Aim Assist",
+    image: "/images/aim-assist.png",
+    featurePreviewCount: 3,
+    version: "v1.0.0",
+    updated: "31.08.2026",
+    compatibility: "Windows 10/11",
+    description: "Mouse & keyboard to virtual Xbox 360 controller with sticky aim, recoil reducer, and full stick tuning.",
+    note: "Run the emulator before launching your game and keep the panel open in the background for live tuning.",
+    subscription: "Redeem your KBM Aim Assist key to unlock loader access and download the latest emulator build.",
+    steps: [
+      "Open the phantom-cheats.com loader and select KBM Aim Assist.",
+      "Let the loader verify your license and sync the current build.",
+      "Launch the emulator, apply your config, and confirm the virtual controller is active.",
+      "Start your game and use mouse & keyboard with controller aim assist enabled.",
+    ],
+    modules: ["Emulator", "Sticky Aim", "No Recoil", "Keybinds", "Stick Curve", "Crosshair", "Bunny Hop", "Configs"],
   },
   {
     slug: "permanent-spoofer",
@@ -2197,7 +2172,7 @@ const loaderProducts = [
     note: "Close launchers and anti-cheat related processes before applying a new spoof profile.",
     subscription: "Redeem your spoofer license to enable subscription access, fresh profiles, and the latest supported build.",
     steps: [
-      "Open the unbanhwid.com spoofer loader and choose your target profile.",
+      "Open the phantom-cheats.com spoofer loader and choose your target profile.",
       "Run the environment scan and confirm that all required services are ready.",
       "Click Apply Spoof and wait until the hardware profile switch is complete.",
       "Restart the machine or selected services, then launch your game from a fresh session.",
@@ -2216,7 +2191,7 @@ const loaderProducts = [
     note: "Close anti-cheat related processes before applying a temporary spoof profile.",
     subscription: "Redeem your Temporary Spoofer key to unlock loader access and pull the latest supported build.",
     steps: [
-      "Open the unbanhwid.com temporary spoofer loader and choose your profile.",
+      "Open the phantom-cheats.com temporary spoofer loader and choose your profile.",
       "Run the environment scan and confirm all required services are ready.",
       "Click Apply Spoof and wait until the temporary profile is active.",
       "Launch your game from a fresh session for the current spoof window.",
@@ -2284,22 +2259,6 @@ const loaderChangelogBySlug = {
       ],
     },
   ],
-  "arc-raiders": [
-    {
-      version: "v1.8.4",
-      date: "26.06.2026",
-      notes: [
-        "Triggerbot delay tuning for more natural timing.",
-        "Loot ESP category filters added.",
-        "Realtime Status polling reduced to lower CPU usage.",
-      ],
-    },
-    {
-      version: "v1.8.0",
-      date: "12.06.2026",
-      notes: ["Config Presets import/export.", "Improved Denuvo compatibility."],
-    },
-  ],
   "call-of-duty": [
     {
       version: "v1.0.0",
@@ -2325,6 +2284,17 @@ const loaderChangelogBySlug = {
       version: "v1.1.4",
       date: "01.07.2026",
       notes: ["V-Sync frame pacing fix for high refresh monitors."],
+    },
+  ],
+  "kbm-aim-assist": [
+    {
+      version: "v1.0.0",
+      date: "31.08.2026",
+      notes: [
+        "Initial release with virtual Xbox 360 controller emulation.",
+        "Sticky aim, recoil reducer, and bunny hop modules added.",
+        "Config import/export and Fortnite mode included.",
+      ],
     },
   ],
   "permanent-spoofer": [
@@ -2379,27 +2349,6 @@ async function fetchLoaderChangelogs(appId) {
     return [];
   }
 }
-
-const arcRaidersLoaderFeatures = [
-  {
-    title: "Information",
-    items: [
-      "Windows 10 & 11",
-      "Processors: AMD & Intel",
-      "Anti-cheat: Denuvo",
-      "Spoofer Included: No",
-      "Platform: Steam & Epic Games",
-    ],
-  },
-  {
-    title: "Aimbot",
-    items: ["Aimbot", "Aim prediction", "Customization", "Triggerbot", "Miscellaneous"],
-  },
-  {
-    title: "Visuals",
-    items: ["ESP", "Loot ESP", "Loot Category", "Smart Loot", "Display Style"],
-  },
-];
 
 const fortniteLoaderFeatures = [
   {
@@ -2464,6 +2413,34 @@ const callOfDutyLoaderFeatures = [
   },
 ];
 
+const kbmAimAssistLoaderFeatures = [
+  {
+    title: "Information",
+    items: [
+      "Windows 10 & 11",
+      "Processors: AMD & Intel",
+      "Input: Mouse & Keyboard",
+      "Output: Virtual Xbox 360 Pad",
+      "Platform: Any controller-only game",
+    ],
+  },
+  {
+    title: "Controller Emulation",
+    items: [
+      "ViGEm virtual pad",
+      "X/Y sensitivity & invert",
+      "Dead zone & noise filter",
+      "Linear / Exponential curve",
+      "Sync with Windows mouse DPI",
+      "Fortnite mode",
+    ],
+  },
+  {
+    title: "Aim Assist",
+    items: ["Sticky aim", "ADS-only mode", "Recoil reducer", "Bunny hop", "Crosshair overlay"],
+  },
+];
+
 const temporarySpooferLoaderFeatures = [
   {
     title: "Information",
@@ -2492,9 +2469,9 @@ const temporarySpooferLoaderFeatures = [
 ];
 
 const loaderFeatureSectionsBySlug = {
+  "kbm-aim-assist": () => kbmAimAssistLoaderFeatures,
   "permanent-spoofer": () => hwidSpooferFeatures.slice(0, 2),
   "temporary-spoofer": () => temporarySpooferLoaderFeatures,
-  "arc-raiders": () => arcRaidersLoaderFeatures,
   "call-of-duty": () => callOfDutyLoaderFeatures,
   "fortnite-private": () => fortniteLoaderFeatures,
   "apex-legends": () => apexLegendsLoaderFeatures,
@@ -2692,147 +2669,6 @@ function WhyChooseUsSection() {
               </article>
             );
           })}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function BeforeAfterSection() {
-  const sliderRef = useRef(null);
-  const [position, setPosition] = useState(50);
-  const [frameWidth, setFrameWidth] = useState(0);
-  const draggingRef = useRef(false);
-
-  const updateFrameWidth = useCallback(() => {
-    if (!sliderRef.current) return;
-    setFrameWidth(sliderRef.current.offsetWidth);
-  }, []);
-
-  useLayoutEffect(() => {
-    updateFrameWidth();
-
-    if (!sliderRef.current || typeof ResizeObserver === "undefined") {
-      return undefined;
-    }
-
-    const observer = new ResizeObserver(() => updateFrameWidth());
-    observer.observe(sliderRef.current);
-    return () => observer.disconnect();
-  }, [updateFrameWidth]);
-
-  const setPositionFromClientX = useCallback((clientX) => {
-    const rect = sliderRef.current?.getBoundingClientRect();
-    if (!rect?.width) return;
-
-    const nextPosition = ((clientX - rect.left) / rect.width) * 100;
-    setPosition(Math.min(100, Math.max(0, nextPosition)));
-  }, []);
-
-  useEffect(() => {
-    const handlePointerMove = (event) => {
-      if (!draggingRef.current) return;
-      setPositionFromClientX(event.clientX);
-    };
-
-    const stopDragging = () => {
-      draggingRef.current = false;
-    };
-
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", stopDragging);
-    window.addEventListener("pointercancel", stopDragging);
-
-    return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", stopDragging);
-      window.removeEventListener("pointercancel", stopDragging);
-    };
-  }, [setPositionFromClientX]);
-
-  const startDragging = (event) => {
-    draggingRef.current = true;
-    sliderRef.current?.setPointerCapture?.(event.pointerId);
-    setPositionFromClientX(event.clientX);
-  };
-
-  return (
-    <section className="section before-after-section" data-reveal-group data-reveal-base="70">
-      <div className="container">
-        <div className="before-after-head" data-reveal>
-          <h2>
-            <Layers size={26} strokeWidth={2.4} />
-            Before and After Spoof
-          </h2>
-        </div>
-
-        <div className="before-after-layout" data-reveal-group data-reveal-base="130">
-          <div className="before-after-side before-after-side-before" data-reveal>
-            <h3>Before Spoof</h3>
-            <ul>
-              {beforeSpoofPoints.map((point) => (
-                <li key={point}>
-                  <X size={16} strokeWidth={2.4} aria-hidden="true" />
-                  <span>{point}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div
-            className="before-after-slider"
-            data-reveal
-            ref={sliderRef}
-            onPointerDown={startDragging}
-            role="presentation"
-          >
-            <img
-              className="before-after-image before-after-image-after"
-              src="/images/secondary-images/after.png"
-              alt="After spoof"
-              draggable={false}
-            />
-
-            <div className="before-after-before-clip" style={{ width: `${position}%` }}>
-              <img
-                className="before-after-image before-after-image-before"
-                src="/images/secondary-images/before.png"
-                alt="Before spoof"
-                style={{ width: frameWidth ? `${frameWidth}px` : "100%" }}
-                draggable={false}
-              />
-            </div>
-
-            <div className="before-after-handle" style={{ left: `${position}%` }} aria-hidden="true">
-              <span />
-            </div>
-
-            <span className="before-after-label before-after-label-before">BEFORE</span>
-            <span className="before-after-label before-after-label-after">AFTER</span>
-          </div>
-
-          <div className="before-after-side before-after-side-after" data-reveal>
-            <h3>After Spoof</h3>
-            <ul>
-              {afterSpoofPoints.map((point) => (
-                <li key={point}>
-                  <Check size={16} strokeWidth={2.4} aria-hidden="true" />
-                  <span>{point}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="before-after-actions" data-reveal>
-            <Link className="button button-secondary before-after-action-primary" href="/product/permanent-spoofer">
-              <ShoppingCart size={18} />
-              Purchase, UNBAN NOW!
-            </Link>
-            <Link className="button button-primary-soft before-after-action-secondary" href="/product/permanent-spoofer#product-features">
-              <ScrollText size={18} />
-              Check my compatibility
-            </Link>
-          </div>
         </div>
       </div>
     </section>
@@ -3629,6 +3465,11 @@ const callOfDutyShowcaseChapters = [
   { time: 169, label: "Clip 3" },
 ];
 
+const kbmAimAssistShowcaseChapters = [
+  { time: 1, label: "Aim Assist" },
+  { time: 77, label: "No Recoil" },
+];
+
 const loaderGuideChapters = [
   { time: 2, label: "Login" },
   { time: 14, label: "Redeem License" },
@@ -3640,16 +3481,33 @@ const productShowcaseBySlug = {
   "call-of-duty": {
     streamableId: "of6gbj",
     chapters: callOfDutyShowcaseChapters,
+    legacyBranding: true,
   },
   "apex-legends": {
     streamableId: "wvgyc8",
     chapters: apexShowcaseChapters,
+    legacyBranding: true,
   },
   "fortnite-private": {
     streamableId: "4l66yt",
     chapters: [],
+    legacyBranding: true,
+  },
+  "kbm-aim-assist": {
+    src: "https://cdn.discordapp.com/attachments/1489341051855438084/1537965885220978688/2026-08-14_16-22-16.mp4?ex=6a96b699&is=6a956519&hm=b09aa6dc78bce9f62a73695276ba469367deb7585ef47e220c1760ceddc46910",
+    chapters: kbmAimAssistShowcaseChapters,
   },
 };
+
+function ProductShowcaseLegacyNotice() {
+  return (
+    <div className="loader-note product-showcase-legacy-notice" role="note">
+      <p>
+        This showcase uses our previous branding, but the product itself is unchanged and works exactly the same.
+      </p>
+    </div>
+  );
+}
 
 function formatShowcaseTime(seconds) {
   const total = Math.max(0, Math.floor(Number(seconds) || 0));
@@ -4394,13 +4252,15 @@ function ProductCheckout({ slug }) {
             ) : null}
           </div>
           {showcaseConfig ? (
-            <ProductShowcaseVideo
-              id="showcase"
-              className="product-features-video"
-              src={showcaseConfig.src || ""}
-              streamableId={showcaseConfig.streamableId || ""}
-              chapters={showcaseConfig.chapters || []}
-            />
+            <div className="product-showcase-wrap product-features-video" id="showcase">
+              {showcaseConfig.legacyBranding ? <ProductShowcaseLegacyNotice /> : null}
+              <ProductShowcaseVideo
+                className="product-showcase-video-embed"
+                src={showcaseConfig.src || ""}
+                streamableId={showcaseConfig.streamableId || ""}
+                chapters={showcaseConfig.chapters || []}
+              />
+            </div>
           ) : null}
         </div>
       </section>
@@ -4706,7 +4566,7 @@ function VoucherForm() {
     >
       <div className="voucher-row">
         <div className="mc-head">
-          <img src="/images/unbanhwid-logo.png" alt="" />
+          <img src="/images/phantom-cheats-logo.png" alt="" />
         </div>
         <FloatingInput label="EMAIL" value={email} onChange={setEmail} type="email" />
       </div>
@@ -5043,7 +4903,7 @@ function RulesContent() {
           </div>
         </div>
         <div className="rules-note">
-          Remember that you accepted the unbanhwid.com rules when you created an account in the service.
+          Remember that you accepted the phantom-cheats.com rules when you created an account in the service.
         </div>
         <article id={selected.slug} className="terms-content" dangerouslySetInnerHTML={{ __html: selected.content }} />
       </div>
@@ -5152,15 +5012,11 @@ function LoaderCard({ item, displayMeta, subscriptionBadge = null, brandSlug = "
 
 function LoaderContent({ brandSlug = "", brandName = "", brandProductSlugs = null, onNavigate, onReady }) {
   const { user, ready: authReady } = useAuthUser();
-  const visibleLoaderProducts = useMemo(
-    () => loaderProducts.filter((item) => item.slug !== "emulator"),
-    [],
-  );
-  const [displayMetaBySlug, setDisplayMetaBySlug] = useState(() => getStaticLoaderDisplayMetaMap(visibleLoaderProducts));
+  const [displayMetaBySlug, setDisplayMetaBySlug] = useState(() => getStaticLoaderDisplayMetaMap(loaderProducts));
   const displayMetaRef = useRef(displayMetaBySlug);
   const [metaReady, setMetaReady] = useState(false);
   const [productBadges, setProductBadges] = useState(() =>
-    Object.fromEntries(visibleLoaderProducts.map((item) => [item.slug, "inactive"])),
+    Object.fromEntries(loaderProducts.map((item) => [item.slug, "inactive"])),
   );
 
   useEffect(() => {
@@ -5169,12 +5025,12 @@ function LoaderContent({ brandSlug = "", brandName = "", brandProductSlugs = nul
 
   const refreshProductBadges = useCallback(async () => {
     if (!user) {
-      setProductBadges(Object.fromEntries(visibleLoaderProducts.map((item) => [item.slug, "inactive"])));
+      setProductBadges(Object.fromEntries(loaderProducts.map((item) => [item.slug, "inactive"])));
       return;
     }
 
     const nextBadges = await Promise.all(
-      visibleLoaderProducts.map(async (item) => {
+      loaderProducts.map(async (item) => {
         const appId = getLoaderAppId(item.slug);
         if (!appId) return [item.slug, "inactive"];
 
@@ -5209,7 +5065,7 @@ function LoaderContent({ brandSlug = "", brandName = "", brandProductSlugs = nul
     );
 
     setProductBadges(Object.fromEntries(nextBadges));
-  }, [user, visibleLoaderProducts]);
+  }, [user]);
 
   useEffect(() => {
     if (!authReady) return;
@@ -5245,14 +5101,14 @@ function LoaderContent({ brandSlug = "", brandName = "", brandProductSlugs = nul
     let cancelled = false;
 
     async function loadMeta() {
-      const nextMeta = await refreshLoaderDisplayMetaMap(visibleLoaderProducts);
+      const nextMeta = await refreshLoaderDisplayMetaMap(loaderProducts);
       if (!cancelled) {
         setDisplayMetaBySlug(nextMeta);
         setMetaReady(true);
       }
     }
 
-    setDisplayMetaBySlug(getInitialLoaderDisplayMetaMap(visibleLoaderProducts));
+    setDisplayMetaBySlug(getInitialLoaderDisplayMetaMap(loaderProducts));
     void loadMeta();
 
     const timerId = window.setInterval(() => {
@@ -5263,7 +5119,7 @@ function LoaderContent({ brandSlug = "", brandName = "", brandProductSlugs = nul
       cancelled = true;
       window.clearInterval(timerId);
     };
-  }, [visibleLoaderProducts]);
+  }, []);
 
   useEffect(() => {
     function scrollToHashTarget() {
@@ -5301,7 +5157,7 @@ function LoaderContent({ brandSlug = "", brandName = "", brandProductSlugs = nul
           </div>
         )}
         <div className="loader-grid">
-          {visibleLoaderProducts.map((item) => {
+          {loaderProducts.map((item) => {
             const locked = brandSlug && Array.isArray(brandProductSlugs)
               ? !brandProductSlugs.includes(item.slug)
               : false;
@@ -5450,7 +5306,6 @@ function LoaderDetailContent({
   const downloadUrlRef = useRef("");
   const subscriptionPollRef = useRef(null);
   const bannedMetricsSnapshotRef = useRef(null);
-  const isEmulatorLoader = slug === "emulator";
 
   const brandLocked =
     brandSlug && Array.isArray(brandProductSlugs) ? !brandProductSlugs.includes(slug) : false;
@@ -5891,8 +5746,17 @@ function LoaderDetailContent({
 
     setLaunchBusy(true);
     setLaunchAnim("launching");
-    const resultPromise = triggerLocalLoaderLaunch(redeemState.licenseKey, { emulator: isEmulatorLoader });
+    const startedAt = Date.now();
+    const resultPromise = triggerLocalLoaderLaunch(redeemState.licenseKey);
 
+    const remainingTakeoffMs = Math.max(0, 850 - (Date.now() - startedAt));
+    if (remainingTakeoffMs) {
+      await new Promise((resolve) => {
+        window.setTimeout(resolve, remainingTakeoffMs);
+      });
+    }
+
+    setLaunchAnim("busy");
     const result = await resultPromise;
     setLaunchBusy(false);
     setLaunchToast(result);
@@ -5907,15 +5771,7 @@ function LoaderDetailContent({
     } else {
       setLaunchAnim("idle");
     }
-  }, [
-    hasRedeemedKey,
-    isEmulatorLoader,
-    isLaunchBanned,
-    isLaunchFrozen,
-    launchBusy,
-    redeemState?.licenseKey,
-    refreshSubscription,
-  ]);
+  }, [hasRedeemedKey, isLaunchBanned, isLaunchFrozen, launchBusy, redeemState?.licenseKey, refreshSubscription]);
 
   // Make feature groups similar to product page
   const loaderFeatureSections =
@@ -6561,7 +6417,7 @@ function NickPanel() {
   return (
     <div className="account-panel">
       <div className="mc-head dark">
-        <img src="/images/unbanhwid-logo.png" alt="" />
+        <img src="/images/phantom-cheats-logo.png" alt="" />
       </div>
       <div className="account-form">
         <FloatingInput label="EMAIL" value={email} onChange={setEmail} type="email" />
@@ -6580,7 +6436,7 @@ function ShopHeader({ activeServer, servers, setActiveIndex }) {
         <div className="shop-top fade-up">
           <div>
             <h1>Products</h1>
-            <p>Choose your unbanhwid.com product and complete checkout.</p>
+            <p>Choose your phantom-cheats.com product and complete checkout.</p>
           </div>
           <NickPanel />
         </div>
@@ -6950,7 +6806,6 @@ export function HomePage({ reviewCount = 0, averageRating = null }) {
       <ModesSection selectedGame={selectedGame} setSelectedGame={setSelectedGame} />
       {selectedGame ? null : <BestSellersSection />}
       {selectedGame ? null : <WhyChooseUsSection />}
-      {selectedGame ? null : <BeforeAfterSection />}
       <PurchasesSection />
     </PageChrome>
   );
@@ -7016,7 +6871,7 @@ function useLoaderBrand(slug) {
         }
         if (ok && result?.brand) {
           setBrand({
-            color: result.brand.color || "#a32e3b",
+            color: result.brand.color || "#9783d1",
             brandName: result.brand.brand_name || "",
             logo: result.brand.logo || "",
             discordLink: result.brand.discord_link || "",
@@ -7052,7 +6907,7 @@ function useLoaderBrand(slug) {
       }
     }
     return () => {
-      const vars = buildBrandColorVars("#a32e3b");
+      const vars = buildBrandColorVars("#9783d1");
       if (vars) {
         Object.keys(vars).forEach((key) => {
           root.style.removeProperty(key);
@@ -7267,7 +7122,7 @@ export function LoaderPreview({ brand }) {
   const portalRef = useRef(null);
   const brandColor = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(String(brand?.color || ""))
     ? brand.color
-    : "#a32e3b";
+    : "#9783d1";
   const brandVars = { ...(buildBrandColorVars(brandColor) || {}), "--site-announce-height": "0px" };
   const previewBrandSlug = brand?.slug || "preview";
   const brandName = brand?.brandName || "";
@@ -7409,7 +7264,7 @@ export function LoaderDetailPage({ slug: productSlug, brandSlug }) {
 export function LoginPage() {
   return (
     <PageChrome active="login">
-      <SimpleHeader className="simple-header--login" title="Login" subtitle="Access your unbanhwid.com account." />
+      <SimpleHeader className="simple-header--login" title="Login" subtitle="Access your phantom-cheats.com account." />
       <LoginContent />
     </PageChrome>
   );

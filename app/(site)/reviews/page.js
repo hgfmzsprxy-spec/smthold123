@@ -2,7 +2,7 @@ import { ReviewsPage } from "../../components/Site";
 import { fetchMyVouchesReviews } from "../../../lib/myvouches";
 
 export const metadata = {
-  title: "Reviews | unbanhwid.com",
+  title: "Reviews | phantom-cheats.com",
 };
 
 export const revalidate = 300;

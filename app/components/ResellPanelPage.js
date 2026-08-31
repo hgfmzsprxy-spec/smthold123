@@ -97,6 +97,7 @@ import {
   validateLicenseFormatPattern,
 } from "../../lib/license-key-format";
 import { canAccessApp, fullPermissions, hasPermission } from "../../lib/panel-permissions";
+import { DEFAULT_RESELLER_STORE_PRODUCTS } from "../../lib/reseller-products";
 import {
   PermissionDeniedToast,
   TeamMemberDrawer,
@@ -129,29 +130,31 @@ function SessionsLoadingSkeleton() {
 }
 
 const RESPONSE_HISTORY_LIMIT = 60;
-const RESELL_SETTINGS_AUTO_COPY_KEY = "unbanhwid.resell-panel.autoCopyKeys";
-const RESELL_SETTINGS_THEME_KEY = "unbanhwid.resell-panel.theme";
-const RESELL_SETTINGS_HIDE_EXPIRED_KEY = "unbanhwid.resell-panel.hideExpiredLicenses";
-const RESELL_SETTINGS_DISABLE_SOUNDS_KEY = "unbanhwid.resell-panel.disableSoundEffects";
-const RESELL_SETTINGS_HIDE_TOPBAR_NOTIFS_KEY = "unbanhwid.resell-panel.hideTopbarNotifications";
-const RESELL_SETTINGS_REMEMBER_KEY = "unbanhwid.resell-panel.rememberMe";
-const RESELL_SETTINGS_COMPACT_MODE_KEY = "unbanhwid.resell-panel.compactMode";
-const RESELL_SETTINGS_REMEMBER_LAST_APP_KEY = "unbanhwid.resell-panel.rememberLastApp";
-const RESELL_SETTINGS_LAST_APP_ID_KEY = "unbanhwid.resell-panel.lastSelectedAppId";
-const RESELL_SETTINGS_SHOW_DISCOUNTED_PRICE_KEY = "unbanhwid.resell-panel.showDiscountedPrice";
-const RESELL_SETTINGS_HIDE_RESPONSE_TIME_KEY = "unbanhwid.resell-panel.hideResponseTime";
-const RESELL_SESSION_ACTIVE_KEY = "unbanhwid.resell-panel.sessionActive";
-const RESELL_SETTINGS_VIEW_KEY = "unbanhwid.resell-panel.view";
-const RESELL_CACHE_DEPOSIT_COUNT = "unbanhwid.resell-panel.depositCount";
-const RESELL_CACHE_STORE_COUNT = "unbanhwid.resell-panel.storeCount";
-const RESELL_CACHE_REDEEMED_COUNT = "unbanhwid.resell-panel.redeemedCount";
-const RESELL_CACHE_RESELLER_KEY = "unbanhwid.resell-panel.reseller";
-const RESELL_NOTIF_READ_KEY = "unbanhwid.resell-panel.notifications.readThrough";
-const RESELL_TX_READ_KEY = "unbanhwid.resell-panel.transactions.readThrough";
+const RESELL_SETTINGS_AUTO_COPY_KEY = "phantom-cheats.resell-panel.autoCopyKeys";
+const RESELL_SETTINGS_THEME_KEY = "phantom-cheats.resell-panel.theme";
+const RESELL_SETTINGS_HIDE_EXPIRED_KEY = "phantom-cheats.resell-panel.hideExpiredLicenses";
+const RESELL_SETTINGS_DISABLE_SOUNDS_KEY = "phantom-cheats.resell-panel.disableSoundEffects";
+const RESELL_SETTINGS_HIDE_TOPBAR_NOTIFS_KEY = "phantom-cheats.resell-panel.hideTopbarNotifications";
+const RESELL_SETTINGS_REMEMBER_KEY = "phantom-cheats.resell-panel.rememberMe";
+const RESELL_SETTINGS_COMPACT_MODE_KEY = "phantom-cheats.resell-panel.compactMode";
+const RESELL_SETTINGS_REMEMBER_LAST_APP_KEY = "phantom-cheats.resell-panel.rememberLastApp";
+const RESELL_SETTINGS_LAST_APP_ID_KEY = "phantom-cheats.resell-panel.lastSelectedAppId";
+const RESELL_SETTINGS_SHOW_DISCOUNTED_PRICE_KEY = "phantom-cheats.resell-panel.showDiscountedPrice";
+const RESELL_SETTINGS_HIDE_RESPONSE_TIME_KEY = "phantom-cheats.resell-panel.hideResponseTime";
+const RESELL_SESSION_ACTIVE_KEY = "phantom-cheats.resell-panel.sessionActive";
+const RESELL_SETTINGS_VIEW_KEY = "phantom-cheats.resell-panel.view";
+const RESELL_CACHE_DEPOSIT_COUNT = "phantom-cheats.resell-panel.depositCount";
+const RESELL_CACHE_STORE_COUNT = "phantom-cheats.resell-panel.storeCount";
+const RESELL_CACHE_REDEEMED_COUNT = "phantom-cheats.resell-panel.redeemedCount";
+const RESELL_CACHE_RESELLER_KEY = "phantom-cheats.resell-panel.reseller";
+const RESELL_NOTIF_READ_KEY = "phantom-cheats.resell-panel.notifications.readThrough";
+const RESELL_TX_READ_KEY = "phantom-cheats.resell-panel.transactions.readThrough";
 /** Topbar bell only — seen item ids, updated only when the bell button is opened. */
-const RESELL_TOPBAR_SEEN_IDS_KEY = "unbanhwid.resell-panel.topbarActivity.seenIds";
-const RESELL_TOPBAR_SEEN_INIT_KEY = "unbanhwid.resell-panel.topbarActivity.seenInitialized";
-const RESELL_LOADER_BRAND_KEY = "unbanhwid.resell-panel.loaderBrand";
+const RESELL_TOPBAR_SEEN_IDS_KEY = "phantom-cheats.resell-panel.topbarActivity.seenIds";
+const RESELL_TOPBAR_SEEN_INIT_KEY = "phantom-cheats.resell-panel.topbarActivity.seenInitialized";
+const RESELL_LOADER_BRAND_KEY = "phantom-cheats.resell-panel.loaderBrand";
+const RESELL_ADDONS_PROMO_SNOOZE_KEY = "phantom-cheats.resell-panel.addonsPromo.snoozeUntil";
+const ADDONS_PROMO_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const NOTIFICATION_BELL_SOUND_SRC = "/sounds/notification-bell.mp3";
 
 function topbarActivityItemId(kind, entry) {
@@ -321,7 +324,7 @@ function writeCachedCount(key, count) {
 }
 
 const LOADER_BRAND_DEFAULT = {
-  color: "#a32e3b",
+  color: "#9783d1",
   brandName: "",
   logo: "",
   discordLink: "",
@@ -599,6 +602,37 @@ function writeResellSetting(key, value) {
   }
 }
 
+function addonsPromoSnoozeStorageKey(resellerId = "") {
+  const id = String(resellerId || "").trim() || "global";
+  return `${RESELL_ADDONS_PROMO_SNOOZE_KEY}.${id}`;
+}
+
+function readAddonsPromoSnoozeUntil(resellerId) {
+  if (typeof window === "undefined") return 0;
+  try {
+    const raw = Number(window.localStorage.getItem(addonsPromoSnoozeStorageKey(resellerId)) || "0");
+    return Number.isFinite(raw) ? raw : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function snoozeAddonsPromo(resellerId) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      addonsPromoSnoozeStorageKey(resellerId),
+      String(Date.now() + ADDONS_PROMO_INTERVAL_MS)
+    );
+  } catch {
+    // ignore
+  }
+}
+
+function shouldShowAddonsPromo(resellerId) {
+  return Date.now() >= readAddonsPromoSnoozeUntil(resellerId);
+}
+
 function loadResellPreferenceState(setters) {
   setters.setAutoCopyKeys(readResellSetting(RESELL_SETTINGS_AUTO_COPY_KEY, "0") === "1");
   setters.setHideExpiredLicenses(readResellSetting(RESELL_SETTINGS_HIDE_EXPIRED_KEY, "0") === "1");
@@ -621,9 +655,9 @@ function isLicenseExpired(license, now = Date.now()) {
 }
 
 const RESELL_PANEL_PATH = "/resell-panel";
-const RESELL_DEVICE_SESSION_KEY = "unbanhwid.resell-panel.deviceSessionId";
-const RESELL_PUBLIC_IP_KEY = "unbanhwid.resell-panel.publicIp";
-const RESELL_PUBLIC_IP_AT_KEY = "unbanhwid.resell-panel.publicIpAt";
+const RESELL_DEVICE_SESSION_KEY = "phantom-cheats.resell-panel.deviceSessionId";
+const RESELL_PUBLIC_IP_KEY = "phantom-cheats.resell-panel.publicIp";
+const RESELL_PUBLIC_IP_AT_KEY = "phantom-cheats.resell-panel.publicIpAt";
 const SUPABASE_URL = String(process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/+$/, "");
 
 function getResellDeviceSessionId() {
@@ -835,9 +869,9 @@ function ResponseChart({ history, theme = "dark" }) {
           </text>
         </g>
       ))}
-      <path d={areaPath} fill="rgba(163,46,59,0.18)" />
-      <path d={linePath} fill="none" stroke="#a32e3b" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={x(history.length - 1)} cy={y(last.ms)} r="3" fill={pointFill} stroke="#a32e3b" strokeWidth="1.5" />
+      <path d={areaPath} fill="rgba(151,131,209,0.18)" />
+      <path d={linePath} fill="none" stroke="#9783d1" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={x(history.length - 1)} cy={y(last.ms)} r="3" fill={pointFill} stroke="#9783d1" strokeWidth="1.5" />
       <text x={width - pad.r} y={height - 6} textAnchor="end" fontSize="9" fill={labelFill}>
         now
       </text>
@@ -1360,7 +1394,7 @@ function ResellFaqView({ onNavigate }) {
             <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className={styles.faqInlineLink}>
               Support
             </a>{" "}
-            (<strong>discord.gg/unbanhwid</strong>).
+            (<strong>discord.gg/phantom-cheats</strong>).
           </>
         ),
       },
@@ -1579,7 +1613,7 @@ function PanelLoginGate({
     <main className={`${styles.page}${theme === "light" ? ` ${styles.themeLight}` : ""}`}>
       <div className={styles.loginGate}>
         <header className={styles.loginGateHero}>
-          <img className={styles.loginGateLogo} src="/images/unbanhwid-logo.png" alt="unbanhwid.com" />
+          <img className={styles.loginGateLogo} src="/images/phantom-cheats-logo.png" alt="phantom-cheats.com" />
           <h1 className={styles.loginGateBrand}>{brand}</h1>
           <p className={styles.loginGateDesc}>{description}</p>
         </header>
@@ -1854,6 +1888,7 @@ function ResellDashboard({ reseller, onLogout }) {
   const [sessionActionId, setSessionActionId] = useState("");
   const [storeCheckoutProduct, setStoreCheckoutProduct] = useState(null);
   const [storeCheckoutPreferredMethod, setStoreCheckoutPreferredMethod] = useState("crypto");
+  const [addonsPromoOpen, setAddonsPromoOpen] = useState(false);
   const [loaderGatePhase, setLoaderGatePhase] = useState("idle"); // idle | generating | oops | success
   const [loaderGenerateProgress, setLoaderGenerateProgress] = useState(0);
   const [loaderOops, setLoaderOops] = useState(null);
@@ -3513,15 +3548,38 @@ function ResellDashboard({ reseller, onLogout }) {
     );
   }
 
-  const loaderRebrandProduct = useMemo(
-    () => storeProducts.find((product) => String(product.slug || "") === LOADER_REBRAND_SLUG) || null,
+  const promoCatalogProducts = useMemo(
+    () => (storeProducts.length ? storeProducts : DEFAULT_RESELLER_STORE_PRODUCTS),
     [storeProducts]
   );
 
-  const customLicenseFormatProduct = useMemo(
-    () => storeProducts.find((product) => String(product.slug || "") === CUSTOM_LICENSE_FORMAT_SLUG) || null,
-    [storeProducts]
+  const loaderRebrandProduct = useMemo(
+    () => promoCatalogProducts.find((product) => String(product.slug || "") === LOADER_REBRAND_SLUG) || null,
+    [promoCatalogProducts]
   );
+
+  const customLicenseFormatProduct = useMemo(
+    () => promoCatalogProducts.find((product) => String(product.slug || "") === CUSTOM_LICENSE_FORMAT_SLUG) || null,
+    [promoCatalogProducts]
+  );
+
+  const unpurchasedStoreProducts = useMemo(() => {
+    const purchasedIds = new Set(
+      (profile?.purchased_store_product_ids || []).map((entry) => String(entry || "").trim()).filter(Boolean)
+    );
+    (profile?.purchased_store_products || []).forEach((entry) => {
+      const id = String(entry?.id || "").trim();
+      if (id) purchasedIds.add(id);
+    });
+    return promoCatalogProducts.filter((product) => !purchasedIds.has(String(product.id || "").trim()));
+  }, [promoCatalogProducts, profile?.purchased_store_product_ids, profile?.purchased_store_products]);
+
+  const addonsPromoListProducts = useMemo(
+    () => (unpurchasedStoreProducts.length ? unpurchasedStoreProducts : promoCatalogProducts),
+    [unpurchasedStoreProducts, promoCatalogProducts]
+  );
+
+  const resellerPromoScopeId = String(profile?.id || profile?.discord_auth_user_id || "").trim();
 
   const ownsLoaderRebrand = useMemo(() => {
     if (!loaderRebrandProduct?.id) return false;
@@ -3547,6 +3605,42 @@ function ResellDashboard({ reseller, onLogout }) {
       setLicenseFormatOops(null);
     }
   }, [ownsCustomLicenseFormat, licenseFormatOopsOpen]);
+
+  useEffect(() => {
+    if (busy || !resellerPromoScopeId) return undefined;
+
+    const timer = window.setTimeout(() => {
+      if (!shouldShowAddonsPromo(resellerPromoScopeId)) return;
+      setAddonsPromoOpen(true);
+    }, 800);
+
+    return () => window.clearTimeout(timer);
+  }, [busy, resellerPromoScopeId]);
+
+  useEffect(() => {
+    if (busy || storeProducts.length || storeProductsBusy) return;
+    void loadStoreProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy, storeProducts.length, storeProductsBusy]);
+
+  function dismissAddonsPromo() {
+    if (resellerPromoScopeId) snoozeAddonsPromo(resellerPromoScopeId);
+    setAddonsPromoOpen(false);
+  }
+
+  function closeAddonsPromo() {
+    setAddonsPromoOpen(false);
+  }
+
+  function openAddonsPromoStore() {
+    setAddonsPromoOpen(false);
+    changeView("store");
+  }
+
+  function openAddonsPromoCustomizer() {
+    setAddonsPromoOpen(false);
+    requestView("loader");
+  }
 
   function refreshLicenseFormatExample(nextForm = licenseFormatForm) {
     const pattern = String(nextForm?.pattern || "").trim() || LICENSE_FORMAT_DEFAULT.pattern;
@@ -4269,8 +4363,8 @@ function ResellDashboard({ reseller, onLogout }) {
           {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
         </button>
         <a href="/" className={styles.adminTopbarBrand}>
-          <img src="/images/unbanhwid-logo.png" alt="unbanhwid.com" />
-          <span>unbanhwid.com</span>
+          <img src="/images/phantom-cheats-logo.png" alt="phantom-cheats.com" />
+          <span>phantom-cheats.com</span>
         </a>
         <div
           ref={searchWrapRef}
@@ -4460,7 +4554,7 @@ function ResellDashboard({ reseller, onLogout }) {
           )}
         </div>
         <nav className={styles.adminTopbarNav}>
-          <a href="https://unbanhwid.com" target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
+          <a href="https://phantom-cheats.com" target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
             <Globe size={13} /> <span className={styles.adminTopbarLinkLabel}>Website</span>
           </a>
           <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
@@ -4831,7 +4925,7 @@ function ResellDashboard({ reseller, onLogout }) {
               {view === "welcome" ? (
                 <section className={styles.welcomeHub}>
                   <div className={styles.welcomeHero}>
-                    <img className={styles.welcomeLogo} src="/images/unbanhwid-logo.png" alt="unbanhwid.com" />
+                    <img className={styles.welcomeLogo} src="/images/phantom-cheats-logo.png" alt="phantom-cheats.com" />
                     <h1 className={styles.welcomeTitle}>Reseller Panel</h1>
                     <p className={styles.welcomeSubtitle}>
                       Manage your assigned applications and generate licenses for your customers.
@@ -6308,7 +6402,7 @@ function ResellDashboard({ reseller, onLogout }) {
                             <div
                               className={styles.loaderIdentityAccent}
                               style={{
-                                background: isValidHexColor(loaderBrand.color) ? loaderBrand.color : "#a32e3b",
+                                background: isValidHexColor(loaderBrand.color) ? loaderBrand.color : "#9783d1",
                               }}
                               aria-hidden="true"
                             />
@@ -6420,7 +6514,7 @@ function ResellDashboard({ reseller, onLogout }) {
                                   style={{
                                     "--loader-swatch": isValidHexColor(loaderBrand.color)
                                       ? loaderBrand.color
-                                      : "#a32e3b",
+                                      : "#9783d1",
                                   }}
                                   title="Pick brand color"
                                 >
@@ -6428,7 +6522,7 @@ function ResellDashboard({ reseller, onLogout }) {
                                   <input
                                     type="color"
                                     className={styles.loaderColorPicker}
-                                    value={isValidHexColor(loaderBrand.color) ? loaderBrand.color : "#a32e3b"}
+                                    value={isValidHexColor(loaderBrand.color) ? loaderBrand.color : "#9783d1"}
                                     onChange={(event) => handleLoaderColorChange(event.target.value)}
                                     aria-label="Pick brand color"
                                   />
@@ -6669,8 +6763,8 @@ function ResellDashboard({ reseller, onLogout }) {
                             <div className="redeem-panel-body">
                               <p className={styles.loaderOptionHelpText}>
                                 {loaderOptionHelp === "faq"
-                                  ? "Hides the Actions button “How to launch loader” on your custom loader page. That button opens Loader FAQ / setup pages on unbanhwid.com."
-                                  : "Hides the Actions button “Initialization guide” on your custom loader page. That button opens product Guides on unbanhwid.com."}
+                                  ? "Hides the Actions button “How to launch loader” on your custom loader page. That button opens Loader FAQ / setup pages on phantom-cheats.com."
+                                  : "Hides the Actions button “Initialization guide” on your custom loader page. That button opens product Guides on phantom-cheats.com."}
                               </p>
                               <div className={styles.loaderOptionHelpImageWrap}>
                                 <img
@@ -7621,6 +7715,74 @@ function ResellDashboard({ reseller, onLogout }) {
                       >
                         <Bitcoin size={15} />
                         Buy with crypto
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
+
+      {addonsPromoOpen
+        ? createPortal(
+            <div
+              className={`${styles.adminModal}${theme === "light" ? ` ${styles.themeLight}` : ""}`}
+              onClick={closeAddonsPromo}
+            >
+              <div
+                className={`redeem-panel ${styles.adminResponsePanel} ${styles.addonsPromoPanel}`}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="redeem-panel-header">
+                  <div>
+                    <div className="redeem-panel-kicker">Reseller add-ons</div>
+                    <h3>Upgrade your toolkit</h3>
+                  </div>
+                  <button
+                    type="button"
+                    className="redeem-close"
+                    aria-label="Close"
+                    onClick={dismissAddonsPromo}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <div className="redeem-panel-body">
+                  <div className={styles.addonsPromoBody}>
+                    <p>
+                      Unlock white-label tools for your brand — start with a{" "}
+                      <strong>Custom Loader</strong>, then explore more add-ons in the reseller store.
+                    </p>
+                    {addonsPromoListProducts.length ? (
+                      <ul className={styles.addonsPromoList}>
+                        {addonsPromoListProducts.map((product) => (
+                          <li key={product.id || product.slug}>
+                            <strong>{product.name}</strong>
+                            <span>{product.priceLabel || `$${Number(product.price || 0).toFixed(2)}`}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    <div className={styles.addonsPromoActions}>
+                      <div className={styles.addonsPromoPrimaryActions}>
+                        <button type="button" className={styles.primaryButton} onClick={openAddonsPromoStore}>
+                          <Store size={15} />
+                          Purchase
+                        </button>
+                        <button type="button" className={styles.secondaryButton} onClick={openAddonsPromoCustomizer}>
+                          <Palette size={15} />
+                          Customize Your Loader
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        className={`${styles.secondaryButton} ${styles.addonsPromoDeclineButton}`}
+                        onClick={dismissAddonsPromo}
+                      >
+                        <X size={15} />
+                        Decline
                       </button>
                     </div>
                   </div>

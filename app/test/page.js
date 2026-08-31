@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Test | unbanhwid.com",
+  title: "Test | phantom-cheats.com",
 };
 
 export default function Page() {
@@ -8,7 +8,7 @@ export default function Page() {
       style={{
         position: "relative",
         minHeight: "100vh",
-        background: "#A32E3B",
+        background: "linear-gradient(135deg, #9783D1 0%, #8DB4E2 100%)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -41,7 +41,7 @@ export default function Page() {
           color: "#ffffff",
         }}
       >
-        <h1 style={{ margin: 0, fontSize: "clamp(2rem, 5vw, 4rem)", fontWeight: 700 }}>unbanhwid.com</h1>
+        <h1 style={{ margin: 0, fontSize: "clamp(2rem, 5vw, 4rem)", fontWeight: 700 }}>phantom-cheats.com</h1>
         <p style={{ margin: "32px 0 0", fontSize: "clamp(1.25rem, 3vw, 2rem)", fontWeight: 500, opacity: 0.75 }}>Elevate your gameplay with cheats!</p>
       </div>
     </main>
