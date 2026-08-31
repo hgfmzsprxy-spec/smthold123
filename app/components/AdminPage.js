@@ -278,7 +278,7 @@ function AdminFaqView({ onNavigate }) {
             <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className={styles.faqInlineLink}>
               Discord
             </a>{" "}
-            (<strong>discord.gg/phantom-cheats</strong>).
+            (<strong>discord.gg/phantom-cheat</strong>).
           </>
         ),
       },
@@ -464,7 +464,7 @@ function cleanAdminPanelUrl() {
   if (typeof window === "undefined") return;
   let nextPath = ADMIN_PANEL_PATH;
   try {
-    const stored = window.localStorage.getItem("phantom-cheats.admin-panel.view");
+    const stored = window.localStorage.getItem("phantom-cheat.admin-panel.view");
     if (ADMIN_PANEL_VIEWS.includes(stored) && stored !== "welcome") {
       nextPath = `${ADMIN_PANEL_PATH}?view=${encodeURIComponent(stored)}`;
     }
@@ -1472,7 +1472,7 @@ export default function AdminPage() {
     try {
       const fromUrl = new URLSearchParams(window.location.search).get("view");
       if (ADMIN_PANEL_VIEWS.includes(fromUrl)) return fromUrl;
-      const stored = window.localStorage.getItem("phantom-cheats.admin-panel.view");
+      const stored = window.localStorage.getItem("phantom-cheat.admin-panel.view");
       if (ADMIN_PANEL_VIEWS.includes(stored)) return stored;
     } catch {
       // ignore
@@ -1517,7 +1517,7 @@ export default function AdminPage() {
   const [protectionLogColumns, setProtectionLogColumns] = useState(() => {
     if (typeof window === "undefined") return defaultProtectionLogColumns();
     try {
-      const raw = window.localStorage.getItem("phantom-cheats.admin-panel.protection-log-columns");
+      const raw = window.localStorage.getItem("phantom-cheat.admin-panel.protection-log-columns");
       if (!raw) return defaultProtectionLogColumns();
       const parsed = JSON.parse(raw);
       return { ...defaultProtectionLogColumns(), ...(parsed && typeof parsed === "object" ? parsed : {}) };
@@ -1528,7 +1528,7 @@ export default function AdminPage() {
   const [protectionLogDensity, setProtectionLogDensity] = useState(() => {
     if (typeof window === "undefined") return 1;
     try {
-      const raw = Number(window.localStorage.getItem("phantom-cheats.admin-panel.protection-log-density"));
+      const raw = Number(window.localStorage.getItem("phantom-cheat.admin-panel.protection-log-density"));
       return raw === 2 || raw === 3 ? raw : 1;
     } catch {
       return 1;
@@ -1541,7 +1541,7 @@ export default function AdminPage() {
     setAdminViewState(viewName);
     setMobileNavOpen(false);
     try {
-      window.localStorage.setItem("phantom-cheats.admin-panel.view", viewName);
+      window.localStorage.setItem("phantom-cheat.admin-panel.view", viewName);
     } catch {
       // ignore
     }
@@ -1838,8 +1838,8 @@ export default function AdminPage() {
 
     async function bootAdminLoginPrefs() {
       try {
-        const stored = window.localStorage.getItem("phantom-cheats.admin-panel.theme");
-        const remember = window.localStorage.getItem("phantom-cheats.admin-panel.rememberMe") !== "0";
+        const stored = window.localStorage.getItem("phantom-cheat.admin-panel.theme");
+        const remember = window.localStorage.getItem("phantom-cheat.admin-panel.rememberMe") !== "0";
         if (!cancelled) {
           setAdminTheme(stored === "light" ? "light" : "dark");
           setLoginRememberMe(remember);
@@ -1848,7 +1848,7 @@ export default function AdminPage() {
         if (!remember) {
           let sessionActive = false;
           try {
-            sessionActive = window.sessionStorage.getItem("phantom-cheats.admin-panel.sessionActive") === "1";
+            sessionActive = window.sessionStorage.getItem("phantom-cheat.admin-panel.sessionActive") === "1";
           } catch {
             sessionActive = false;
           }
@@ -1896,7 +1896,7 @@ export default function AdminPage() {
     const nextTheme = nextLight ? "light" : "dark";
     setAdminTheme(nextTheme);
     try {
-      window.localStorage.setItem("phantom-cheats.admin-panel.theme", nextTheme);
+      window.localStorage.setItem("phantom-cheat.admin-panel.theme", nextTheme);
     } catch {
       // ignore
     }
@@ -3927,7 +3927,7 @@ export default function AdminPage() {
     setProtectionLogColumns((current) => {
       const next = { ...current, [columnId]: Boolean(checked) };
       try {
-        window.localStorage.setItem("phantom-cheats.admin-panel.protection-log-columns", JSON.stringify(next));
+        window.localStorage.setItem("phantom-cheat.admin-panel.protection-log-columns", JSON.stringify(next));
       } catch {
         // ignore
       }
@@ -3939,7 +3939,7 @@ export default function AdminPage() {
     const density = nextDensity === 2 || nextDensity === 3 ? nextDensity : 1;
     setProtectionLogDensity(density);
     try {
-      window.localStorage.setItem("phantom-cheats.admin-panel.protection-log-density", String(density));
+      window.localStorage.setItem("phantom-cheat.admin-panel.protection-log-density", String(density));
     } catch {
       // ignore
     }
@@ -5536,12 +5536,12 @@ export default function AdminPage() {
     }
 
     try {
-      window.localStorage.setItem("phantom-cheats.admin-panel.rememberMe", loginRememberMe ? "1" : "0");
-      window.localStorage.setItem("phantom-cheats.admin-panel.theme", adminTheme);
+      window.localStorage.setItem("phantom-cheat.admin-panel.rememberMe", loginRememberMe ? "1" : "0");
+      window.localStorage.setItem("phantom-cheat.admin-panel.theme", adminTheme);
       if (loginRememberMe) {
-        window.sessionStorage.removeItem("phantom-cheats.admin-panel.sessionActive");
+        window.sessionStorage.removeItem("phantom-cheat.admin-panel.sessionActive");
       } else {
-        window.sessionStorage.setItem("phantom-cheats.admin-panel.sessionActive", "1");
+        window.sessionStorage.setItem("phantom-cheat.admin-panel.sessionActive", "1");
       }
     } catch {
       // ignore
@@ -6079,7 +6079,7 @@ export default function AdminPage() {
       ) : !signedIn ? (
         <div className={styles.loginGate}>
           <header className={styles.loginGateHero}>
-            <img className={styles.loginGateLogo} src="/images/phantom-cheats-logo.png" alt="phantom-cheats.com" />
+            <img className={styles.loginGateLogo} src="/images/phantom-cheat-logo.png" alt="phantom-cheat.com" />
             <h1 className={styles.loginGateBrand}>Admin Panel</h1>
             <p className={styles.loginGateDesc}>
               Management panel for applications, licenses, and delivery packages.
@@ -6235,7 +6235,7 @@ export default function AdminPage() {
                                 const next = event.target.checked;
                                 setLoginRememberMe(next);
                                 try {
-                                  window.localStorage.setItem("phantom-cheats.admin-panel.rememberMe", next ? "1" : "0");
+                                  window.localStorage.setItem("phantom-cheat.admin-panel.rememberMe", next ? "1" : "0");
                                 } catch {
                                   // ignore
                                 }
@@ -6285,8 +6285,8 @@ export default function AdminPage() {
               {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
             <a href="/" className={styles.adminTopbarBrand}>
-              <img src="/images/phantom-cheats-logo.png" alt="phantom-cheats.com" />
-              <span>phantom-cheats.com</span>
+              <img src="/images/phantom-cheat-logo.png" alt="phantom-cheat.com" />
+              <span>phantom-cheat.com</span>
             </a>
             <div
               ref={adminSearchWrapRef}
@@ -6536,7 +6536,7 @@ export default function AdminPage() {
               )}
             </div>
             <nav className={styles.adminTopbarNav}>
-              <a href="https://phantom-cheats.com" target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
+              <a href="https://phantom-cheat.com" target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
                 <Globe size={13} /> <span className={styles.adminTopbarLinkLabel}>Website</span>
               </a>
               <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
@@ -6802,8 +6802,8 @@ export default function AdminPage() {
               {adminView === "welcome" ? (
                 <section className={styles.welcomeHub}>
                   <div className={styles.welcomeHero}>
-                    <img className={styles.welcomeLogo} src="/images/phantom-cheats-logo.png" alt="phantom-cheats.com" />
-                    <h1 className={styles.welcomeTitle}>phantom-cheats.com</h1>
+                    <img className={styles.welcomeLogo} src="/images/phantom-cheat-logo.png" alt="phantom-cheat.com" />
+                    <h1 className={styles.welcomeTitle}>phantom-cheat.com</h1>
                     <p className={styles.welcomeSubtitle}>
                       Management panel for applications, licenses, and delivery packages.
                     </p>

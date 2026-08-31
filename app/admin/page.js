@@ -1,7 +1,7 @@
 import AdminPage from "../components/AdminPage";
 
 export const metadata = {
-  title: "Admin | phantom-cheats.com",
+  title: "Admin | phantom-cheat.com",
 };
 
 export default function Page() {

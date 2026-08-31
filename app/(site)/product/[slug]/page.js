@@ -1,7 +1,7 @@
 import { ProductDetailPage } from "../../../components/Site";
 
 export const metadata = {
-  title: "Product | phantom-cheats.com",
+  title: "Product | phantom-cheat.com",
 };
 
 export default async function Page({ params }) {

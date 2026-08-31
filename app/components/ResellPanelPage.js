@@ -130,30 +130,30 @@ function SessionsLoadingSkeleton() {
 }
 
 const RESPONSE_HISTORY_LIMIT = 60;
-const RESELL_SETTINGS_AUTO_COPY_KEY = "phantom-cheats.resell-panel.autoCopyKeys";
-const RESELL_SETTINGS_THEME_KEY = "phantom-cheats.resell-panel.theme";
-const RESELL_SETTINGS_HIDE_EXPIRED_KEY = "phantom-cheats.resell-panel.hideExpiredLicenses";
-const RESELL_SETTINGS_DISABLE_SOUNDS_KEY = "phantom-cheats.resell-panel.disableSoundEffects";
-const RESELL_SETTINGS_HIDE_TOPBAR_NOTIFS_KEY = "phantom-cheats.resell-panel.hideTopbarNotifications";
-const RESELL_SETTINGS_REMEMBER_KEY = "phantom-cheats.resell-panel.rememberMe";
-const RESELL_SETTINGS_COMPACT_MODE_KEY = "phantom-cheats.resell-panel.compactMode";
-const RESELL_SETTINGS_REMEMBER_LAST_APP_KEY = "phantom-cheats.resell-panel.rememberLastApp";
-const RESELL_SETTINGS_LAST_APP_ID_KEY = "phantom-cheats.resell-panel.lastSelectedAppId";
-const RESELL_SETTINGS_SHOW_DISCOUNTED_PRICE_KEY = "phantom-cheats.resell-panel.showDiscountedPrice";
-const RESELL_SETTINGS_HIDE_RESPONSE_TIME_KEY = "phantom-cheats.resell-panel.hideResponseTime";
-const RESELL_SESSION_ACTIVE_KEY = "phantom-cheats.resell-panel.sessionActive";
-const RESELL_SETTINGS_VIEW_KEY = "phantom-cheats.resell-panel.view";
-const RESELL_CACHE_DEPOSIT_COUNT = "phantom-cheats.resell-panel.depositCount";
-const RESELL_CACHE_STORE_COUNT = "phantom-cheats.resell-panel.storeCount";
-const RESELL_CACHE_REDEEMED_COUNT = "phantom-cheats.resell-panel.redeemedCount";
-const RESELL_CACHE_RESELLER_KEY = "phantom-cheats.resell-panel.reseller";
-const RESELL_NOTIF_READ_KEY = "phantom-cheats.resell-panel.notifications.readThrough";
-const RESELL_TX_READ_KEY = "phantom-cheats.resell-panel.transactions.readThrough";
+const RESELL_SETTINGS_AUTO_COPY_KEY = "phantom-cheat.resell-panel.autoCopyKeys";
+const RESELL_SETTINGS_THEME_KEY = "phantom-cheat.resell-panel.theme";
+const RESELL_SETTINGS_HIDE_EXPIRED_KEY = "phantom-cheat.resell-panel.hideExpiredLicenses";
+const RESELL_SETTINGS_DISABLE_SOUNDS_KEY = "phantom-cheat.resell-panel.disableSoundEffects";
+const RESELL_SETTINGS_HIDE_TOPBAR_NOTIFS_KEY = "phantom-cheat.resell-panel.hideTopbarNotifications";
+const RESELL_SETTINGS_REMEMBER_KEY = "phantom-cheat.resell-panel.rememberMe";
+const RESELL_SETTINGS_COMPACT_MODE_KEY = "phantom-cheat.resell-panel.compactMode";
+const RESELL_SETTINGS_REMEMBER_LAST_APP_KEY = "phantom-cheat.resell-panel.rememberLastApp";
+const RESELL_SETTINGS_LAST_APP_ID_KEY = "phantom-cheat.resell-panel.lastSelectedAppId";
+const RESELL_SETTINGS_SHOW_DISCOUNTED_PRICE_KEY = "phantom-cheat.resell-panel.showDiscountedPrice";
+const RESELL_SETTINGS_HIDE_RESPONSE_TIME_KEY = "phantom-cheat.resell-panel.hideResponseTime";
+const RESELL_SESSION_ACTIVE_KEY = "phantom-cheat.resell-panel.sessionActive";
+const RESELL_SETTINGS_VIEW_KEY = "phantom-cheat.resell-panel.view";
+const RESELL_CACHE_DEPOSIT_COUNT = "phantom-cheat.resell-panel.depositCount";
+const RESELL_CACHE_STORE_COUNT = "phantom-cheat.resell-panel.storeCount";
+const RESELL_CACHE_REDEEMED_COUNT = "phantom-cheat.resell-panel.redeemedCount";
+const RESELL_CACHE_RESELLER_KEY = "phantom-cheat.resell-panel.reseller";
+const RESELL_NOTIF_READ_KEY = "phantom-cheat.resell-panel.notifications.readThrough";
+const RESELL_TX_READ_KEY = "phantom-cheat.resell-panel.transactions.readThrough";
 /** Topbar bell only — seen item ids, updated only when the bell button is opened. */
-const RESELL_TOPBAR_SEEN_IDS_KEY = "phantom-cheats.resell-panel.topbarActivity.seenIds";
-const RESELL_TOPBAR_SEEN_INIT_KEY = "phantom-cheats.resell-panel.topbarActivity.seenInitialized";
-const RESELL_LOADER_BRAND_KEY = "phantom-cheats.resell-panel.loaderBrand";
-const RESELL_ADDONS_PROMO_SNOOZE_KEY = "phantom-cheats.resell-panel.addonsPromo.snoozeUntil";
+const RESELL_TOPBAR_SEEN_IDS_KEY = "phantom-cheat.resell-panel.topbarActivity.seenIds";
+const RESELL_TOPBAR_SEEN_INIT_KEY = "phantom-cheat.resell-panel.topbarActivity.seenInitialized";
+const RESELL_LOADER_BRAND_KEY = "phantom-cheat.resell-panel.loaderBrand";
+const RESELL_ADDONS_PROMO_SNOOZE_KEY = "phantom-cheat.resell-panel.addonsPromo.snoozeUntil";
 const ADDONS_PROMO_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const NOTIFICATION_BELL_SOUND_SRC = "/sounds/notification-bell.mp3";
 
@@ -655,9 +655,9 @@ function isLicenseExpired(license, now = Date.now()) {
 }
 
 const RESELL_PANEL_PATH = "/resell-panel";
-const RESELL_DEVICE_SESSION_KEY = "phantom-cheats.resell-panel.deviceSessionId";
-const RESELL_PUBLIC_IP_KEY = "phantom-cheats.resell-panel.publicIp";
-const RESELL_PUBLIC_IP_AT_KEY = "phantom-cheats.resell-panel.publicIpAt";
+const RESELL_DEVICE_SESSION_KEY = "phantom-cheat.resell-panel.deviceSessionId";
+const RESELL_PUBLIC_IP_KEY = "phantom-cheat.resell-panel.publicIp";
+const RESELL_PUBLIC_IP_AT_KEY = "phantom-cheat.resell-panel.publicIpAt";
 const SUPABASE_URL = String(process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/+$/, "");
 
 function getResellDeviceSessionId() {
@@ -1394,7 +1394,7 @@ function ResellFaqView({ onNavigate }) {
             <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className={styles.faqInlineLink}>
               Support
             </a>{" "}
-            (<strong>discord.gg/phantom-cheats</strong>).
+            (<strong>discord.gg/phantom-cheat</strong>).
           </>
         ),
       },
@@ -1613,7 +1613,7 @@ function PanelLoginGate({
     <main className={`${styles.page}${theme === "light" ? ` ${styles.themeLight}` : ""}`}>
       <div className={styles.loginGate}>
         <header className={styles.loginGateHero}>
-          <img className={styles.loginGateLogo} src="/images/phantom-cheats-logo.png" alt="phantom-cheats.com" />
+          <img className={styles.loginGateLogo} src="/images/phantom-cheat-logo.png" alt="phantom-cheat.com" />
           <h1 className={styles.loginGateBrand}>{brand}</h1>
           <p className={styles.loginGateDesc}>{description}</p>
         </header>
@@ -4363,8 +4363,8 @@ function ResellDashboard({ reseller, onLogout }) {
           {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
         </button>
         <a href="/" className={styles.adminTopbarBrand}>
-          <img src="/images/phantom-cheats-logo.png" alt="phantom-cheats.com" />
-          <span>phantom-cheats.com</span>
+          <img src="/images/phantom-cheat-logo.png" alt="phantom-cheat.com" />
+          <span>phantom-cheat.com</span>
         </a>
         <div
           ref={searchWrapRef}
@@ -4554,7 +4554,7 @@ function ResellDashboard({ reseller, onLogout }) {
           )}
         </div>
         <nav className={styles.adminTopbarNav}>
-          <a href="https://phantom-cheats.com" target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
+          <a href="https://phantom-cheat.com" target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
             <Globe size={13} /> <span className={styles.adminTopbarLinkLabel}>Website</span>
           </a>
           <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
@@ -4925,7 +4925,7 @@ function ResellDashboard({ reseller, onLogout }) {
               {view === "welcome" ? (
                 <section className={styles.welcomeHub}>
                   <div className={styles.welcomeHero}>
-                    <img className={styles.welcomeLogo} src="/images/phantom-cheats-logo.png" alt="phantom-cheats.com" />
+                    <img className={styles.welcomeLogo} src="/images/phantom-cheat-logo.png" alt="phantom-cheat.com" />
                     <h1 className={styles.welcomeTitle}>Reseller Panel</h1>
                     <p className={styles.welcomeSubtitle}>
                       Manage your assigned applications and generate licenses for your customers.
@@ -6763,8 +6763,8 @@ function ResellDashboard({ reseller, onLogout }) {
                             <div className="redeem-panel-body">
                               <p className={styles.loaderOptionHelpText}>
                                 {loaderOptionHelp === "faq"
-                                  ? "Hides the Actions button “How to launch loader” on your custom loader page. That button opens Loader FAQ / setup pages on phantom-cheats.com."
-                                  : "Hides the Actions button “Initialization guide” on your custom loader page. That button opens product Guides on phantom-cheats.com."}
+                                  ? "Hides the Actions button “How to launch loader” on your custom loader page. That button opens Loader FAQ / setup pages on phantom-cheat.com."
+                                  : "Hides the Actions button “Initialization guide” on your custom loader page. That button opens product Guides on phantom-cheat.com."}
                               </p>
                               <div className={styles.loaderOptionHelpImageWrap}>
                                 <img

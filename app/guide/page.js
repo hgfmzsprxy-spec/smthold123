@@ -1,7 +1,7 @@
 import GuidePage from "../components/GuidePage";
 
 export const metadata = {
-  title: "Guide | phantom-cheats.com",
+  title: "Guide | phantom-cheat.com",
 };
 
 export default async function Page({ searchParams }) {

@@ -21,7 +21,7 @@ const ERROR_SECTIONS = [
   {
     id: "website",
     title: "Website · /loader",
-    lead: "Errors from redeem, download, launch, and subscription on phantom-cheats.com/loader.",
+    lead: "Errors from redeem, download, launch, and subscription on phantom-cheat.com/loader.",
     errors: [
       {
         error: "Enter your license key first.",
@@ -111,7 +111,7 @@ const ERROR_SECTIONS = [
         error: "Discord login failed.",
         cause: "Discord login was blocked or failed.",
         explain: "Browser extensions or popup blockers can interrupt Discord login.",
-        fix: "Retry Discord login; disable blockers for phantom-cheats.com.",
+        fix: "Retry Discord login; disable blockers for phantom-cheat.com.",
       },
       {
         error: "No uploaded file is available right now.",
@@ -147,7 +147,7 @@ const ERROR_SECTIONS = [
         error: "Browser blocked local launch — Disable adblock/privacy shields.",
         cause: "Browser or an extension blocked the local launch request.",
         explain: "Adblock and privacy tools often block communication with the local loader.",
-        fix: "Disable adblock/privacy shields for phantom-cheats.com, allow local network access, retry Launch.",
+        fix: "Disable adblock/privacy shields for phantom-cheat.com, allow local network access, retry Launch.",
       },
       {
         error: "Your license has been banned / revoked. Subscription time is frozen.",
@@ -207,8 +207,8 @@ const ERROR_SECTIONS = [
       {
         error: "Origin is not allowed. (HTTP 403)",
         cause: "Launch came from a page that is not allowed.",
-        explain: "Launch only works from the official phantom-cheats.com loader pages.",
-        fix: "Launch only from https://phantom-cheats.com.",
+        explain: "Launch only works from the official phantom-cheat.com loader pages.",
+        fix: "Launch only from https://phantom-cheat.com.",
       },
       {
         error: "Missing license key. (HTTP 400)",

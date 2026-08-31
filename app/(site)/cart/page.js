@@ -1,7 +1,7 @@
 import { CartPage } from "../../components/Site";
 
 export const metadata = {
-  title: "Cart | phantom-cheats.com",
+  title: "Cart | phantom-cheat.com",
 };
 
 export default function Page() {

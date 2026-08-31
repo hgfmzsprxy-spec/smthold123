@@ -230,7 +230,7 @@ function SetupGuide({
             <div className={styles.guideStepCopy}>
               <h2 className={styles.guideStepTitle}>Sign in from the loader page</h2>
               <p className={styles.guideStepText}>
-                Controller Emulator uses phantom-cheats.com auth. Open your product on{" "}
+                Controller Emulator uses phantom-cheat.com auth. Open your product on{" "}
                 <strong>/loader</strong>, sign in, and click <strong>Launch</strong> — the app
                 validates your license automatically. You do not need to paste a key manually inside
                 the emulator.

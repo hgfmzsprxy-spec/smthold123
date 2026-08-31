@@ -25,8 +25,8 @@ import {
 import { DiscordMarkdownPreview } from "./DiscordMarkdownPreview";
 import styles from "./AdminPage.module.css";
 
-const DISCORD_WEBHOOK_SETTINGS_KEY = "phantom-cheats.resell-panel.discordWebhookSettings";
-const DISCORD_WEBHOOK_CARD_OPEN_KEY = "phantom-cheats.panel.discordWebhookCardOpen";
+const DISCORD_WEBHOOK_SETTINGS_KEY = "phantom-cheat.resell-panel.discordWebhookSettings";
+const DISCORD_WEBHOOK_CARD_OPEN_KEY = "phantom-cheat.panel.discordWebhookCardOpen";
 
 function discordWebhookSettingsStorageKey(persistId) {
   const id = String(persistId || "").trim();

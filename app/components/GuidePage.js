@@ -56,7 +56,7 @@ import GuideSystemSection from "./GuideSystemSection";
 import GuideTempSpooferSection, { TEMP_SPOOFER_VIEW } from "./GuideTempSpooferSection";
 import styles from "./AdminPage.module.css";
 
-const GUIDE_THEME_KEY = "phantom-cheats.guide.theme";
+const GUIDE_THEME_KEY = "phantom-cheat.guide.theme";
 const ANTIVIRUS_VIDEO_SRC = "/images/guides-data/antivirus.mp4";
 
 const PRODUCT_NAV_CHILDREN = [
@@ -711,8 +711,8 @@ export default function GuidePage({ initialView }) {
             {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
           <a href="/" className={styles.adminTopbarBrand}>
-            <img src="/images/phantom-cheats-logo.png" alt="phantom-cheats.com" />
-            <span>phantom-cheats.com</span>
+            <img src="/images/phantom-cheat-logo.png" alt="phantom-cheat.com" />
+            <span>phantom-cheat.com</span>
           </a>
           <div className={styles.adminTopbarSearchWrap}>
             <button type="button" className={styles.adminTopbarSearch} aria-label="Search">
@@ -722,7 +722,7 @@ export default function GuidePage({ initialView }) {
             </button>
           </div>
           <nav className={styles.adminTopbarNav}>
-            <a href="https://phantom-cheats.com" target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
+            <a href="https://phantom-cheat.com" target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
               <Globe size={13} /> <span className={styles.adminTopbarLinkLabel}>Website</span>
             </a>
             <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
