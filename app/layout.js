@@ -5,9 +5,11 @@ import SiteProtection from "./components/SiteProtection";
 export const metadata = {
   title: "phantom-cheat.com",
   description: "Top Provider of Undetected Premium Game Cheats - Instant Delivery & 24/7 Support",
+  manifest: "/site.webmanifest",
   icons: {
-    icon: "/images/favcion.png",
-    apple: "/images/favcion.png",
+    icon: "/images/phantom.png",
+    apple: "/images/phantom.png",
+    shortcut: "/images/phantom.png",
   },
 };
 

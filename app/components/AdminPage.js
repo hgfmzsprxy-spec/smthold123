@@ -6079,7 +6079,7 @@ export default function AdminPage() {
       ) : !signedIn ? (
         <div className={styles.loginGate}>
           <header className={styles.loginGateHero}>
-            <img className={styles.loginGateLogo} src="/images/phantom-cheat-logo.svg" alt="phantom-cheat.com" />
+            <img className={styles.loginGateLogo} src="/images/phantom.png" alt="phantom-cheat.com" />
             <h1 className={styles.loginGateBrand}>Admin Panel</h1>
             <p className={styles.loginGateDesc}>
               Management panel for applications, licenses, and delivery packages.
@@ -6285,7 +6285,7 @@ export default function AdminPage() {
               {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
             <a href="/" className={styles.adminTopbarBrand}>
-              <img src="/images/phantom-cheat-logo.svg" alt="phantom-cheat.com" />
+              <img src="/images/phantom.png" alt="phantom-cheat.com" />
               <span>phantom-cheat.com</span>
             </a>
             <div
@@ -6802,7 +6802,7 @@ export default function AdminPage() {
               {adminView === "welcome" ? (
                 <section className={styles.welcomeHub}>
                   <div className={styles.welcomeHero}>
-                    <img className={styles.welcomeLogo} src="/images/phantom-cheat-logo.svg" alt="phantom-cheat.com" />
+                    <img className={styles.welcomeLogo} src="/images/phantom.png" alt="phantom-cheat.com" />
                     <h1 className={styles.welcomeTitle}>phantom-cheat.com</h1>
                     <p className={styles.welcomeSubtitle}>
                       Management panel for applications, licenses, and delivery packages.

@@ -711,7 +711,7 @@ export default function GuidePage({ initialView }) {
             {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
           <a href="/" className={styles.adminTopbarBrand}>
-            <img src="/images/phantom-cheat-logo.svg" alt="phantom-cheat.com" />
+            <img src="/images/phantom.png" alt="phantom-cheat.com" />
             <span>phantom-cheat.com</span>
           </a>
           <div className={styles.adminTopbarSearchWrap}>
