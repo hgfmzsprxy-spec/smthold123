@@ -3,7 +3,7 @@ import KomerzaScript from "./components/KomerzaScript";
 import SiteProtection from "./components/SiteProtection";
 
 export const metadata = {
-  title: "phantom-cheat.com",
+  title: "phantom-cheats.com",
   description: "Top Provider of Undetected Premium Game Cheats - Instant Delivery & 24/7 Support",
   manifest: "/site.webmanifest",
   icons: {

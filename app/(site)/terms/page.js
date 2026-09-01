@@ -1,7 +1,7 @@
 import { RulesPage } from "../../components/Site";
 
 export const metadata = {
-  title: "Terms | phantom-cheat.com",
+  title: "Terms | phantom-cheats.com",
 };
 
 export default function Page() {

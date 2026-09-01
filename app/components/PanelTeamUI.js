@@ -478,7 +478,7 @@ export function TeamMemberDrawer({
                 <div>
                   <strong>Responsibility notice</strong>
                   <p>
-                    phantom-cheat.com does not accept responsibility for team members you invite, the permissions you grant
+                    phantom-cheats.com does not accept responsibility for team members you invite, the permissions you grant
                     them, or any actions they take while using your panel access. You remain fully responsible for your
                     team, account security, and any resulting activity or abuse.
                   </p>

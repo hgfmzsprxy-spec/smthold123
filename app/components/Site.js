@@ -248,8 +248,8 @@ function scrollTop() {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-const CART_STORAGE_KEY = "phantom-cheat.com-cart";
-const CART_EVENT = "phantom-cheat.com-cart-change";
+const CART_STORAGE_KEY = "phantom-cheats.com-cart";
+const CART_EVENT = "phantom-cheats.com-cart-change";
 
 function CartBasketIcon({ size = 19 }) {
   return (
@@ -603,7 +603,7 @@ function CustomScrollbar() {
 
 function applyBrandName(text, brandName) {
   if (!brandName || !text) return text;
-  return String(text).replace(/phantom-cheat\.com/gi, brandName);
+  return String(text).replace(/phantom-cheats\.com/gi, brandName);
 }
 
 function hexToRgbTuple(hex) {
@@ -720,16 +720,16 @@ function Brand({ compact = false, brand }) {
             <img src="/images/phantom.png" alt={brand.brandName || "Brand"} />
           )}
         </span>
-        <span className="brand-name">{brand.brandName || "phantom-cheat.com"}</span>
+        <span className="brand-name">{brand.brandName || "phantom-cheats.com"}</span>
       </span>
     );
   }
   return (
     <Link className={`brand-link ${compact ? "brand-link--compact" : ""}`} href="/">
       <span className="brand-logo">
-        <img src="/images/phantom.png" alt="phantom-cheat.com" />
+        <img src="/images/phantom.png" alt="phantom-cheats.com" />
       </span>
-      <span className="brand-name">phantom-cheat.com</span>
+      <span className="brand-name">phantom-cheats.com</span>
     </Link>
   );
 }
@@ -1056,7 +1056,7 @@ function Footer() {
             <div className="footer-contact-card" data-reveal>
               <span>
                 <small>CONTACT US AT</small>
-                <strong>admin@phantom-cheat.com</strong>
+                <strong>admin@phantom-cheats.com</strong>
               </span>
               <a className="footer-contact-action" href={DISCORD_INVITE_URL} aria-label="Contact support on Discord">
                 <ArrowRight size={21} strokeWidth={3.2} />
@@ -1080,13 +1080,13 @@ function Footer() {
           <div className="footer-links">
             <Link href="/pomoc#regulamin">Terms</Link>
             <Link href="/pomoc#polityka-prywatnosci">Refunds & Privacy Policy</Link>
-            <a className="powered-by" href="https://phantom-cheat.com">
+            <a className="powered-by" href="https://phantom-cheats.com">
               <span className="powered-by-icon">
                 <img src="/images/phantom.png" alt="" />
               </span>
               <span>
                 <small>Powered by</small>
-                phantom-cheat.com
+                phantom-cheats.com
               </span>
             </a>
           </div>
@@ -1104,7 +1104,7 @@ function HeaderStatus() {
 
   async function copyIp() {
     try {
-      await navigator.clipboard.writeText("phantom-cheat.com");
+      await navigator.clipboard.writeText("phantom-cheats.com");
       setCopied(true);
       setTimeout(() => setCopied(false), 1400);
     } catch {
@@ -1121,7 +1121,7 @@ function HeaderStatus() {
       <div className="status-content">
         <div className="status-row">
           <div className="status-name">
-            <strong>phantom-cheat.com</strong>
+            <strong>phantom-cheats.com</strong>
             <button className="copy-ip" type="button" onClick={copyIp} aria-label="Copy address">
               {copied ? <Check size={18} /> : <Copy size={18} />}
             </button>
@@ -1146,7 +1146,7 @@ function HomeHero() {
       <div className="container">
         <div className="hero-banner" data-reveal data-reveal-group data-reveal-base="140">
           <div data-reveal>
-            <h1>phantom-cheat.com</h1>
+            <h1>phantom-cheats.com</h1>
             <h2>Elevate your gameplay with cheats!</h2>
           </div>
           <p data-reveal>Top Provider of Undetected Premium Game Cheats - Instant Delivery &amp; 24/7 Support</p>
@@ -1307,7 +1307,7 @@ function HeroStats({ reviewCount = 0, averageRating = null }) {
   );
 
   return (
-    <section className="hero-stats-section" aria-label="phantom-cheat.com stats">
+    <section className="hero-stats-section" aria-label="phantom-cheats.com stats">
       <div className="container">
         <div className="hero-stats-panel" data-reveal-group data-reveal-base="70">
           {heroStats.map((stat) => (
@@ -1457,7 +1457,7 @@ const whyChooseUsBenefits = [
   },
 ];
 
-const RECENT_PURCHASES_STORAGE_KEY = "phantom-cheat.com-recent-purchases-v2";
+const RECENT_PURCHASES_STORAGE_KEY = "phantom-cheats.com-recent-purchases-v2";
 const RECENT_PURCHASES_MAX = 4;
 const RECENT_PURCHASE_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const RECENT_PURCHASE_MAX_INTERVAL_MS = 300 * 60 * 1000;
@@ -1909,7 +1909,7 @@ const checkoutProducts = [
     price: "9.99 USD",
     image: "/images/best-seller-product.png",
     description:
-      "A clean phantom-cheat.com build for Rainbow Six players who want a lightweight setup, instant delivery, and simple configuration.",
+      "A clean phantom-cheats.com build for Rainbow Six players who want a lightweight setup, instant delivery, and simple configuration.",
     variants: [
       { label: "1 Day", price: "9.99 USD" },
       { label: "3 Days", price: "14.99 USD" },
@@ -1924,7 +1924,7 @@ const checkoutProducts = [
     price: "14.99 USD",
     image: "/images/best-seller-product.png",
     description:
-      "The balanced phantom-cheat.com package with more tools, stronger visuals, and premium configuration options for Rainbow Six.",
+      "The balanced phantom-cheats.com package with more tools, stronger visuals, and premium configuration options for Rainbow Six.",
     variants: [
       { label: "1 Day", price: "14.99 USD" },
       { label: "3 Days", price: "24.99 USD" },
@@ -2004,7 +2004,7 @@ const checkoutProducts = [
     price: "4.99 USD",
     image: "/images/cod.png",
     description:
-      "A stable Call of Duty product with fast setup, instant access, and the phantom-cheat.com product panel.",
+      "A stable Call of Duty product with fast setup, instant access, and the phantom-cheats.com product panel.",
     variants: [
       { label: "1 Day License", price: "4.99 USD" },
       { label: "7 Days License", price: "14.99 USD" },
@@ -2030,7 +2030,7 @@ const checkoutProducts = [
     price: "4.99 USD",
     image: "/images/apex-legends.png",
     description:
-      "A stable Apex Legends product with fast setup, instant access, and the phantom-cheat.com product panel.",
+      "A stable Apex Legends product with fast setup, instant access, and the phantom-cheats.com product panel.",
     variants: [
       { label: "1 Day License", price: "4.99 USD" },
       { label: "7 Days License", price: "14.99 USD" },
@@ -2096,7 +2096,7 @@ const loaderProducts = [
     note: "Use the latest game build and disable overlays before launch for the cleanest session.",
     subscription: "Redeem your active license to unlock the current Fortnite Private loader build and sync access instantly.",
     steps: [
-      "Open the phantom-cheat.com launcher and sign in to your active license.",
+      "Open the phantom-cheats.com launcher and sign in to your active license.",
       "Select Fortnite Private and let the loader sync the current build.",
       "Start the game in borderless or windowed mode and wait for the session check.",
       "Press Launch Loader and confirm the in-game ready status before playing.",
@@ -2115,7 +2115,7 @@ const loaderProducts = [
     note: "Launch Call of Duty in borderless or windowed mode and stay in the lobby before injecting.",
     subscription: "Redeem your Call of Duty key to unlock the loader subscription and sync the latest package.",
     steps: [
-      "Open the phantom-cheat.com panel and select the Call of Duty license.",
+      "Open the phantom-cheats.com panel and select the Call of Duty license.",
       "Let the loader verify and sync the current build.",
       "Start Call of Duty, stay in the lobby, then return to the loader.",
       "Press Launch and wait for the in-game ready confirmation.",
@@ -2134,7 +2134,7 @@ const loaderProducts = [
     note: "Launch Apex in borderless or windowed mode and stay in the lobby before injecting.",
     subscription: "Redeem your Apex Legends key to unlock the loader subscription and sync the latest package.",
     steps: [
-      "Open the phantom-cheat.com panel and select the Apex Legends license.",
+      "Open the phantom-cheats.com panel and select the Apex Legends license.",
       "Let the loader verify and sync the current build.",
       "Start Apex Legends, stay in the lobby, then return to the loader.",
       "Press Launch and wait for the in-game ready confirmation.",
@@ -2153,7 +2153,7 @@ const loaderProducts = [
     note: "Run the emulator before launching your game and keep the panel open in the background for live tuning.",
     subscription: "Redeem your KBM Aim Assist key to unlock loader access and download the latest emulator build.",
     steps: [
-      "Open the phantom-cheat.com loader and select KBM Aim Assist.",
+      "Open the phantom-cheats.com loader and select KBM Aim Assist.",
       "Let the loader verify your license and sync the current build.",
       "Launch the emulator, apply your config, and confirm the virtual controller is active.",
       "Start your game and use mouse & keyboard with controller aim assist enabled.",
@@ -2172,7 +2172,7 @@ const loaderProducts = [
     note: "Close launchers and anti-cheat related processes before applying a new spoof profile.",
     subscription: "Redeem your spoofer license to enable subscription access, fresh profiles, and the latest supported build.",
     steps: [
-      "Open the phantom-cheat.com spoofer loader and choose your target profile.",
+      "Open the phantom-cheats.com spoofer loader and choose your target profile.",
       "Run the environment scan and confirm that all required services are ready.",
       "Click Apply Spoof and wait until the hardware profile switch is complete.",
       "Restart the machine or selected services, then launch your game from a fresh session.",
@@ -2191,7 +2191,7 @@ const loaderProducts = [
     note: "Close anti-cheat related processes before applying a temporary spoof profile.",
     subscription: "Redeem your Temporary Spoofer key to unlock loader access and pull the latest supported build.",
     steps: [
-      "Open the phantom-cheat.com temporary spoofer loader and choose your profile.",
+      "Open the phantom-cheats.com temporary spoofer loader and choose your profile.",
       "Run the environment scan and confirm all required services are ready.",
       "Click Apply Spoof and wait until the temporary profile is active.",
       "Launch your game from a fresh session for the current spoof window.",
@@ -4903,7 +4903,7 @@ function RulesContent() {
           </div>
         </div>
         <div className="rules-note">
-          Remember that you accepted the phantom-cheat.com rules when you created an account in the service.
+          Remember that you accepted the phantom-cheats.com rules when you created an account in the service.
         </div>
         <article id={selected.slug} className="terms-content" dangerouslySetInnerHTML={{ __html: selected.content }} />
       </div>
@@ -6436,7 +6436,7 @@ function ShopHeader({ activeServer, servers, setActiveIndex }) {
         <div className="shop-top fade-up">
           <div>
             <h1>Products</h1>
-            <p>Choose your phantom-cheat.com product and complete checkout.</p>
+            <p>Choose your phantom-cheats.com product and complete checkout.</p>
           </div>
           <NickPanel />
         </div>
@@ -7264,7 +7264,7 @@ export function LoaderDetailPage({ slug: productSlug, brandSlug }) {
 export function LoginPage() {
   return (
     <PageChrome active="login">
-      <SimpleHeader className="simple-header--login" title="Login" subtitle="Access your phantom-cheat.com account." />
+      <SimpleHeader className="simple-header--login" title="Login" subtitle="Access your phantom-cheats.com account." />
       <LoginContent />
     </PageChrome>
   );

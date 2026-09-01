@@ -320,7 +320,7 @@ export default function GuideLoaderSection({
                   <span>
                     Go to{" "}
                     <a href="/loader" target="_blank" rel="noopener noreferrer">
-                      phantom-cheat.com/loader
+                      phantom-cheats.com/loader
                     </a>
                     .
                   </span>

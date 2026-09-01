@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Guide | phantom-cheat.com",
+  title: "Guide | phantom-cheats.com",
 };
 
 export default function GuideLayout({ children }) {

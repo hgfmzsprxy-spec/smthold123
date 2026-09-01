@@ -1613,7 +1613,7 @@ function PanelLoginGate({
     <main className={`${styles.page}${theme === "light" ? ` ${styles.themeLight}` : ""}`}>
       <div className={styles.loginGate}>
         <header className={styles.loginGateHero}>
-          <img className={styles.loginGateLogo} src="/images/phantom.png" alt="phantom-cheat.com" />
+          <img className={styles.loginGateLogo} src="/images/phantom.png" alt="phantom-cheats.com" />
           <h1 className={styles.loginGateBrand}>{brand}</h1>
           <p className={styles.loginGateDesc}>{description}</p>
         </header>
@@ -4363,8 +4363,8 @@ function ResellDashboard({ reseller, onLogout }) {
           {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
         </button>
         <a href="/" className={styles.adminTopbarBrand}>
-          <img src="/images/phantom.png" alt="phantom-cheat.com" />
-          <span>phantom-cheat.com</span>
+          <img src="/images/phantom.png" alt="phantom-cheats.com" />
+          <span>phantom-cheats.com</span>
         </a>
         <div
           ref={searchWrapRef}
@@ -4554,7 +4554,7 @@ function ResellDashboard({ reseller, onLogout }) {
           )}
         </div>
         <nav className={styles.adminTopbarNav}>
-          <a href="https://phantom-cheat.com" target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
+          <a href="https://phantom-cheats.com" target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
             <Globe size={13} /> <span className={styles.adminTopbarLinkLabel}>Website</span>
           </a>
           <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
@@ -4925,7 +4925,7 @@ function ResellDashboard({ reseller, onLogout }) {
               {view === "welcome" ? (
                 <section className={styles.welcomeHub}>
                   <div className={styles.welcomeHero}>
-                    <img className={styles.welcomeLogo} src="/images/phantom.png" alt="phantom-cheat.com" />
+                    <img className={styles.welcomeLogo} src="/images/phantom.png" alt="phantom-cheats.com" />
                     <h1 className={styles.welcomeTitle}>Reseller Panel</h1>
                     <p className={styles.welcomeSubtitle}>
                       Manage your assigned applications and generate licenses for your customers.
@@ -6763,8 +6763,8 @@ function ResellDashboard({ reseller, onLogout }) {
                             <div className="redeem-panel-body">
                               <p className={styles.loaderOptionHelpText}>
                                 {loaderOptionHelp === "faq"
-                                  ? "Hides the Actions button “How to launch loader” on your custom loader page. That button opens Loader FAQ / setup pages on phantom-cheat.com."
-                                  : "Hides the Actions button “Initialization guide” on your custom loader page. That button opens product Guides on phantom-cheat.com."}
+                                  ? "Hides the Actions button “How to launch loader” on your custom loader page. That button opens Loader FAQ / setup pages on phantom-cheats.com."
+                                  : "Hides the Actions button “Initialization guide” on your custom loader page. That button opens product Guides on phantom-cheats.com."}
                               </p>
                               <div className={styles.loaderOptionHelpImageWrap}>
                                 <img

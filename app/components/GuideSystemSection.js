@@ -559,14 +559,14 @@ export default function GuideSystemSection({
                   <h4>Verify these options on your PC</h4>
                   <p>
                     Download and run the checker. It opens a console titled{" "}
-                    <strong>phantom-cheat.com</strong> and reports Motherboard Model, TPM 2.0, Secure
+                    <strong>phantom-cheats.com</strong> and reports Motherboard Model, TPM 2.0, Secure
                     Boot, and HVCI (Memory Integrity). Optional settings stay green On or Off; HVCI
                     turns red if it is On.
                   </p>
                 </div>
                 <a
                   className={styles.guideDownloadLink}
-                  href="/tools/phantom-cheat.com.bat"
+                  href="/tools/phantom-cheats.com.bat"
                   download
                 >
                   <Download size={15} strokeWidth={2} />

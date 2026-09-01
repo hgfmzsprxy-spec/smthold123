@@ -6079,7 +6079,7 @@ export default function AdminPage() {
       ) : !signedIn ? (
         <div className={styles.loginGate}>
           <header className={styles.loginGateHero}>
-            <img className={styles.loginGateLogo} src="/images/phantom.png" alt="phantom-cheat.com" />
+            <img className={styles.loginGateLogo} src="/images/phantom.png" alt="phantom-cheats.com" />
             <h1 className={styles.loginGateBrand}>Admin Panel</h1>
             <p className={styles.loginGateDesc}>
               Management panel for applications, licenses, and delivery packages.
@@ -6285,8 +6285,8 @@ export default function AdminPage() {
               {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
             <a href="/" className={styles.adminTopbarBrand}>
-              <img src="/images/phantom.png" alt="phantom-cheat.com" />
-              <span>phantom-cheat.com</span>
+              <img src="/images/phantom.png" alt="phantom-cheats.com" />
+              <span>phantom-cheats.com</span>
             </a>
             <div
               ref={adminSearchWrapRef}
@@ -6536,7 +6536,7 @@ export default function AdminPage() {
               )}
             </div>
             <nav className={styles.adminTopbarNav}>
-              <a href="https://phantom-cheat.com" target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
+              <a href="https://phantom-cheats.com" target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
                 <Globe size={13} /> <span className={styles.adminTopbarLinkLabel}>Website</span>
               </a>
               <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
@@ -6802,8 +6802,8 @@ export default function AdminPage() {
               {adminView === "welcome" ? (
                 <section className={styles.welcomeHub}>
                   <div className={styles.welcomeHero}>
-                    <img className={styles.welcomeLogo} src="/images/phantom.png" alt="phantom-cheat.com" />
-                    <h1 className={styles.welcomeTitle}>phantom-cheat.com</h1>
+                    <img className={styles.welcomeLogo} src="/images/phantom.png" alt="phantom-cheats.com" />
+                    <h1 className={styles.welcomeTitle}>phantom-cheats.com</h1>
                     <p className={styles.welcomeSubtitle}>
                       Management panel for applications, licenses, and delivery packages.
                     </p>
