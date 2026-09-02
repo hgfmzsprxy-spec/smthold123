@@ -216,6 +216,7 @@ export default function BioPage({
   const [lastVolume, setLastVolume] = useState(100);
   const [reviewPage, setReviewPage] = useState(0);
   const [featuredPreviewIndex, setFeaturedPreviewIndex] = useState(null);
+  const [galleryPreviewIndex, setGalleryPreviewIndex] = useState(null);
   const [featuredProductIndex, setFeaturedProductIndex] = useState(0);
   const [exitingProductIndex, setExitingProductIndex] = useState(null);
   const [featuredIsTransitioning, setFeaturedIsTransitioning] = useState(false);
@@ -223,6 +224,7 @@ export default function BioPage({
   const [galleryHeroAspectRatio, setGalleryHeroAspectRatio] = useState("16 / 9");
   const featuredBusyRef = useRef(false);
   const featuredPreviewIndexRef = useRef(null);
+  const galleryPreviewIndexRef = useRef(null);
   const backgroundVideoRef = useRef(null);
   const [gateComplete, setGateComplete] = useState(false);
 
@@ -242,6 +244,7 @@ export default function BioPage({
     exitingProductIndex === null ? null : bioFeaturedProducts[exitingProductIndex] || null;
 
   featuredPreviewIndexRef.current = featuredPreviewIndex;
+  galleryPreviewIndexRef.current = galleryPreviewIndex;
 
   const showNextFeaturedProduct = useCallback(() => {
     if (featuredBusyRef.current) return;
@@ -269,7 +272,7 @@ export default function BioPage({
 
   useEffect(() => {
     const interval = window.setInterval(() => {
-      if (featuredPreviewIndexRef.current !== null) return;
+      if (featuredPreviewIndexRef.current !== null || galleryPreviewIndexRef.current !== null) return;
       showNextFeaturedProduct();
     }, FEATURED_AUTO_ROTATE_MS);
 
@@ -514,7 +517,10 @@ export default function BioPage({
                   <FeaturedProductPanel
                     product={featuredProduct}
                     styles={styles}
-                    onPreviewOpen={() => setFeaturedPreviewIndex(0)}
+                    onPreviewOpen={() => {
+                      setGalleryPreviewIndex(null);
+                      setFeaturedPreviewIndex(0);
+                    }}
                   />
                 </div>
               </div>
@@ -611,15 +617,33 @@ export default function BioPage({
             </span>
           </div>
           <div className={styles.galleryGrid}>
-            {bioGallery.map((item) => (
-              <div key={item.src} className={styles.galleryItem}>
+            {bioGallery.map((item, index) => (
+              <button
+                key={item.src}
+                type="button"
+                className={styles.galleryItem}
+                onClick={() => {
+                  setFeaturedPreviewIndex(null);
+                  setGalleryPreviewIndex(index);
+                }}
+                aria-label={`View ${item.alt}`}
+              >
                 <img src={item.src} alt={item.alt} className={styles.galleryItemImage} loading="lazy" />
+                <span className={styles.galleryItemZoom} aria-hidden="true">
+                  <Search size={22} strokeWidth={2.2} />
+                </span>
                 <div className={styles.galleryCaption}>
                   <span>{item.alt}</span>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
+          <ProductImageLightbox
+            images={bioGallery}
+            index={galleryPreviewIndex}
+            onIndexChange={setGalleryPreviewIndex}
+            onClose={() => setGalleryPreviewIndex(null)}
+          />
           <div className={styles.galleryHero} style={{ aspectRatio: galleryHeroAspectRatio }}>
             <div className={styles.galleryHeroCaption}>
               <span>{bioGalleryHeroVideo.title}</span>
