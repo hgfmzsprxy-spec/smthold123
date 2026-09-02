@@ -67,13 +67,24 @@
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
+.pageGateActive .videoLayer,
+.pageGateActive .videoOverlay,
+.pageGateActive .grain,
+.pageGateActive .shell {
+  filter: blur(16px) saturate(1.06);
+  -webkit-filter: blur(16px) saturate(1.06);
+}
+
+.pageGateActive :global(#theme-social__sticky) {
+  filter: blur(16px) saturate(1.06);
+  -webkit-filter: blur(16px) saturate(1.06);
+}
+
 .gateBlurOverlay {
   position: fixed;
   inset: 0;
   z-index: 49;
-  background: rgba(8, 8, 12, 0.2);
-  backdrop-filter: blur(16px) saturate(1.06);
-  -webkit-backdrop-filter: blur(16px) saturate(1.06);
+  background: rgba(8, 8, 12, 0.32);
   pointer-events: none;
 }
 

@@ -337,7 +337,7 @@ export default function BioPage({
   }, []);
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} ${gateComplete ? "" : styles.pageGateActive}`}>
       {!gateComplete ? <div className={styles.gateBlurOverlay} aria-hidden="true" /> : null}
       <div className={styles.videoLayer} aria-hidden="true">
         <BioBackgroundVideo

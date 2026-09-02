@@ -40,9 +40,43 @@ const BioBackgroundVideo = forwardRef(function BioBackgroundVideo(
     const video = getVideo();
     if (!video) return;
 
-    video.pause();
     video.muted = true;
     video.setAttribute("muted", "");
+
+    const holdFirstFrame = () => {
+      video.pause();
+
+      try {
+        if (video.currentTime > 0.05) {
+          video.currentTime = 0;
+        }
+      } catch {
+        // Some browsers block seeking before metadata is ready.
+      }
+    };
+
+    if (video.readyState >= 2) {
+      holdFirstFrame();
+      return;
+    }
+
+    const onFrameReady = () => {
+      holdFirstFrame();
+    };
+
+    video.addEventListener("loadeddata", onFrameReady, { once: true });
+
+    try {
+      const playResult = video.play();
+      if (playResult && typeof playResult.then === "function") {
+        playResult.then(holdFirstFrame).catch(holdFirstFrame);
+        return;
+      }
+    } catch {
+      // Fall through to pause when autoplay is blocked.
+    }
+
+    holdFirstFrame();
   }, [getVideo]);
 
   const ensureVideoVisible = useCallback(() => {
