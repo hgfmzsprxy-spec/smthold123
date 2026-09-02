@@ -1,6 +1,9 @@
-export const metadata = {
-  title: "Reseller Panel | unbanhwid.com",
-};
+import { createSiteMetadata } from "../../lib/site-metadata";
+
+export const metadata = createSiteMetadata({
+  pageTitle: "Reseller Panel",
+  path: "/resell-panel",
+});
 
 export default function ResellPanelLayout({ children }) {
   return (

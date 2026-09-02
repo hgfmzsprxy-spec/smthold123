@@ -35,7 +35,7 @@ export function getErrorSeverity(item) {
   if (item.severity && SEVERITY[item.severity]) return item.severity;
   const text = `${item.error} ${item.cause} ${item.fix}`.toLowerCase();
   if (
-    /banned|revoked|hwid missmatch|failed to map|failed to load vulnerable|driver data is empty|fault 0x/.test(
+    /banned|revoked|hwid missmatch|failed to map|failed to load vulnerable|driver data is empty|fault 0x|critical/.test(
       text
     )
   ) {

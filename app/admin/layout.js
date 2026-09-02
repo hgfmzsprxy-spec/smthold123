@@ -1,6 +1,9 @@
-export const metadata = {
-  title: "Admin | unbanhwid.com",
-};
+import { createSiteMetadata } from "../../lib/site-metadata";
+
+export const metadata = createSiteMetadata({
+  pageTitle: "Admin",
+  path: "/admin",
+});
 
 export default function AdminLayout({ children }) {
   return (

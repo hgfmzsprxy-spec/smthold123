@@ -121,25 +121,14 @@ select public._seed_application_variants(
   ]'::jsonb
 );
 
--- Arc Raiders
-select public._seed_application_variants(
-  '2d45cb4054ca401b',
-  '%arc%raiders%',
-  '[
-    {"slug":"1-day","label":"1 Day License","price":4.99,"duration_value":1,"duration_unit":"days","sort_order":0},
-    {"slug":"7-days","label":"7 Days License","price":19.99,"duration_value":7,"duration_unit":"days","sort_order":1},
-    {"slug":"30-days","label":"30 Days License","price":49.99,"duration_value":30,"duration_unit":"days","sort_order":2}
-  ]'::jsonb
-);
-
 -- Call of Duty
 select public._seed_application_variants(
   'c3712051cd0d8efe',
   '%call%of%duty%',
   '[
     {"slug":"1-day","label":"1 Day License","price":4.99,"duration_value":1,"duration_unit":"days","sort_order":0},
-    {"slug":"7-days","label":"7 Days License","price":19.99,"duration_value":7,"duration_unit":"days","sort_order":1},
-    {"slug":"30-days","label":"30 Days License","price":49.99,"duration_value":30,"duration_unit":"days","sort_order":2},
+    {"slug":"7-days","label":"7 Days License","price":14.99,"duration_value":7,"duration_unit":"days","sort_order":1},
+    {"slug":"30-days","label":"30 Days License","price":39.99,"duration_value":30,"duration_unit":"days","sort_order":2},
     {"slug":"lifetime","label":"Lifetime License","price":99.99,"duration_value":null,"duration_unit":"unlimited","sort_order":3}
   ]'::jsonb
 );
@@ -150,8 +139,8 @@ select public._seed_application_variants(
   '%apex%legends%',
   '[
     {"slug":"1-day","label":"1 Day License","price":4.99,"duration_value":1,"duration_unit":"days","sort_order":0},
-    {"slug":"7-days","label":"7 Days License","price":19.99,"duration_value":7,"duration_unit":"days","sort_order":1},
-    {"slug":"30-days","label":"30 Days License","price":49.99,"duration_value":30,"duration_unit":"days","sort_order":2},
+    {"slug":"7-days","label":"7 Days License","price":14.99,"duration_value":7,"duration_unit":"days","sort_order":1},
+    {"slug":"30-days","label":"30 Days License","price":39.99,"duration_value":30,"duration_unit":"days","sort_order":2},
     {"slug":"lifetime","label":"Lifetime License","price":99.99,"duration_value":null,"duration_unit":"unlimited","sort_order":3}
   ]'::jsonb
 );
@@ -165,6 +154,17 @@ select public._seed_application_variants(
     {"slug":"7-days","label":"7 Days License","price":19.99,"duration_value":7,"duration_unit":"days","sort_order":1},
     {"slug":"30-days","label":"30 Days License","price":39.99,"duration_value":30,"duration_unit":"days","sort_order":2},
     {"slug":"lifetime","label":"Lifetime License","price":99.99,"duration_value":null,"duration_unit":"unlimited","sort_order":3}
+  ]'::jsonb
+);
+
+-- KBM Aim Assist / Controller Emulator
+select public._seed_application_variants(
+  'c431f619947d6858',
+  '%aim%assist%',
+  '[
+    {"slug":"7-days","label":"7 Days License","price":19.99,"duration_value":7,"duration_unit":"days","sort_order":0},
+    {"slug":"30-days","label":"30 Days License","price":29.99,"duration_value":30,"duration_unit":"days","sort_order":1},
+    {"slug":"365-days","label":"365 Days License","price":89.99,"duration_value":365,"duration_unit":"days","sort_order":2}
   ]'::jsonb
 );
 

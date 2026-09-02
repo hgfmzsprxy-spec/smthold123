@@ -24,6 +24,7 @@ export function ProductCheckoutModal({
   onCheckout = null,
   couponMaxLength = KOMERZA_COUPON_MAX_LENGTH,
   initialEmail = "",
+  initialPaymentMethod = "crypto",
   showEmail = true,
   showCoupon = true,
   showPaymentMethod = false,
@@ -34,7 +35,9 @@ export function ProductCheckoutModal({
   const [email, setEmail] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("crypto");
+  const [paymentMethod, setPaymentMethod] = useState(
+    initialPaymentMethod === "balance" ? "balance" : "crypto"
+  );
   const [cfStatus, setCfStatus] = useState("idle");
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [message, setMessage] = useState({ text: "", tone: "" });
@@ -45,6 +48,7 @@ export function ProductCheckoutModal({
   const isCheckingOutRef = useRef(false);
   const onOpenChangeRef = useRef(onOpenChange);
   const initialEmailRef = useRef(initialEmail);
+  const initialPaymentMethodRef = useRef(initialPaymentMethod);
 
   useEffect(() => {
     isCheckingOutRef.current = isCheckingOut;
@@ -57,6 +61,10 @@ export function ProductCheckoutModal({
   useEffect(() => {
     initialEmailRef.current = initialEmail;
   }, [initialEmail]);
+
+  useEffect(() => {
+    initialPaymentMethodRef.current = initialPaymentMethod;
+  }, [initialPaymentMethod]);
 
   // Only reset form when the modal opens/closes — not when parent re-renders
   // with a new inline onOpenChange / initialEmail (reseller panel).
@@ -81,6 +89,7 @@ export function ProductCheckoutModal({
       return undefined;
     }
 
+    setPaymentMethod(initialPaymentMethodRef.current === "balance" ? "balance" : "crypto");
     setEmail(readCheckoutEmail() || String(initialEmailRef.current || "").trim());
     setCouponCode(readCheckoutCoupon());
     setTermsAccepted(false);

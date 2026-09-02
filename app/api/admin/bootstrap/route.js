@@ -13,6 +13,7 @@ import {
   defaultProtectionLogColumns,
   readProtectionLogStore,
 } from "../../../../lib/panel-protection-logs";
+import { readAdminNotificationWebhookSettings } from "../../../../lib/admin-notification-webhook";
 import { readNotificationStore } from "../../../../lib/panel-notifications";
 import { PROTECTION_OPTIONS, readProtectionStore } from "../../../../lib/panel-protections";
 import { readDepositVariantsStore } from "../../../../lib/reseller-deposit-variants";
@@ -107,6 +108,7 @@ export async function GET(request) {
       productsStore,
       depositStore,
       transactions,
+      notificationWebhook,
     ] = await Promise.all([
       fetchApplications(admin),
       fetchLicenses(admin),
@@ -116,6 +118,11 @@ export async function GET(request) {
       safe(readResellerProductsStore(admin), { products: [] }),
       safe(readDepositVariantsStore(admin, { skipSeed: true }), { variants: [] }),
       safe(listTransactions({ limit: 500 }, admin), []),
+      safe(readAdminNotificationWebhookSettings(admin), {
+        discord_notification_webhook: null,
+        discord_notification_branding: null,
+        updated_at: null,
+      }),
     ]);
 
     const resellers = Array.isArray(resellerStore?.resellers) ? resellerStore.resellers : [];
@@ -146,6 +153,9 @@ export async function GET(request) {
         can_edit: isMainAdminDiscordId(auth.discord?.discordUserId),
       },
       notifications: Array.isArray(notificationStore?.entries) ? notificationStore.entries : [],
+      discord_notification_webhook: notificationWebhook?.discord_notification_webhook || null,
+      discord_notification_branding: notificationWebhook?.discord_notification_branding || null,
+      discord_notification_webhook_updated_at: notificationWebhook?.updated_at || null,
       storeProducts: Array.isArray(productsStore?.products) ? productsStore.products : [],
       depositVariants: Array.isArray(depositStore?.variants) ? depositStore.variants : [],
       transactions: Array.isArray(transactions) ? transactions : [],

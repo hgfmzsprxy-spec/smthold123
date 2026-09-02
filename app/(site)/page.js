@@ -1,5 +1,8 @@
 import { HomePage } from "../components/Site";
 import { fetchMyVouchesStats } from "../../lib/myvouches";
+import { createSiteMetadata } from "../../lib/site-metadata";
+
+export const metadata = createSiteMetadata({ path: "/" });
 
 export const revalidate = 300;
 

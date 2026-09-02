@@ -1,11 +1,22 @@
-"use client";
-
-import { useParams } from "next/navigation";
 import { LoaderDetailPage } from "../../../components/Site";
 
-export default function Page() {
-  const params = useParams();
-  const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug;
+export default async function Page({ params, searchParams }) {
+  const resolvedParams = await params;
+  const resolvedSearch = await searchParams;
+  const productSlug = Array.isArray(resolvedParams?.slug)
+    ? resolvedParams.slug[0]
+    : resolvedParams?.slug;
 
-  return <LoaderDetailPage slug={slug} />;
+  let brandSlug = "";
+  if (resolvedSearch && typeof resolvedSearch === "object") {
+    for (const key of Object.keys(resolvedSearch)) {
+      const normalized = String(key || "").trim().toLowerCase();
+      if (/^[a-z0-9][a-z0-9-]{1,}$/.test(normalized)) {
+        brandSlug = normalized;
+        break;
+      }
+    }
+  }
+
+  return <LoaderDetailPage slug={productSlug} brandSlug={brandSlug} />;
 }
