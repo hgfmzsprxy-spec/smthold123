@@ -413,6 +413,7 @@ export default function BioPage({
                 reviewCount={reviewCount}
                 averageRating={averageRating}
                 className="bio-hero-stats"
+                animateTrigger={gateComplete}
               />
             </div>
           </div>

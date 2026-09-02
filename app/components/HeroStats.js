@@ -90,7 +90,7 @@ function getRevealDelayMs(node) {
   return Number(group?.getAttribute("data-reveal-base") || 0);
 }
 
-function HeroStatItem({ stat, value }) {
+function HeroStatItem({ stat, value, animateTrigger = true }) {
   const itemRef = useRef(null);
   const decimals = stat.key === "rating" ? 2 : 0;
   const target = useMemo(() => {
@@ -101,6 +101,11 @@ function HeroStatItem({ stat, value }) {
   const Icon = stat.icon;
 
   useEffect(() => {
+    if (!animateTrigger) {
+      setDisplay(decimals > 0 ? "0.00" : "0");
+      return undefined;
+    }
+
     const node = itemRef.current;
     if (!node) return undefined;
 
@@ -184,7 +189,7 @@ function HeroStatItem({ stat, value }) {
       window.clearTimeout(revealTimer);
       cancelAnimationFrame(frame);
     };
-  }, [decimals, target]);
+  }, [animateTrigger, decimals, target]);
 
   return (
     <div className="hero-stat-item" ref={itemRef}>
@@ -199,7 +204,12 @@ function HeroStatItem({ stat, value }) {
   );
 }
 
-export default function HeroStats({ reviewCount = 0, averageRating = null, className = "" }) {
+export default function HeroStats({
+  reviewCount = 0,
+  averageRating = null,
+  className = "",
+  animateTrigger = true,
+}) {
   const heroStats = useMemo(
     () =>
       heroStatsBase.map((stat) => {
@@ -221,7 +231,7 @@ export default function HeroStats({ reviewCount = 0, averageRating = null, class
       <div className={className ? undefined : "container"}>
         <div className="hero-stats-panel" data-reveal-group data-reveal-base="70">
           {heroStats.map((stat) => (
-            <HeroStatItem key={stat.label} stat={stat} value={stat.value} />
+            <HeroStatItem key={stat.label} stat={stat} value={stat.value} animateTrigger={animateTrigger} />
           ))}
         </div>
       </div>

@@ -65,6 +65,7 @@ import {
   Zap,
 } from "lucide-react";
 import { computeAverageRating } from "../../lib/myvouches";
+import { bioGalleryHeroVideo } from "../../lib/bio-data";
 import {
   apexLegendsFeatures,
   callOfDutyFeatures,
@@ -2939,7 +2940,7 @@ const productShowcaseBySlug = {
     legacyBranding: true,
   },
   "kbm-aim-assist": {
-    src: "https://cdn.discordapp.com/attachments/1489341051855438084/1537965885220978688/2026-08-14_16-22-16.mp4?ex=6a96b699&is=6a956519&hm=b09aa6dc78bce9f62a73695276ba469367deb7585ef47e220c1760ceddc46910",
+    src: bioGalleryHeroVideo.src,
     chapters: kbmAimAssistShowcaseChapters,
   },
 };
