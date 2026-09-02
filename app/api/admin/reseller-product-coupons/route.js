@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../../lib/admin-auth";
+import { assertPermission } from "../../../../lib/panel-permissions";
 import { getResellerProductById } from "../../../../lib/reseller-products";
 import {
   listCouponsForProduct,
@@ -14,6 +15,9 @@ export async function GET(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "products.view");
+    if (denied) return denied;
 
     const productId = String(request.nextUrl.searchParams.get("productId") || "").trim();
     if (!productId) {
@@ -43,6 +47,9 @@ export async function PUT(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "products.edit");
+    if (denied) return denied;
 
     const body = await request.json().catch(() => ({}));
     const productId = String(body?.productId || body?.product_id || "").trim();

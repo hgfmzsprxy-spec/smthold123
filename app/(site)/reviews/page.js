@@ -1,9 +1,11 @@
 import { ReviewsPage } from "../../components/Site";
 import { fetchMyVouchesReviews } from "../../../lib/myvouches";
+import { createSiteMetadata } from "../../../lib/site-metadata";
 
-export const metadata = {
-  title: "Reviews | unbanhwid.com",
-};
+export const metadata = createSiteMetadata({
+  pageTitle: "Reviews",
+  path: "/reviews",
+});
 
 export const revalidate = 300;
 

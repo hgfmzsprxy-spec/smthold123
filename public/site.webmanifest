@@ -1,21 +1,21 @@
 {
-  "name": "unbanhwid.com",
-  "short_name": "unbanhwid.com",
+  "name": "phantom-cheats.com",
+  "short_name": "phantom-cheats.com",
   "icons": [
     {
-      "src": "/web-app-manifest-192x192.png",
-      "sizes": "192x192",
+      "src": "/images/phantom.png",
+      "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any"
     },
     {
-      "src": "/web-app-manifest-512x512.png",
+      "src": "/images/phantom.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     }
   ],
-  "theme_color": "#ff0054",
+  "theme_color": "#9783d1",
   "background_color": "#0f0f10",
   "display": "standalone"
 }

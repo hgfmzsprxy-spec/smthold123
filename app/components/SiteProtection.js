@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { runAccessChecks, setAccessCookie } from "../../lib/site-access";
+import { ALLOWED_ADMIN_DISCORD_ID } from "../../lib/admin-constants";
 
 const DEVTOOLS_SIZE_THRESHOLD = 160;
 const DEVTOOLS_POLL_MS = 400;
@@ -11,6 +12,33 @@ const ZOOM_GRACE_MS = 3500;
 const LAYOUT_GRACE_MS = 2500;
 const PREVIOUS_URL_KEY = "site-protection-previous-url";
 const ENTRY_REFERRER_KEY = "site-protection-entry-referrer";
+const ADMIN_SESSION_KEY = "admin_auth_state_v2";
+
+/**
+ * Exception: the sole main administrator, while signed in on /admin,
+ * may open DevTools / console without being redirected away.
+ */
+function isMainAdminConsoleException(pathname) {
+  if (typeof window === "undefined") return false;
+  if (!pathname || !String(pathname).startsWith("/admin")) return false;
+
+  try {
+    const raw = window.localStorage.getItem(ADMIN_SESSION_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.accessToken || !parsed?.isMainAdmin) return false;
+
+    const discordId = String(parsed.discordUserId || "").trim();
+    if (!discordId || discordId !== String(ALLOWED_ADMIN_DISCORD_ID)) return false;
+
+    const expiresAt = Number(parsed.expiresAt) || 0;
+    if (expiresAt > 0 && expiresAt * 1000 < Date.now()) return false;
+
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function getViewportGaps() {
   if (typeof window === "undefined") {
@@ -230,6 +258,7 @@ function breakOutOfIframe() {
 export default function SiteProtection() {
   const pathname = usePathname();
   const currentUrlRef = useRef("");
+  const [mainAdminConsoleBypass, setMainAdminConsoleBypass] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -249,9 +278,36 @@ export default function SiteProtection() {
     currentUrlRef.current = nextUrl;
   }, [pathname]);
 
+  // Keep bypass in sync after Discord login on /admin (same-tab localStorage).
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    function refreshBypass() {
+      setMainAdminConsoleBypass(isMainAdminConsoleException(pathname));
+    }
+
+    refreshBypass();
+
+    if (!pathname || !String(pathname).startsWith("/admin")) {
+      return undefined;
+    }
+
+    window.addEventListener("storage", refreshBypass);
+    window.addEventListener("admin-session-changed", refreshBypass);
+    const pollId = window.setInterval(refreshBypass, 1500);
+
+    return () => {
+      window.removeEventListener("storage", refreshBypass);
+      window.removeEventListener("admin-session-changed", refreshBypass);
+      window.clearInterval(pollId);
+    };
+  }, [pathname]);
+
   useEffect(() => {
     if (!isProtectionEnabled()) return undefined;
     if (pathname === "/site-access") return undefined;
+    // Main owner admin on /admin: allow console / DevTools.
+    if (mainAdminConsoleBypass) return undefined;
 
     let devToolsTriggered = false;
     let devToolsPositiveCount = 0;
@@ -459,7 +515,7 @@ export default function SiteProtection() {
       document.removeEventListener("drop", handleDrop);
       document.removeEventListener("keydown", handleKeyDown, true);
     };
-  }, [pathname]);
+  }, [pathname, mainAdminConsoleBypass]);
 
   return null;
 }

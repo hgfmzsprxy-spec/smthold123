@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isMainAdminDiscordId, requireAdmin, requireMainAdmin } from "../../../../lib/admin-auth";
+import { assertPermission } from "../../../../lib/panel-permissions";
 import {
   PROTECTION_OPTIONS,
   readProtectionStore,
@@ -13,6 +14,9 @@ export async function GET(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "protections.view");
+    if (denied) return denied;
 
     const admin = getSupabaseAdmin();
     const store = await readProtectionStore(admin);

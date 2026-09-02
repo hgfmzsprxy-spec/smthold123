@@ -1,6 +1,9 @@
-export const metadata = {
-  title: "Guide | unbanhwid.com",
-};
+import { createSiteMetadata } from "../../lib/site-metadata";
+
+export const metadata = createSiteMetadata({
+  pageTitle: "Guide",
+  path: "/guide",
+});
 
 export default function GuideLayout({ children }) {
   return (

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../../lib/admin-auth";
+import { assertPermission } from "../../../../lib/panel-permissions";
 import { APPLICATION_IMAGE_BUCKET, getApplicationImagePublicUrl, getSupabaseAdmin } from "../../../../lib/supabase-admin";
 
 async function ensureBucket(admin) {
@@ -22,6 +23,9 @@ export async function POST(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "apps.edit");
+    if (denied) return denied;
 
     const body = await request.json();
     const appId = String(body?.appId || "").trim();
@@ -67,6 +71,9 @@ export async function DELETE(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "apps.edit");
+    if (denied) return denied;
 
     const body = await request.json().catch(() => ({}));
     const appId = String(body?.appId || "").trim();

@@ -7,8 +7,8 @@ const SCRAPER_UA_PATTERN =
 const SCRAPER_REFERER_PATTERN =
   /saveweb2zip|webtozip|website-ripper|httrack|sitesucker|teleport|webcopy|archive\.org|sitepuller|ripper/i;
 
-const SEARCH_BOT_PATTERN =
-  /googlebot|bingbot|applebot|duckduckbot|yandexbot|slurp|facebookexternalhit|twitterbot|linkedinbot/i;
+const PREVIEW_BOT_PATTERN =
+  /googlebot|bingbot|applebot|duckduckbot|yandexbot|slurp|facebookexternalhit|twitterbot|linkedinbot|discordbot|slackbot|telegrambot|whatsapp|embedly|iframely|skypeuripreview|vkshare|redditbot/i;
 
 function applySecurityHeaders(response) {
   response.headers.set("X-Frame-Options", "DENY");
@@ -64,14 +64,14 @@ export function middleware(request) {
   const { pathname } = request.nextUrl;
   const userAgent = request.headers.get("user-agent") || "";
   const referer = request.headers.get("referer") || "";
-  const isSearchBot = SEARCH_BOT_PATTERN.test(userAgent);
+  const isPreviewBot = PREVIEW_BOT_PATTERN.test(userAgent);
   const isVerified = request.cookies.get(VERIFY_COOKIE)?.value === "1";
 
   if (pathname.startsWith("/api") || pathname === "/site-access") {
     return applySecurityHeaders(NextResponse.next());
   }
 
-  if (process.env.NODE_ENV === "production" && !isSearchBot) {
+  if (process.env.NODE_ENV === "production" && !isPreviewBot) {
     if (SCRAPER_UA_PATTERN.test(userAgent) || SCRAPER_REFERER_PATTERN.test(referer)) {
       return new NextResponse("Forbidden", { status: 403 });
     }

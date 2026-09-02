@@ -1,0 +1,203 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: introOverlayIn 0.55s ease;
+}
+
+.overlayExit {
+  animation: introOverlayOut 0.42s ease forwards;
+  pointer-events: none;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 8, 12, 0.28);
+  backdrop-filter: blur(8px) saturate(1.08);
+  -webkit-backdrop-filter: blur(8px) saturate(1.08);
+}
+
+.card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 420px);
+  padding: 24px 24px 20px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(155deg, rgba(151, 131, 209, 0.12), rgba(255, 255, 255, 0.03)),
+    rgba(12, 12, 18, 0.58);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  text-align: center;
+  animation: introCardIn 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cardExit {
+  animation: introCardOut 0.42s ease forwards;
+}
+
+.logoWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+.logo {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  display: block;
+}
+
+.title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #fff;
+}
+
+.subtitle {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.55;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.swipeHint {
+  margin: 18px 0 10px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(201, 184, 242, 0.88);
+}
+
+.swipeTrack {
+  position: relative;
+  height: 54px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+}
+
+.swipeTrackDragging {
+  border-color: rgba(201, 184, 242, 0.35);
+}
+
+.swipeTrackComplete {
+  border-color: rgba(201, 184, 242, 0.5);
+}
+
+.swipeFill {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  bottom: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(151, 131, 209, 0.35), rgba(145, 157, 218, 0.2));
+  transition: width 0.08s linear;
+  pointer-events: none;
+}
+
+.swipeThumb {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  cursor: grab;
+  background: linear-gradient(145deg, #b8a4e8, #919dda);
+  box-shadow:
+    0 8px 22px rgba(151, 131, 209, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 0.12s ease, box-shadow 0.2s ease;
+}
+
+.swipeThumb:active {
+  cursor: grabbing;
+  box-shadow:
+    0 4px 14px rgba(151, 131, 209, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+@keyframes introOverlayIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes introOverlayOut {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes introCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes introCardOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+}
+
+@media (max-width: 640px) {
+  .overlay {
+    padding: 18px;
+  }
+
+  .card {
+    width: min(100%, 380px);
+    padding: 22px 18px 18px;
+  }
+}

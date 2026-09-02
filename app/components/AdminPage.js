@@ -22,6 +22,7 @@ import {
   KeyRound,
   Layers3,
   LogOut,
+  Menu,
   ArrowRight,
   Pencil,
   RefreshCw,
@@ -44,6 +45,12 @@ import {
   Columns2,
   Columns3,
   Square,
+  Loader,
+  Loader2,
+  Monitor,
+  PanelsTopLeft,
+  ExternalLink,
+  Save,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -53,6 +60,12 @@ import { DISCORD_INVITE_URL } from "../../lib/discord";
 import { LOGIN_GUEST_FAQ_ITEMS } from "../../lib/login-faq";
 import { buildApplicationDownloadUrl, extractDiscordProfile } from "../../lib/loader-redeem";
 import { APPLICATION_PACKAGE_BUCKET } from "../../lib/application-package-storage";
+import {
+  generateDefaultLicenseKey,
+  generateLicenseKeyFromFormat,
+  normalizeLicenseFormat,
+  validateLicenseFormatPattern,
+} from "../../lib/license-key-format";
 import {
   defaultProtectionFlags,
   PROTECTION_OPTIONS,
@@ -91,7 +104,18 @@ import {
   isFrozenLicense,
 } from "../../lib/license-freeze";
 import { APPLICATION_PRODUCT_STATUSES, formatApplicationProductStatus, formatDisplayDateTime } from "../../lib/loader-redeem";
+import { fullPermissions, hasPermission } from "../../lib/panel-permissions";
+import {
+  PermissionDeniedToast,
+  ResellerTeamPreviewDrawer,
+  StaffGeneratorMarker,
+  TeamMemberDrawer,
+  TeamMembersTable,
+  defaultDraftPermissions,
+  getTransactionStaffGenerator,
+} from "./PanelTeamUI";
 import styles from "./AdminPage.module.css";
+import { DiscordNotificationWebhookPanel } from "./DiscordNotificationWebhookPanel";
 
 const PROTECTION_LOGS_PAGE_SIZE = 9;
 
@@ -103,6 +127,227 @@ function DiscordIcon({ size = 13 }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path fillRule="evenodd" clipRule="evenodd" d={DISCORD_ICON_PATH} />
     </svg>
+  );
+}
+
+function AdminFaqView({ onNavigate }) {
+  const [openIndex, setOpenIndex] = useState(0);
+
+  const items = useMemo(
+    () => [
+      {
+        tag: "Licenses",
+        icon: KeyRound,
+        q: "How do I generate licenses?",
+        a: (
+          <>
+            Open{" "}
+            <button type="button" className={styles.faqInlineLink} onClick={() => onNavigate("applications")}>
+              Applications
+            </button>{" "}
+            or{" "}
+            <button type="button" className={styles.faqInlineLink} onClick={() => onNavigate("licenses")}>
+              Licenses
+            </button>
+            , select an app, then generate keys. Duration / variant fields depend on the selected application. Keys use
+            the shared{" "}
+            <button type="button" className={styles.faqInlineLink} onClick={() => onNavigate("settings")}>
+              Custom Generation License Format
+            </button>{" "}
+            from Settings.
+          </>
+        ),
+      },
+      {
+        tag: "Licenses",
+        icon: RefreshCw,
+        q: "What does HWID Reset do?",
+        a: (
+          <>
+            It clears the hardware lock on a license so the customer can activate on a new PC. Use it from{" "}
+            <button type="button" className={styles.faqInlineLink} onClick={() => onNavigate("licenses")}>
+              Licenses
+            </button>{" "}
+            (or a reseller&apos;s license list). Requires the <strong>Reset HWID</strong> permission for admin staff.
+          </>
+        ),
+      },
+      {
+        tag: "Licenses",
+        icon: Clock3,
+        q: "What is Edit / extend licenses?",
+        a: (
+          <>
+            That permission covers <strong>Extend Time</strong> and other license field updates — not ban and not HWID
+            reset. Ban uses <strong>Ban licenses</strong>; HWID clear uses <strong>Reset HWID</strong>.
+          </>
+        ),
+      },
+      {
+        tag: "Applications",
+        icon: Snowflake,
+        q: "What happens when I freeze an application?",
+        a: (
+          <>
+            Freezing sets the app to <strong>Maintenance</strong> and freezes active licenses — remaining time pauses and
+            launch is blocked until unfreeze. Manage this from{" "}
+            <button type="button" className={styles.faqInlineLink} onClick={() => onNavigate("applications")}>
+              Applications
+            </button>
+            .
+          </>
+        ),
+      },
+      {
+        tag: "Resellers",
+        icon: Users,
+        q: "How do reseller teams work?",
+        a: (
+          <>
+            Resellers can invite Discord-bound staff with scoped permissions. In{" "}
+            <button type="button" className={styles.faqInlineLink} onClick={() => onNavigate("team")}>
+              Team
+            </button>{" "}
+            → Reseller teams you can preview members, set invite limits, and block invites. Staff-generated keys show a
+            two-person icon in reseller Licenses / Transactions.
+          </>
+        ),
+      },
+      {
+        tag: "Team",
+        icon: Shield,
+        q: "What is Admin staff?",
+        a: (
+          <>
+            Admin staff accounts sign in with Discord to this panel with limited permissions you assign under{" "}
+            <button type="button" className={styles.faqInlineLink} onClick={() => onNavigate("team")}>
+              Team
+            </button>
+            . They share the same license format as head admins, but only head admins can change that format.
+          </>
+        ),
+      },
+      {
+        tag: "Security",
+        icon: Shield,
+        q: "Where are protection / security tools?",
+        a: (
+          <>
+            Use{" "}
+            <button type="button" className={styles.faqInlineLink} onClick={() => onNavigate("security")}>
+              Security
+            </button>{" "}
+            for protection flags and{" "}
+            <button type="button" className={styles.faqInlineLink} onClick={() => onNavigate("protection-logs")}>
+              Protections-Logs
+            </button>{" "}
+            for event history. Some options are main-admin only.
+          </>
+        ),
+      },
+      {
+        tag: "Balance",
+        icon: Wallet,
+        q: "Where do I track balance and purchases?",
+        a: (
+          <>
+            Open{" "}
+            <button type="button" className={styles.faqInlineLink} onClick={() => onNavigate("transactions")}>
+              Transactions
+            </button>{" "}
+            for reseller deposits, license purchases, and store activity. History can take a few seconds to refresh after
+            a change.
+          </>
+        ),
+      },
+      {
+        tag: "Links",
+        icon: Globe,
+        q: "Where is support / the public site?",
+        a: (
+          <>
+            Public site:{" "}
+            <a href="/" className={styles.faqInlineLink}>
+              Website
+            </a>
+            . Policies:{" "}
+            <Link href="/terms" className={styles.faqInlineLink}>
+              Terms
+            </Link>
+            . Community & tickets:{" "}
+            <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className={styles.faqInlineLink}>
+              Discord
+            </a>{" "}
+            (<strong>discord.gg/phantom-cheats</strong>).
+          </>
+        ),
+      },
+    ],
+    [onNavigate]
+  );
+
+  return (
+    <div className={styles.faqView}>
+      <header className={styles.faqHero}>
+        <span className={styles.faqHeroBadge}>
+          <HelpCircle size={14} />
+          Help center
+        </span>
+        <h1 className={styles.faqHeroTitle}>Frequently asked questions</h1>
+        <p className={styles.faqHeroSubtitle}>
+          Fast answers about licenses, resellers, team staff, protections, and admin tools — click a question to expand.
+        </p>
+      </header>
+
+      <div className={styles.faqList}>
+        {items.map((item, index) => {
+          const open = openIndex === index;
+          const Icon = item.icon;
+          return (
+            <article className={`${styles.faqItem}${open ? ` ${styles.faqItemOpen}` : ""}`} key={item.q}>
+              <button
+                type="button"
+                className={styles.faqQuestion}
+                aria-expanded={open}
+                onClick={() => setOpenIndex(open ? -1 : index)}
+              >
+                <span className={styles.faqQuestionMain}>
+                  <span className={styles.faqIconWrap} aria-hidden="true">
+                    <Icon size={16} />
+                  </span>
+                  <span className={styles.faqQuestionCopy}>
+                    <span className={styles.faqTag}>{item.tag}</span>
+                    <span className={styles.faqQuestionText}>{item.q}</span>
+                  </span>
+                </span>
+                <span className={styles.faqChevronWrap} aria-hidden="true">
+                  <ChevronDown size={16} className={styles.faqChevron} />
+                </span>
+              </button>
+              <div className={`${styles.faqAnswerPanel}${open ? ` ${styles.faqAnswerPanelOpen}` : ""}`}>
+                <div className={styles.faqAnswer}>{item.a}</div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
+      <aside className={styles.faqSupportCard}>
+        <div className={styles.faqSupportCopy}>
+          <strong>Still need help?</strong>
+          <span>Join Discord and open a ticket for operational or account issues.</span>
+        </div>
+        <a
+          href={DISCORD_INVITE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.faqSupportButton}
+        >
+          <DiscordIcon size={15} />
+          Contact Support
+        </a>
+      </aside>
+    </div>
   );
 }
 
@@ -219,7 +464,7 @@ function cleanAdminPanelUrl() {
   if (typeof window === "undefined") return;
   let nextPath = ADMIN_PANEL_PATH;
   try {
-    const stored = window.localStorage.getItem("unbanhwid.admin-panel.view");
+    const stored = window.localStorage.getItem("phantom-cheat.admin-panel.view");
     if (ADMIN_PANEL_VIEWS.includes(stored) && stored !== "welcome") {
       nextPath = `${ADMIN_PANEL_PATH}?view=${encodeURIComponent(stored)}`;
     }
@@ -312,23 +557,32 @@ function randomHex(length) {
     .slice(0, length);
 }
 
-function randomAlphaNum(length) {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  const result = [];
-  const max = alphabet.length;
-  const limit = Math.floor(256 / max) * max;
-  const bytes = new Uint8Array(Math.max(16, length * 2));
+const ADMIN_LICENSE_FORMAT_DEFAULT = {
+  pattern: "PREFIX-********",
+  specialChars: false,
+  digits: true,
+};
 
-  while (result.length < length) {
-    crypto.getRandomValues(bytes);
-    for (let index = 0; index < bytes.length && result.length < length; index += 1) {
-      const value = bytes[index];
-      if (value >= limit) continue;
-      result.push(alphabet[value % max]);
-    }
+function toAdminLicenseFormatForm(value) {
+  const parsed = normalizeLicenseFormat(value);
+  if (!parsed?.pattern) return { ...ADMIN_LICENSE_FORMAT_DEFAULT };
+  return {
+    pattern: parsed.pattern,
+    specialChars: Boolean(parsed.special_chars),
+    digits: parsed.digits !== undefined ? Boolean(parsed.digits) : true,
+  };
+}
+
+function generateAdminLicenseKey(form = ADMIN_LICENSE_FORMAT_DEFAULT) {
+  const normalized = normalizeLicenseFormat({
+    pattern: form?.pattern,
+    specialChars: form?.specialChars,
+    digits: form?.digits,
+  });
+  if (!normalized || validateLicenseFormatPattern(normalized.pattern)) {
+    return generateDefaultLicenseKey();
   }
-
-  return result.join("");
+  return generateLicenseKeyFromFormat(normalized);
 }
 
 function sessionStorageKey() {
@@ -344,6 +598,8 @@ const EMPTY_ADMIN_SESSION = {
   discordUsername: "",
   discordAvatarUrl: "",
   isMainAdmin: false,
+  actor: "admin",
+  permissions: null,
 };
 
 const ADMIN_PANEL_VIEWS = [
@@ -357,8 +613,30 @@ const ADMIN_PANEL_VIEWS = [
   "products",
   "security",
   "protection-logs",
+  "branding-loader",
+  "branding-menu-ui",
+  "team",
+  "faq",
   "settings",
 ];
+
+const ADMIN_VIEW_PERM = {
+  welcome: "view.welcome",
+  applications: "view.applications",
+  licenses: "view.licenses",
+  transactions: "view.transactions",
+  changelogs: "view.changelogs",
+  notifications: "view.notifications",
+  resellers: "view.resellers",
+  products: "view.products",
+  security: "view.security",
+  "protection-logs": "view.protection_logs",
+  "branding-loader": "view.loader",
+  "branding-menu-ui": "view.menu",
+  team: "view.team",
+  faq: "view.faq",
+  settings: "view.settings",
+};
 
 function readStoredAdminSession() {
   if (typeof window === "undefined") return EMPTY_ADMIN_SESSION;
@@ -376,6 +654,9 @@ function readStoredAdminSession() {
       discordUsername: parsed.discordUsername || "",
       discordAvatarUrl: parsed.discordAvatarUrl || "",
       isMainAdmin: Boolean(parsed.isMainAdmin),
+      actor: parsed.actor === "staff" ? "staff" : "admin",
+      permissions:
+        parsed.permissions && typeof parsed.permissions === "object" ? parsed.permissions : null,
     };
   } catch {
     return EMPTY_ADMIN_SESSION;
@@ -491,6 +772,7 @@ function AdminDashboardSkeleton() {
               <div className={styles.tableList}>
                 <div className={styles.licenseTableHeaders}>
                   <div>Discord User</div>
+                  <div>Application</div>
                   <div>License Key</div>
                   <div>Duration</div>
                   <div>Status</div>
@@ -499,7 +781,7 @@ function AdminDashboardSkeleton() {
                 </div>
                 {Array.from({ length: 4 }).map((_, index) => (
                   <div className={styles.licenseTableRow} key={`license-row-skeleton-${index}`}>
-                    {Array.from({ length: 6 }).map((__, cellIndex) => (
+                    {Array.from({ length: 7 }).map((__, cellIndex) => (
                       <div key={`license-cell-skeleton-${index}-${cellIndex}`}>
                         <SkeletonBlock className={styles.skeletonTableCell} />
                       </div>
@@ -1059,9 +1341,9 @@ function ResponseChart({ history, theme = "dark" }) {
           </text>
         </g>
       ))}
-      <path d={areaPath} fill="rgba(163,46,59,0.18)" />
-      <path d={linePath} fill="none" stroke="#a32e3b" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={x(history.length - 1)} cy={y(last.ms)} r="3" fill={pointFill} stroke="#a32e3b" strokeWidth="1.5" />
+      <path d={areaPath} fill="rgba(151,131,209,0.18)" />
+      <path d={linePath} fill="none" stroke="#9783d1" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={x(history.length - 1)} cy={y(last.ms)} r="3" fill={pointFill} stroke="#9783d1" strokeWidth="1.5" />
       <text x={width - pad.r} y={height - 6} textAnchor="end" fontSize="9" fill={labelFill}>
         now
       </text>
@@ -1086,17 +1368,12 @@ function AdminResponseMonitor({ configUrl, signedIn, theme = "dark" }) {
     let timer = null;
 
     async function ping() {
-      const supabaseBase = String(configUrl || "").trim();
       const origin = typeof window !== "undefined" ? window.location.origin : "";
-      // Prefer Supabase REST when configured; otherwise ping the site origin.
-      const base = supabaseBase || origin;
-      if (!base) return;
-      const target = supabaseBase
-        ? `${supabaseBase.replace(/\/+$/, "")}/rest/v1/?t=${Date.now()}`
-        : `${origin.replace(/\/+$/, "")}/api/reviews?t=${Date.now()}`;
+      if (!origin) return;
+      const target = `${origin.replace(/\/+$/, "")}/api/ping?t=${Date.now()}`;
       const start = performance.now();
       try {
-        await fetch(target, { method: "GET", cache: "no-store", mode: supabaseBase ? "no-cors" : "cors" });
+        await fetch(target, { method: "GET", cache: "no-store" });
       } catch {
         // ignore — round-trip still measured
       }
@@ -1112,7 +1389,7 @@ function AdminResponseMonitor({ configUrl, signedIn, theme = "dark" }) {
       cancelled = true;
       if (timer) clearInterval(timer);
     };
-  }, [signedIn, configUrl]);
+  }, [signedIn]);
 
   if (!signedIn) return null;
 
@@ -1195,7 +1472,7 @@ export default function AdminPage() {
     try {
       const fromUrl = new URLSearchParams(window.location.search).get("view");
       if (ADMIN_PANEL_VIEWS.includes(fromUrl)) return fromUrl;
-      const stored = window.localStorage.getItem("unbanhwid.admin-panel.view");
+      const stored = window.localStorage.getItem("phantom-cheat.admin-panel.view");
       if (ADMIN_PANEL_VIEWS.includes(stored)) return stored;
     } catch {
       // ignore
@@ -1203,6 +1480,12 @@ export default function AdminPage() {
     return "welcome";
   });
   const [adminTheme, setAdminTheme] = useState("dark");
+  const [licenseFormatForm, setLicenseFormatForm] = useState(() => ({ ...ADMIN_LICENSE_FORMAT_DEFAULT }));
+  const [licenseFormatExample, setLicenseFormatExample] = useState("");
+  const [licenseFormatMessage, setLicenseFormatMessage] = useState({ text: "", type: "" });
+  const [licenseFormatSaving, setLicenseFormatSaving] = useState(false);
+  const [licenseFormatInfoOpen, setLicenseFormatInfoOpen] = useState(false);
+  const [licenseFormatLoaded, setLicenseFormatLoaded] = useState(false);
   const [loginTermsAccepted, setLoginTermsAccepted] = useState(false);
   const [loginRememberMe, setLoginRememberMe] = useState(true);
   const [loginCfStatus, setLoginCfStatus] = useState("idle");
@@ -1234,7 +1517,7 @@ export default function AdminPage() {
   const [protectionLogColumns, setProtectionLogColumns] = useState(() => {
     if (typeof window === "undefined") return defaultProtectionLogColumns();
     try {
-      const raw = window.localStorage.getItem("unbanhwid.admin-panel.protection-log-columns");
+      const raw = window.localStorage.getItem("phantom-cheat.admin-panel.protection-log-columns");
       if (!raw) return defaultProtectionLogColumns();
       const parsed = JSON.parse(raw);
       return { ...defaultProtectionLogColumns(), ...(parsed && typeof parsed === "object" ? parsed : {}) };
@@ -1245,7 +1528,7 @@ export default function AdminPage() {
   const [protectionLogDensity, setProtectionLogDensity] = useState(() => {
     if (typeof window === "undefined") return 1;
     try {
-      const raw = Number(window.localStorage.getItem("unbanhwid.admin-panel.protection-log-density"));
+      const raw = Number(window.localStorage.getItem("phantom-cheat.admin-panel.protection-log-density"));
       return raw === 2 || raw === 3 ? raw : 1;
     } catch {
       return 1;
@@ -1256,8 +1539,9 @@ export default function AdminPage() {
   function setAdminView(nextView) {
     const viewName = ADMIN_PANEL_VIEWS.includes(nextView) ? nextView : "welcome";
     setAdminViewState(viewName);
+    setMobileNavOpen(false);
     try {
-      window.localStorage.setItem("unbanhwid.admin-panel.view", viewName);
+      window.localStorage.setItem("phantom-cheat.admin-panel.view", viewName);
     } catch {
       // ignore
     }
@@ -1276,9 +1560,17 @@ export default function AdminPage() {
   const [metrics, setMetrics] = useState({ total: null, active: null, expired: null, banned: null });
   const [applications, setApplications] = useState([]);
   const [allLicenses, setAllLicenses] = useState([]);
+  const [allLicensesIncludingResellers, setAllLicensesIncludingResellers] = useState([]);
   const [selectedAppId, setSelectedAppId] = useState("");
   const [selectedLicenses, setSelectedLicenses] = useState([]);
   const [licenseSearchQuery, setLicenseSearchQuery] = useState("");
+  const [adminSearchOpen, setAdminSearchOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [adminSearchQuery, setAdminSearchQuery] = useState("");
+  const [adminSearchActiveIndex, setAdminSearchActiveIndex] = useState(0);
+  const adminSearchInputRef = useRef(null);
+  const adminSearchResultsRef = useRef(null);
+  const adminSearchWrapRef = useRef(null);
   const preFreezeStatusRef = useRef(new Map());
   const copiedLicenseTimerRef = useRef(null);
   const [copiedLicenseId, setCopiedLicenseId] = useState("");
@@ -1346,6 +1638,9 @@ export default function AdminPage() {
   const [notifications, setNotifications] = useState([]);
   const [notificationsBusy, setNotificationsBusy] = useState(false);
   const [notificationsMessage, setNotificationsMessage] = useState({ text: "", type: "" });
+  const [adminDiscordWebhook, setAdminDiscordWebhook] = useState("");
+  const [adminDiscordWebhookBranding, setAdminDiscordWebhookBranding] = useState(null);
+  const [adminDiscordWebhookUpdatedAt, setAdminDiscordWebhookUpdatedAt] = useState("");
   const [notificationForm, setNotificationForm] = useState({
     title: "",
     description: "",
@@ -1458,9 +1753,79 @@ export default function AdminPage() {
   const [generateMessage, setGenerateMessage] = useState({ text: "", type: "" });
   const [extendMessage, setExtendMessage] = useState({ text: "", type: "" });
 
+  const [permissionDeniedMessage, setPermissionDeniedMessage] = useState("");
+  const permissionDeniedTimerRef = useRef(null);
+  const [teamResellerRows, setTeamResellerRows] = useState([]);
+  const [teamResellerBusy, setTeamResellerBusy] = useState(false);
+  const [selectedTeamResellerId, setSelectedTeamResellerId] = useState("");
+  const [selectedTeamResellerDetail, setSelectedTeamResellerDetail] = useState(null);
+  const [teamResellerLimitDraft, setTeamResellerLimitDraft] = useState(3);
+  const [adminStaffMembers, setAdminStaffMembers] = useState([]);
+  const [adminStaffBusy, setAdminStaffBusy] = useState(false);
+  const [adminStaffBusyId, setAdminStaffBusyId] = useState("");
+  const [teamMemberBusyId, setTeamMemberBusyId] = useState("");
+  const [teamResellerMemberDrawerOpen, setTeamResellerMemberDrawerOpen] = useState(false);
+  const [teamResellerMemberDraft, setTeamResellerMemberDraft] = useState(null);
+  const [teamResellerMemberPerms, setTeamResellerMemberPerms] = useState(() => defaultDraftPermissions("reseller"));
+  const [teamResellerMemberError, setTeamResellerMemberError] = useState("");
+  const [teamResellerMemberBusy, setTeamResellerMemberBusy] = useState(false);
+  const [adminStaffDrawerOpen, setAdminStaffDrawerOpen] = useState(false);
+  const [adminStaffDrawerMode, setAdminStaffDrawerMode] = useState("add");
+  const [adminStaffDrawerMember, setAdminStaffDrawerMember] = useState(null);
+  const [adminStaffDraftDiscordId, setAdminStaffDraftDiscordId] = useState("");
+  const [adminStaffDraftPerms, setAdminStaffDraftPerms] = useState(() => defaultDraftPermissions("admin"));
+  const [adminStaffDrawerError, setAdminStaffDrawerError] = useState("");
+
   const signedIn = Boolean(session.accessToken);
   const selectedApp = applications.find((entry) => entry.id === selectedAppId) || null;
   const adminDisplayName = session.discordUsername || session.email || "Administrator";
+  const panelPermissions = useMemo(() => {
+    if (session.permissions && typeof session.permissions === "object") return session.permissions;
+    if (session.actor === "staff") return session.permissions || {};
+    return fullPermissions("admin");
+  }, [session.permissions, session.actor]);
+  const canManageAdminStaff = session.actor !== "staff";
+  const canEditLicenseFormat = session.actor !== "staff";
+  const isAdminStaff = session.actor === "staff";
+
+  function denyPermission(reason = "You do not have permission for this action.") {
+    setPermissionDeniedMessage(reason);
+    if (permissionDeniedTimerRef.current) clearTimeout(permissionDeniedTimerRef.current);
+    permissionDeniedTimerRef.current = setTimeout(() => setPermissionDeniedMessage(""), 3000);
+  }
+
+  function canView(viewName) {
+    // Always available for every admin account (head admin + second staff).
+    if (viewName === "faq") return true;
+    const key = ADMIN_VIEW_PERM[viewName];
+    if (!key) return true;
+    return hasPermission(panelPermissions, key);
+  }
+
+  function canAct(key) {
+    return hasPermission(panelPermissions, key);
+  }
+
+  function gatedNavClass(viewName, active) {
+    const allowed = canView(viewName);
+    return `${styles.adminNavItem}${active ? ` ${styles.adminNavItemActive}` : ""}${
+      allowed ? "" : ` ${styles.adminNavItemDenied}`
+    }`;
+  }
+
+  function requestView(viewName) {
+    if (!canView(viewName)) {
+      denyPermission("You do not have permission to open this tab.");
+      return;
+    }
+    setAdminView(viewName);
+  }
+
+  useEffect(() => {
+    if (!session.accessToken || canView(adminView)) return;
+    setAdminView("welcome");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.permissions, session.actor, session.accessToken, adminView]);
 
   useLayoutEffect(() => {
     const stored = readStoredAdminSession();
@@ -1473,8 +1838,8 @@ export default function AdminPage() {
 
     async function bootAdminLoginPrefs() {
       try {
-        const stored = window.localStorage.getItem("unbanhwid.admin-panel.theme");
-        const remember = window.localStorage.getItem("unbanhwid.admin-panel.rememberMe") !== "0";
+        const stored = window.localStorage.getItem("phantom-cheat.admin-panel.theme");
+        const remember = window.localStorage.getItem("phantom-cheat.admin-panel.rememberMe") !== "0";
         if (!cancelled) {
           setAdminTheme(stored === "light" ? "light" : "dark");
           setLoginRememberMe(remember);
@@ -1483,7 +1848,7 @@ export default function AdminPage() {
         if (!remember) {
           let sessionActive = false;
           try {
-            sessionActive = window.sessionStorage.getItem("unbanhwid.admin-panel.sessionActive") === "1";
+            sessionActive = window.sessionStorage.getItem("phantom-cheat.admin-panel.sessionActive") === "1";
           } catch {
             sessionActive = false;
           }
@@ -1511,13 +1876,108 @@ export default function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!mobileNavOpen) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") setMobileNavOpen(false);
+    };
+    const onResize = () => {
+      if (window.innerWidth > 900) setMobileNavOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [mobileNavOpen]);
+
   function handleAdminThemeToggle(nextLight) {
     const nextTheme = nextLight ? "light" : "dark";
     setAdminTheme(nextTheme);
     try {
-      window.localStorage.setItem("unbanhwid.admin-panel.theme", nextTheme);
+      window.localStorage.setItem("phantom-cheat.admin-panel.theme", nextTheme);
     } catch {
       // ignore
+    }
+  }
+
+  function refreshLicenseFormatExample(nextForm = licenseFormatForm) {
+    setLicenseFormatExample(generateAdminLicenseKey(nextForm));
+  }
+
+  useEffect(() => {
+    refreshLicenseFormatExample(licenseFormatForm);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [licenseFormatForm.pattern, licenseFormatForm.specialChars, licenseFormatForm.digits]);
+
+  async function loadAdminLicenseFormat() {
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) return;
+    try {
+      const response = await fetch("/api/admin/license-format", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Failed to load license format.");
+      const nextForm = toAdminLicenseFormatForm(result.license_format);
+      setLicenseFormatForm(nextForm);
+      refreshLicenseFormatExample(nextForm);
+      setLicenseFormatLoaded(true);
+    } catch (error) {
+      setLicenseFormatLoaded(true);
+      setLicenseFormatMessage({ text: error?.message || String(error), type: "error" });
+    }
+  }
+
+  useEffect(() => {
+    if (!session.accessToken || accessChecking) return;
+    void loadAdminLicenseFormat();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.accessToken, accessChecking]);
+
+  async function handleSaveLicenseFormat() {
+    if (!canEditLicenseFormat) {
+      denyPermission("Only head administrators can change the shared license format.");
+      return;
+    }
+    const pattern = String(licenseFormatForm.pattern || "").trim();
+    const validationError = validateLicenseFormatPattern(pattern);
+    if (validationError) {
+      setLicenseFormatMessage({ text: validationError, type: "error" });
+      return;
+    }
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) return;
+    setLicenseFormatSaving(true);
+    setLicenseFormatMessage({ text: "", type: "" });
+    try {
+      const response = await fetch("/api/admin/license-format", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          pattern,
+          specialChars: Boolean(licenseFormatForm.specialChars),
+          digits: Boolean(licenseFormatForm.digits),
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Failed to save license format.");
+      const nextForm = toAdminLicenseFormatForm(result.license_format);
+      setLicenseFormatForm(nextForm);
+      setLicenseFormatMessage({
+        text: "Shared license format saved for all administrators.",
+        type: "success",
+      });
+      refreshLicenseFormatExample(nextForm);
+    } catch (error) {
+      setLicenseFormatMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setLicenseFormatSaving(false);
     }
   }
   const activeLicenseHwidDetails = useMemo(
@@ -1539,6 +1999,211 @@ export default function AdminPage() {
     () => selectedLicenses.filter((license) => licenseMatchesSearch(license, licenseSearchQuery)),
     [selectedLicenses, licenseSearchQuery]
   );
+
+  function findAppForLicense(license) {
+    if (!license) return null;
+    return (
+      applications.find(
+        (app) =>
+          app.id === license.application_id ||
+          (app.app_id && license.app_id === app.app_id) ||
+          (app.app_id && license.application_id === app.app_id)
+      ) || null
+    );
+  }
+
+  function findResellerForLicense(license) {
+    if (!license) return null;
+    const resellerId = String(license.reseller_id || "").trim();
+    if (resellerId) {
+      const byId = resellers.find((entry) => entry.id === resellerId);
+      if (byId) return byId;
+    }
+    const id = String(license.id || "").trim();
+    if (id) {
+      const byGen = resellers.find(
+        (entry) =>
+          Array.isArray(entry.generated_license_ids) &&
+          entry.generated_license_ids.some((value) => String(value || "") === id)
+      );
+      if (byGen) return byGen;
+    }
+    return null;
+  }
+
+  const adminSearchResults = useMemo(() => {
+    const query = adminSearchQuery.trim().toLowerCase();
+    if (!query) return { applications: [], licenses: [], users: [], resellers: [] };
+
+    const appMatches = applications
+      .filter((app) => String(app.name || "").toLowerCase().includes(query))
+      .slice(0, 5)
+      .map((app) => ({ type: "app", app }));
+
+    const licenseMatches = allLicensesIncludingResellers
+      .filter((license) => String(license.license_key || "").toLowerCase().includes(query))
+      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+      .slice(0, 6)
+      .map((license) => {
+        const reseller = findResellerForLicense(license);
+        return {
+          type: "license",
+          license,
+          app: findAppForLicense(license),
+          reseller,
+          resellerName: reseller ? getResellerUsername(reseller) : null,
+        };
+      });
+
+    const userMap = new Map();
+    for (const license of allLicensesIncludingResellers) {
+      const name = String(getLicenseDiscordDisplayName(license) || "").trim();
+      if (!name || name === "-") continue;
+      if (!name.toLowerCase().includes(query)) continue;
+      if (userMap.has(name)) continue;
+      const reseller = findResellerForLicense(license);
+      userMap.set(name, {
+        type: "user",
+        name,
+        avatar: getDiscordAvatarUrl(license),
+        app: findAppForLicense(license),
+        reseller,
+        resellerName: reseller ? getResellerUsername(reseller) : null,
+      });
+      if (userMap.size >= 5) break;
+    }
+    const userMatches = Array.from(userMap.values()).map((entry) => {
+      const licenseCount = allLicensesIncludingResellers.filter(
+        (license) => String(getLicenseDiscordDisplayName(license) || "").trim() === entry.name
+      ).length;
+      return { ...entry, licenseCount };
+    });
+
+    const resellerMatches = resellers
+      .filter((entry) => {
+        const name = String(getResellerUsername(entry) || "").toLowerCase();
+        const email = String(entry.email || "").toLowerCase();
+        return name.includes(query) || email.includes(query);
+      })
+      .slice(0, 5)
+      .map((reseller) => ({ type: "reseller", reseller, name: getResellerUsername(reseller) }));
+
+    return {
+      applications: appMatches,
+      licenses: licenseMatches,
+      users: userMatches,
+      resellers: resellerMatches,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminSearchQuery, applications, allLicensesIncludingResellers, resellers]);
+
+  const flatAdminSearchResults = useMemo(
+    () => [
+      ...adminSearchResults.applications,
+      ...adminSearchResults.licenses,
+      ...adminSearchResults.users,
+      ...adminSearchResults.resellers,
+    ],
+    [adminSearchResults]
+  );
+
+  const totalAdminSearchResults = flatAdminSearchResults.length;
+
+  function performAdminSearchSelect(item) {
+    if (!item) return;
+    setAdminSearchOpen(false);
+    setAdminSearchQuery("");
+    if (item.type === "app") {
+      selectApplication(item.app.id);
+    } else if (item.type === "license") {
+      const key = String(item.license.license_key || item.license.id || "");
+      if (item.reseller) {
+        setAdminView("resellers");
+        openResellerLicensesDrawer(item.reseller);
+        setResellerLicensesSearch(key);
+      } else if (item.app) {
+        selectApplication(item.app.id, { search: key });
+      } else {
+        setLicenseSearchQuery(key);
+        setAdminView("licenses");
+      }
+    } else if (item.type === "user") {
+      if (item.reseller) {
+        setAdminView("resellers");
+        openResellerLicensesDrawer(item.reseller);
+        setResellerLicensesSearch(item.name);
+      } else if (item.app) {
+        selectApplication(item.app.id, { search: item.name });
+      } else {
+        setLicenseSearchQuery(item.name);
+        setAdminView("licenses");
+      }
+    } else if (item.type === "reseller") {
+      setAdminView("resellers");
+      openResellerLicensesDrawer(item.reseller);
+    }
+  }
+
+  useEffect(() => {
+    function onKeyDown(event) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setAdminSearchOpen((open) => !open);
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  useEffect(() => {
+    if (!adminSearchOpen) return;
+    setAdminSearchQuery("");
+    setAdminSearchActiveIndex(0);
+    const id = requestAnimationFrame(() => adminSearchInputRef.current?.focus());
+    return () => window.cancelAnimationFrame(id);
+  }, [adminSearchOpen]);
+
+  useEffect(() => {
+    setAdminSearchActiveIndex(0);
+  }, [adminSearchQuery]);
+
+  useEffect(() => {
+    if (!adminSearchOpen) return;
+    const container = adminSearchResultsRef.current;
+    if (!container) return;
+    const activeEl = container.querySelector(`[data-search-index="${adminSearchActiveIndex}"]`);
+    if (activeEl && typeof activeEl.scrollIntoView === "function") {
+      activeEl.scrollIntoView({ block: "nearest" });
+    }
+  }, [adminSearchActiveIndex, adminSearchOpen]);
+
+  useEffect(() => {
+    if (!adminSearchOpen) return undefined;
+    function onPointerDown(event) {
+      if (!adminSearchWrapRef.current) return;
+      if (adminSearchWrapRef.current.contains(event.target)) return;
+      setAdminSearchOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [adminSearchOpen]);
+
+  function handleAdminSearchKeydown(event) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setAdminSearchOpen(false);
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setAdminSearchActiveIndex((index) => Math.min(index + 1, Math.max(totalAdminSearchResults - 1, 0)));
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setAdminSearchActiveIndex((index) => Math.max(index - 1, 0));
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      const item = flatAdminSearchResults[adminSearchActiveIndex];
+      if (item) performAdminSearchSelect(item);
+    }
+  }
 
   const resellerLicenseAppOptions = useMemo(() => {
     const accessIds = Array.isArray(resellerLicensesReseller?.application_access)
@@ -1625,6 +2290,11 @@ export default function AdminPage() {
         discordUsername: result.admin?.discord_username || nextSession.discordUsername || "",
         discordAvatarUrl: result.admin?.discord_avatar_url || nextSession.discordAvatarUrl || "",
         isMainAdmin: Boolean(result.admin?.is_main_admin),
+        actor: result.admin?.actor === "staff" ? "staff" : "admin",
+        permissions:
+          result.admin?.permissions && typeof result.admin.permissions === "object"
+            ? result.admin.permissions
+            : null,
       });
       return true;
     }
@@ -1709,6 +2379,11 @@ export default function AdminPage() {
                 discordUsername: result.admin?.discord_username || parsed.discordUsername || "",
                 discordAvatarUrl: result.admin?.discord_avatar_url || parsed.discordAvatarUrl || "",
                 isMainAdmin: Boolean(result.admin?.is_main_admin),
+                actor: result.admin?.actor === "staff" ? "staff" : "admin",
+                permissions:
+                  result.admin?.permissions && typeof result.admin.permissions === "object"
+                    ? result.admin.permissions
+                    : null,
               });
             } else {
               localStorage.removeItem(sessionStorageKey());
@@ -1734,14 +2409,25 @@ export default function AdminPage() {
   function persistSession(nextSession) {
     setSession(nextSession);
     localStorage.setItem(sessionStorageKey(), JSON.stringify(nextSession));
+    try {
+      window.dispatchEvent(new Event("admin-session-changed"));
+    } catch {
+      // Ignore.
+    }
   }
 
   function clearSession() {
     setSession({ ...EMPTY_ADMIN_SESSION });
     localStorage.removeItem(sessionStorageKey());
+    try {
+      window.dispatchEvent(new Event("admin-session-changed"));
+    } catch {
+      // Ignore.
+    }
     void supabase.auth.signOut({ scope: "local" });
     setApplications([]);
     setAllLicenses([]);
+    setAllLicensesIncludingResellers([]);
     setSelectedAppId("");
     setSelectedLicenses([]);
     setCreateModalOpen(false);
@@ -2095,9 +2781,12 @@ export default function AdminPage() {
       metrics: result.resellerMetrics || result.metrics || null,
     });
 
+    const rawLicenses = Array.isArray(result.licenses) ? result.licenses : [];
+    setAllLicensesIncludingResellers(rawLicenses);
+
     applyDashboardData(
       Array.isArray(result.applications) ? result.applications : [],
-      filterAdminOwnedLicenses(Array.isArray(result.licenses) ? result.licenses : [], resellerList)
+      filterAdminOwnedLicenses(rawLicenses, resellerList)
     );
 
     const protections = result.protections || {};
@@ -2113,6 +2802,15 @@ export default function AdminPage() {
 
     if (Array.isArray(result.notifications)) {
       setNotifications(result.notifications);
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(result, "discord_notification_webhook") ||
+      Object.prototype.hasOwnProperty.call(result, "discord_notification_branding") ||
+      Object.prototype.hasOwnProperty.call(result, "discord_notification_webhook_updated_at")
+    ) {
+      setAdminDiscordWebhook(String(result.discord_notification_webhook || ""));
+      setAdminDiscordWebhookBranding(result.discord_notification_branding || null);
+      setAdminDiscordWebhookUpdatedAt(String(result.discord_notification_webhook_updated_at || ""));
     }
     if (Array.isArray(result.storeProducts)) {
       setStoreProducts(result.storeProducts);
@@ -2272,6 +2970,14 @@ export default function AdminPage() {
               color: badge.color || NOTIFICATION_BADGE_COLORS[0].value,
             }))
             .filter((badge) => badge.label),
+          created_by_avatar_url:
+            session.discordAvatarUrl ||
+            JSON.parse(localStorage.getItem(sessionStorageKey()) || "{}")?.discordAvatarUrl ||
+            "",
+          created_by_discord_user_id:
+            session.discordUserId ||
+            JSON.parse(localStorage.getItem(sessionStorageKey()) || "{}")?.discordUserId ||
+            "",
         }),
       });
       const result = await response.json().catch(() => ({}));
@@ -2543,6 +3249,339 @@ export default function AdminPage() {
     return JSON.parse(localStorage.getItem(sessionStorageKey()) || "{}")?.accessToken || session.accessToken || "";
   }
 
+  useEffect(() => {
+    return () => {
+      if (permissionDeniedTimerRef.current) clearTimeout(permissionDeniedTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (adminView !== "team" || !session.accessToken) return;
+    let cancelled = false;
+
+    async function loadTeamSections() {
+      const accessToken = getAdminAccessToken();
+      if (!accessToken) return;
+
+      if (canAct("resellers.team_view") || canView("team")) {
+        setTeamResellerBusy(true);
+        try {
+          const response = await fetch("/api/admin/team/resellers", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            cache: "no-store",
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!cancelled) {
+            if (response.ok) {
+              setTeamResellerRows(Array.isArray(result.resellers) ? result.resellers : []);
+            } else if (response.status !== 403) {
+              setDashboardMessage({ text: result.error || "Failed to load reseller teams.", type: "error" });
+            }
+          }
+        } catch (error) {
+          if (!cancelled) {
+            setDashboardMessage({ text: error?.message || String(error), type: "error" });
+          }
+        } finally {
+          if (!cancelled) setTeamResellerBusy(false);
+        }
+      }
+
+      if (canView("team")) {
+        setAdminStaffBusy(true);
+        try {
+          const response = await fetch("/api/admin/team/staff", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            cache: "no-store",
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!cancelled) {
+            if (response.ok) {
+              setAdminStaffMembers(Array.isArray(result.members) ? result.members : []);
+            } else if (response.status !== 403) {
+              setDashboardMessage({ text: result.error || "Failed to load admin staff.", type: "error" });
+            }
+          }
+        } catch (error) {
+          if (!cancelled) {
+            setDashboardMessage({ text: error?.message || String(error), type: "error" });
+          }
+        } finally {
+          if (!cancelled) setAdminStaffBusy(false);
+        }
+      }
+    }
+
+    void loadTeamSections();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminView, session.accessToken, session.actor, session.permissions]);
+
+  async function previewTeamReseller(resellerId) {
+    if (!canAct("resellers.team_view")) {
+      denyPermission("You do not have permission to view reseller teams.");
+      return;
+    }
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) return;
+    setTeamResellerBusy(true);
+    setSelectedTeamResellerId(resellerId);
+    try {
+      const response = await fetch(`/api/admin/team/resellers/${encodeURIComponent(resellerId)}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Failed to load reseller team.");
+      setSelectedTeamResellerDetail(result.reseller || null);
+      setTeamResellerLimitDraft(Number(result.reseller?.team_member_limit) || 3);
+    } catch (error) {
+      setDashboardMessage({ text: error?.message || String(error), type: "error" });
+      setSelectedTeamResellerDetail(null);
+    } finally {
+      setTeamResellerBusy(false);
+    }
+  }
+
+  async function patchTeamResellerLimits(resellerId, patch) {
+    if (!canAct("resellers.team_limits")) {
+      denyPermission("You do not have permission to change team limits.");
+      return;
+    }
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) return;
+    setTeamResellerBusy(true);
+    try {
+      const response = await fetch(`/api/admin/team/resellers/${encodeURIComponent(resellerId)}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Failed to update team limits.");
+      const nextLimit = Number(result.reseller?.team_member_limit);
+      const nextBlocked = Boolean(result.reseller?.team_invite_blocked);
+      setTeamResellerRows((rows) =>
+        rows.map((row) =>
+          row.id === resellerId
+            ? {
+                ...row,
+                team_member_limit: Number.isFinite(nextLimit) ? nextLimit : row.team_member_limit,
+                team_invite_blocked: result.reseller?.team_invite_blocked != null ? nextBlocked : row.team_invite_blocked,
+              }
+            : row
+        )
+      );
+      if (selectedTeamResellerId === resellerId) {
+        setSelectedTeamResellerDetail((current) =>
+          current
+            ? {
+                ...current,
+                team_member_limit:
+                  Number.isFinite(nextLimit) ? nextLimit : current.team_member_limit,
+                team_invite_blocked:
+                  result.reseller?.team_invite_blocked != null
+                    ? nextBlocked
+                    : current.team_invite_blocked,
+                team_members: Array.isArray(result.reseller?.team_members)
+                  ? result.reseller.team_members
+                  : current.team_members,
+              }
+            : current
+        );
+        if (Number.isFinite(nextLimit)) setTeamResellerLimitDraft(nextLimit);
+      }
+      setDashboardMessage({ text: "Reseller team limits updated.", type: "success" });
+    } catch (error) {
+      setDashboardMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setTeamResellerBusy(false);
+    }
+  }
+
+  function openTeamResellerMemberDrawer(member) {
+    if (!canAct("resellers.team_edit")) {
+      denyPermission("You do not have permission to edit reseller team members.");
+      return;
+    }
+    setTeamResellerMemberDraft(member);
+    setTeamResellerMemberPerms(member?.permissions || defaultDraftPermissions("reseller"));
+    setTeamResellerMemberError("");
+    setTeamResellerMemberDrawerOpen(true);
+  }
+
+  async function submitTeamResellerMemberDrawer() {
+    if (!canAct("resellers.team_edit")) {
+      denyPermission("You do not have permission to edit reseller team members.");
+      return;
+    }
+    if (!selectedTeamResellerId || !teamResellerMemberDraft?.id) return;
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) return;
+    setTeamResellerMemberBusy(true);
+    setTeamResellerMemberError("");
+    try {
+      const response = await fetch(`/api/admin/team/resellers/${encodeURIComponent(selectedTeamResellerId)}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          memberId: teamResellerMemberDraft.id,
+          permissions: teamResellerMemberPerms,
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Failed to update team member.");
+      const members = Array.isArray(result.team_members) ? result.team_members : [];
+      setSelectedTeamResellerDetail((current) => (current ? { ...current, team_members: members } : current));
+      setTeamResellerRows((rows) =>
+        rows.map((row) =>
+          row.id === selectedTeamResellerId
+            ? {
+                ...row,
+                team_member_count: members.filter((entry) => entry.status === "active").length,
+                team_members: members,
+              }
+            : row
+        )
+      );
+      setTeamResellerMemberDrawerOpen(false);
+      setDashboardMessage({ text: "Team member updated.", type: "success" });
+    } catch (error) {
+      setTeamResellerMemberError(error?.message || String(error));
+    } finally {
+      setTeamResellerMemberBusy(false);
+    }
+  }
+
+  async function removeTeamResellerMember(member) {
+    if (!canAct("resellers.team_edit")) {
+      denyPermission("You do not have permission to edit reseller team members.");
+      return;
+    }
+    if (!selectedTeamResellerId || !member?.id) return;
+    if (!window.confirm(`Remove team member ${member.discord_user_id}?`)) return;
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) return;
+    setTeamMemberBusyId(member.id);
+    try {
+      const response = await fetch(`/api/admin/team/resellers/${encodeURIComponent(selectedTeamResellerId)}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ memberId: member.id }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Failed to remove team member.");
+      const members = Array.isArray(result.team_members) ? result.team_members : [];
+      setSelectedTeamResellerDetail((current) => (current ? { ...current, team_members: members } : current));
+      setTeamResellerRows((rows) =>
+        rows.map((row) =>
+          row.id === selectedTeamResellerId
+            ? {
+                ...row,
+                team_member_count: members.filter((entry) => entry.status === "active").length,
+                team_members: members,
+              }
+            : row
+        )
+      );
+      setDashboardMessage({ text: "Team member removed.", type: "success" });
+    } catch (error) {
+      setDashboardMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setTeamMemberBusyId("");
+    }
+  }
+
+  function openAdminStaffAddDrawer() {
+    if (!canManageAdminStaff || !canView("team")) {
+      denyPermission("Only full administrators can add admin staff.");
+      return;
+    }
+    setAdminStaffDrawerMode("add");
+    setAdminStaffDrawerMember(null);
+    setAdminStaffDraftDiscordId("");
+    setAdminStaffDraftPerms(defaultDraftPermissions("admin"));
+    setAdminStaffDrawerError("");
+    setAdminStaffDrawerOpen(true);
+  }
+
+  function openAdminStaffEditDrawer(member) {
+    if (!canManageAdminStaff || !canView("team")) {
+      denyPermission("Only full administrators can edit admin staff.");
+      return;
+    }
+    setAdminStaffDrawerMode("edit");
+    setAdminStaffDrawerMember(member);
+    setAdminStaffDraftDiscordId(member?.discord_user_id || "");
+    setAdminStaffDraftPerms(member?.permissions || defaultDraftPermissions("admin"));
+    setAdminStaffDrawerError("");
+    setAdminStaffDrawerOpen(true);
+  }
+
+  async function submitAdminStaffDrawer() {
+    if (!canManageAdminStaff || !canView("team")) {
+      denyPermission("Only full administrators can manage admin staff.");
+      return;
+    }
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) return;
+    setAdminStaffBusy(true);
+    setAdminStaffDrawerError("");
+    try {
+      const isEdit = adminStaffDrawerMode === "edit";
+      const response = await fetch("/api/admin/team/staff", {
+        method: isEdit ? "PATCH" : "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify(
+          isEdit
+            ? { memberId: adminStaffDrawerMember?.id, permissions: adminStaffDraftPerms }
+            : { discord_user_id: adminStaffDraftDiscordId, permissions: adminStaffDraftPerms }
+        ),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Failed to save admin staff member.");
+      setAdminStaffMembers(Array.isArray(result.members) ? result.members : []);
+      setAdminStaffDrawerOpen(false);
+      setDashboardMessage({
+        text: isEdit ? "Admin staff member updated." : "Admin staff member added.",
+        type: "success",
+      });
+    } catch (error) {
+      setAdminStaffDrawerError(error?.message || String(error));
+    } finally {
+      setAdminStaffBusy(false);
+    }
+  }
+
+  async function removeAdminStaffMember(member) {
+    if (!canManageAdminStaff || !canView("team")) {
+      denyPermission("Only full administrators can remove admin staff.");
+      return;
+    }
+    if (!member?.id) return;
+    if (!window.confirm(`Remove admin staff ${member.discord_user_id}?`)) return;
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) return;
+    setAdminStaffBusyId(member.id);
+    try {
+      const response = await fetch("/api/admin/team/staff", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ memberId: member.id }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Failed to remove admin staff member.");
+      setAdminStaffMembers(Array.isArray(result.members) ? result.members : []);
+      setDashboardMessage({ text: "Admin staff member removed.", type: "success" });
+    } catch (error) {
+      setDashboardMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setAdminStaffBusyId("");
+    }
+  }
+
   async function loadProtectionSettings() {
     const accessToken = getAdminAccessToken();
     if (!accessToken) return;
@@ -2618,14 +3657,107 @@ export default function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn, adminView, protectionLoaded]);
 
+  async function loadVisibleProtectionLogScreenshots(entries) {
+    const accessToken = getAdminAccessToken();
+    if (!accessToken) return;
+
+    const list = (Array.isArray(entries) ? entries : []).slice(0, PROTECTION_LOGS_PAGE_SIZE * 3);
+    const ids = list
+      .filter((entry) => entry?.id && !entry._screenshotsLoaded)
+      .map((entry) => String(entry.id));
+
+    // Already have meta — only sign any remaining storage paths.
+    if (!ids.length) {
+      const paths = [];
+      for (const entry of list) {
+        for (const shot of entry.screenshots || []) {
+          if (shot?.path && !shot?.url) paths.push(shot.path);
+        }
+      }
+      if (!paths.length) {
+        setProtectionLogsScreenshotsSigned(true);
+        return;
+      }
+      try {
+        const response = await fetch("/api/admin/protection-logs", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ sign_paths: paths }),
+          cache: "no-store",
+        });
+        const result = await response.json().catch(() => ({}));
+        const urlMap = result.urls && typeof result.urls === "object" ? result.urls : {};
+        if (!Object.keys(urlMap).length) return;
+        setProtectionLogsRaw((current) =>
+          (Array.isArray(current) ? current : []).map((entry) => {
+            if (!entry?.screenshots?.length) return entry;
+            let changed = false;
+            const screenshots = entry.screenshots.map((shot) => {
+              if (shot?.url || !shot?.path) return shot;
+              const signed = urlMap[shot.path];
+              if (!signed) return shot;
+              changed = true;
+              return { ...shot, url: signed, data: "" };
+            });
+            return changed ? { ...entry, screenshots } : entry;
+          })
+        );
+        setProtectionLogsScreenshotsSigned(true);
+      } catch {
+        // ignore sign failures
+      }
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/admin/protection-logs", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ entry_ids: ids }),
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) return;
+      const byId = result.by_id && typeof result.by_id === "object" ? result.by_id : {};
+      setProtectionLogsRaw((current) =>
+        (Array.isArray(current) ? current : []).map((entry) => {
+          const id = String(entry?.id || "");
+          if (!byId[id]) return entry;
+          return {
+            ...entry,
+            screenshots: Array.isArray(byId[id]) ? byId[id] : [],
+            _screenshotsLoaded: true,
+          };
+        })
+      );
+      setProtectionLogsScreenshotsSigned(true);
+    } catch {
+      // ignore lazy-load failures
+    }
+  }
+
+  // Back-compat alias used by older call sites in this file.
+  async function signVisibleProtectionLogScreenshots(entries) {
+    return loadVisibleProtectionLogScreenshots(entries);
+  }
+
   async function loadProtectionLogs(options = {}) {
     const forceNetwork = options.force === true;
     const accessToken = getAdminAccessToken();
     if (!accessToken) return;
 
-    // Fast path: local filter from bootstrap payload.
-    if (!forceNetwork && protectionLogsRaw.length && protectionLogsScreenshotsSigned) {
+    // Fast path: local filter from already-loaded payload.
+    if (!forceNetwork && protectionLogsRaw.length) {
       setProtectionLogs(filterProtectionLogsLocal(protectionLogsRaw));
+      if (!protectionLogsScreenshotsSigned) {
+        void signVisibleProtectionLogScreenshots(protectionLogsRaw);
+      }
       return;
     }
 
@@ -2642,13 +3774,15 @@ export default function AdminPage() {
       }
       const entries = Array.isArray(result.entries) ? result.entries : [];
       setProtectionLogsRaw(entries);
-      setProtectionLogsScreenshotsSigned(true);
+      setProtectionLogsScreenshotsSigned(false);
       if (Array.isArray(result.sources) && result.sources.length) {
         setProtectionLogSources(result.sources);
       }
       if (Array.isArray(result.ignored_user_ids)) {
         applyProtectionLogIgnoredUserIds(result.ignored_user_ids);
       }
+      // Sign only visible thumbs after list is on screen (avoids 504).
+      void signVisibleProtectionLogScreenshots(entries);
     } catch (error) {
       setProtectionLogsMessage({ text: error?.message || String(error), type: "error" });
     } finally {
@@ -2793,7 +3927,7 @@ export default function AdminPage() {
     setProtectionLogColumns((current) => {
       const next = { ...current, [columnId]: Boolean(checked) };
       try {
-        window.localStorage.setItem("unbanhwid.admin-panel.protection-log-columns", JSON.stringify(next));
+        window.localStorage.setItem("phantom-cheat.admin-panel.protection-log-columns", JSON.stringify(next));
       } catch {
         // ignore
       }
@@ -2805,7 +3939,7 @@ export default function AdminPage() {
     const density = nextDensity === 2 || nextDensity === 3 ? nextDensity : 1;
     setProtectionLogDensity(density);
     try {
-      window.localStorage.setItem("unbanhwid.admin-panel.protection-log-density", String(density));
+      window.localStorage.setItem("phantom-cheat.admin-panel.protection-log-density", String(density));
     } catch {
       // ignore
     }
@@ -2820,11 +3954,35 @@ export default function AdminPage() {
     return "";
   }
 
-  function openScreenshotPreview(shots, index, title = "") {
-    const list = (Array.isArray(shots) ? shots : []).filter((shot) => shot?.url);
+  async function openScreenshotPreview(shots, index, title = "") {
+    let list = Array.isArray(shots) ? shots.slice() : [];
     if (!list.length) return;
-    const safeIndex = Math.max(0, Math.min(Number(index) || 0, list.length - 1));
-    setScreenshotPreview({ shots: list, index: safeIndex, title: String(title || "").trim() });
+
+    const missing = list.map((shot) => shot?.path).filter((path, i) => path && !list[i]?.url);
+    if (missing.length) {
+      const urlMap = await signProtectionLogScreenshotPaths(missing);
+      if (Object.keys(urlMap).length) {
+        list = list.map((shot) =>
+          shot?.path && !shot?.url && urlMap[shot.path]
+            ? { ...shot, url: urlMap[shot.path], data: "" }
+            : shot
+        );
+        setProtectionLogsRaw((current) => mergeSignedScreenshotUrls(current, urlMap));
+      }
+    }
+
+    const viewable = list.filter((shot) => shot?.url);
+    if (!viewable.length) return;
+    const clickedPath = list[Number(index) || 0]?.path;
+    const safeIndex = Math.max(
+      0,
+      viewable.findIndex((shot) => shot.path && shot.path === clickedPath)
+    );
+    setScreenshotPreview({
+      shots: viewable,
+      index: safeIndex >= 0 ? safeIndex : 0,
+      title: String(title || "").trim(),
+    });
   }
 
   function closeScreenshotPreview() {
@@ -2867,12 +4025,27 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!signedIn || adminView !== "protection-logs") return;
-    // Filters are applied locally; fetch signed screenshots when missing.
-    if (!protectionLogsScreenshotsSigned) {
+    if (!protectionLogsRaw.length) {
       void loadProtectionLogs({ force: true });
+      return;
     }
+    // Lazy-load + sign thumbs for the current page (+ neighbours).
+    void loadVisibleProtectionLogScreenshots(
+      protectionLogs.slice(
+        Math.max(0, (protectionLogsPageSafe - 1) * PROTECTION_LOGS_PAGE_SIZE),
+        protectionLogsPageSafe * PROTECTION_LOGS_PAGE_SIZE + PROTECTION_LOGS_PAGE_SIZE
+      )
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signedIn, adminView, protectionLogsScreenshotsSigned]);
+  }, [
+    signedIn,
+    adminView,
+    protectionLogsPageSafe,
+    protectionLogAppFilter,
+    protectionLogSourceFilter,
+    protectionLogSearchQuery,
+    protectionLogsRaw.length,
+  ]);
 
   function toChangelogDateInputValue(value) {
     const date = value ? new Date(value) : new Date();
@@ -3219,6 +4392,10 @@ export default function AdminPage() {
   }
 
   function handleResellerLicenseResetHwid(license) {
+    if (!canAct("licenses.reset_hwid")) {
+      denyPermission("You do not have permission to reset HWID.");
+      return;
+    }
     const previousHwid = license.hwid ?? null;
     patchResellerLicenseLocal(license.id, { hwid: null });
     void updateLicenseRecord(license.id, { hwid: null }).catch((error) => {
@@ -3228,6 +4405,10 @@ export default function AdminPage() {
   }
 
   function handleResellerLicenseToggleBan(license) {
+    if (!canAct("licenses.ban")) {
+      denyPermission("You do not have permission to ban licenses.");
+      return;
+    }
     const isCurrentlyBanned = String(license.status || "").toLowerCase() === "banned";
     const patch = isCurrentlyBanned ? buildUnbanLicensePatch(license) : buildBanLicensePatch(license);
     patchResellerLicenseLocal(license.id, patch);
@@ -3238,6 +4419,10 @@ export default function AdminPage() {
   }
 
   function handleResellerLicenseDelete(license) {
+    if (!canAct("licenses.delete")) {
+      denyPermission("You do not have permission to delete licenses.");
+      return;
+    }
     if (!window.confirm(`Delete license "${license.license_key || license.id}"?`)) return;
     removeResellerLicenseLocal(license.id);
     void restRequest(`licenses?id=eq.${encodeURIComponent(license.id)}`, {
@@ -3904,12 +5089,93 @@ export default function AdminPage() {
 
   async function handleDeleteReseller(reseller) {
     if (!reseller?.id) return;
+    if (!canAct("resellers.delete")) {
+      denyPermission("You do not have permission to delete resellers.");
+      return;
+    }
     if (!window.confirm(`Remove reseller "${reseller.discord_username || reseller.email}"?`)) return;
 
     setResellersBusy(true);
     try {
       const result = await adminResellerRequest("DELETE", { id: reseller.id });
       applyResellerPayload(result);
+    } catch (error) {
+      setDashboardMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setResellersBusy(false);
+    }
+  }
+
+  async function handleToggleLoaderBrandBlock(reseller) {
+    if (!reseller?.id) return;
+    const currentlyBlocked = Boolean(reseller?.loader_brand?.blocked);
+    const label = getResellerUsername(reseller);
+    const confirmText = currentlyBlocked
+      ? `Unblock custom loader for "${label}"?`
+      : `Block custom loader for "${label}"? Their public loader link will stop working.`;
+    if (!window.confirm(confirmText)) return;
+
+    setResellersBusy(true);
+    try {
+      const accessToken = getAdminAccessToken();
+      if (!accessToken) throw new Error("Not signed in.");
+      const response = await fetch("/api/admin/loader-brand-block", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ id: reseller.id, blocked: !currentlyBlocked }),
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Failed to update loader block.");
+      applyResellerPayload(result);
+      setDashboardMessage({
+        text: currentlyBlocked
+          ? `Custom loader unblocked for ${label}.`
+          : `Custom loader blocked for ${label}.`,
+        type: "success",
+      });
+    } catch (error) {
+      setDashboardMessage({ text: error?.message || String(error), type: "error" });
+    } finally {
+      setResellersBusy(false);
+    }
+  }
+
+  async function handleDeleteLoaderBrand(reseller) {
+    if (!reseller?.id) return;
+    if (!reseller?.loader_brand) return;
+    const label = getResellerUsername(reseller);
+    if (
+      !window.confirm(
+        `Delete custom loader for "${label}"?\n\nThis removes their branding, logo, colors and public link permanently.`,
+      )
+    ) {
+      return;
+    }
+
+    setResellersBusy(true);
+    try {
+      const accessToken = getAdminAccessToken();
+      if (!accessToken) throw new Error("Not signed in.");
+      const response = await fetch("/api/admin/loader-brand", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ id: reseller.id }),
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Failed to delete loader branding.");
+      applyResellerPayload(result);
+      setDashboardMessage({
+        text: `Custom loader deleted for ${label}.`,
+        type: "success",
+      });
     } catch (error) {
       setDashboardMessage({ text: error?.message || String(error), type: "error" });
     } finally {
@@ -4209,6 +5475,10 @@ export default function AdminPage() {
   }
 
   function openExtendLicense(license) {
+    if (!canAct("licenses.edit")) {
+      denyPermission("You do not have permission to edit / extend licenses.");
+      return;
+    }
     setActiveExtendLicense(license);
     setExtendForm({ durationValue: 30, durationUnit: "days" });
     setExtendMessage({ text: "", type: "" });
@@ -4266,12 +5536,12 @@ export default function AdminPage() {
     }
 
     try {
-      window.localStorage.setItem("unbanhwid.admin-panel.rememberMe", loginRememberMe ? "1" : "0");
-      window.localStorage.setItem("unbanhwid.admin-panel.theme", adminTheme);
+      window.localStorage.setItem("phantom-cheat.admin-panel.rememberMe", loginRememberMe ? "1" : "0");
+      window.localStorage.setItem("phantom-cheat.admin-panel.theme", adminTheme);
       if (loginRememberMe) {
-        window.sessionStorage.removeItem("unbanhwid.admin-panel.sessionActive");
+        window.sessionStorage.removeItem("phantom-cheat.admin-panel.sessionActive");
       } else {
-        window.sessionStorage.setItem("unbanhwid.admin-panel.sessionActive", "1");
+        window.sessionStorage.setItem("phantom-cheat.admin-panel.sessionActive", "1");
       }
     } catch {
       // ignore
@@ -4512,6 +5782,11 @@ export default function AdminPage() {
     event.preventDefault();
     setGenerateMessage({ text: "", type: "" });
 
+    if (!canAct("licenses.generate")) {
+      denyPermission("You do not have permission to generate licenses.");
+      return;
+    }
+
     if (!selectedApp) {
       setGenerateMessage({ text: "Select an application first.", type: "error" });
       return;
@@ -4527,7 +5802,8 @@ export default function AdminPage() {
     }
 
     try {
-      const keys = Array.from({ length: qty }).map(() => randomAlphaNum(14));
+      const formatForm = licenseFormatLoaded ? licenseFormatForm : toAdminLicenseFormatForm(null);
+      const keys = Array.from({ length: qty }).map(() => generateAdminLicenseKey(formatForm));
       const rowsFull = keys.map((key) => ({
         license_key: key,
         status: "Not Activated",
@@ -4684,6 +5960,10 @@ export default function AdminPage() {
   }
 
   function handleResetHwid(license) {
+    if (!canAct("licenses.reset_hwid")) {
+      denyPermission("You do not have permission to reset HWID.");
+      return;
+    }
     const previousHwid = license.hwid ?? null;
     patchLicenseLocal(license.id, { hwid: null });
     void updateLicenseRecord(license.id, { hwid: null }).catch((error) => {
@@ -4693,6 +5973,10 @@ export default function AdminPage() {
   }
 
   function handleToggleBan(license) {
+    if (!canAct("licenses.ban")) {
+      denyPermission("You do not have permission to ban licenses.");
+      return;
+    }
     const previousStatus = license.status || "";
     const previousFrozenAt = license.frozen_at ?? null;
     const previousFrozenRemaining = license.frozen_remaining_ms ?? null;
@@ -4713,6 +5997,10 @@ export default function AdminPage() {
   }
 
   function handleDeleteLicense(license) {
+    if (!canAct("licenses.delete")) {
+      denyPermission("You do not have permission to delete licenses.");
+      return;
+    }
     if (!window.confirm(`Delete license "${license.license_key || license.id}"?`)) return;
 
     removeLicenseLocal(license.id);
@@ -4725,6 +6013,11 @@ export default function AdminPage() {
   async function handleExtendLicense(event) {
     event.preventDefault();
     setExtendMessage({ text: "", type: "" });
+
+    if (!canAct("licenses.edit")) {
+      setExtendMessage({ text: "You do not have permission to edit / extend licenses.", type: "error" });
+      return;
+    }
 
     if (!activeExtendLicense) return;
 
@@ -4786,7 +6079,7 @@ export default function AdminPage() {
       ) : !signedIn ? (
         <div className={styles.loginGate}>
           <header className={styles.loginGateHero}>
-            <img className={styles.loginGateLogo} src="/images/unbanhwid-logo.png" alt="unbanhwid.com" />
+            <img className={styles.loginGateLogo} src="/images/phantom.png" alt="phantom-cheats.com" />
             <h1 className={styles.loginGateBrand}>Admin Panel</h1>
             <p className={styles.loginGateDesc}>
               Management panel for applications, licenses, and delivery packages.
@@ -4942,7 +6235,7 @@ export default function AdminPage() {
                                 const next = event.target.checked;
                                 setLoginRememberMe(next);
                                 try {
-                                  window.localStorage.setItem("unbanhwid.admin-panel.rememberMe", next ? "1" : "0");
+                                  window.localStorage.setItem("phantom-cheat.admin-panel.rememberMe", next ? "1" : "0");
                                 } catch {
                                   // ignore
                                 }
@@ -4979,28 +6272,278 @@ export default function AdminPage() {
           </div>
         </div>
       ) : (
-        <div className={styles.adminLayout}>
+        <div className={`${styles.adminLayout}${mobileNavOpen ? ` ${styles.adminLayoutMobileNavOpen}` : ""}`}>
           <header className={styles.adminTopbar}>
+            <button
+              type="button"
+              className={styles.adminMobileNavBtn}
+              aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"}
+              aria-expanded={mobileNavOpen}
+              aria-controls="admin-sidebar-nav"
+              onClick={() => setMobileNavOpen((open) => !open)}
+            >
+              {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
             <a href="/" className={styles.adminTopbarBrand}>
-              <img src="/images/unbanhwid-logo.png" alt="unbanhwid.com" />
-              <span>unbanhwid.com</span>
+              <img src="/images/phantom.png" alt="phantom-cheats.com" />
+              <span>phantom-cheats.com</span>
             </a>
-            <div className={styles.adminTopbarSearchWrap}>
-              <button type="button" className={styles.adminTopbarSearch} aria-label="Search">
-                <Search size={13} />
-                <span>Search applications, licenses...</span>
-                <kbd>Ctrl K</kbd>
-              </button>
+            <div
+              ref={adminSearchWrapRef}
+              className={`${styles.adminTopbarSearchWrap}${adminSearchOpen ? ` ${styles.adminTopbarSearchWrapOpen}` : ""}`}
+            >
+              {adminSearchOpen ? (
+                <div className={styles.searchInlineWrap}>
+                  <div className={styles.searchInlineInputRow}>
+                    <Search size={13} className={styles.searchInlineInputIcon} aria-hidden="true" />
+                    <input
+                      ref={adminSearchInputRef}
+                      type="search"
+                      className={styles.searchInlineInput}
+                      placeholder="Search applications, licenses, users, resellers..."
+                      value={adminSearchQuery}
+                      onChange={(event) => setAdminSearchQuery(event.target.value)}
+                      onKeyDown={handleAdminSearchKeydown}
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                    <button
+                      type="button"
+                      className={styles.searchInlineClose}
+                      aria-label="Close search"
+                      onClick={() => setAdminSearchOpen(false)}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+
+                  <div className={styles.searchDropdown}>
+                    <div className={styles.searchResults} ref={adminSearchResultsRef}>
+                      {!adminSearchQuery.trim() ? (
+                        <div className={styles.searchEmptyState}>
+                          Start typing to search across applications, licenses, users and resellers.
+                        </div>
+                      ) : totalAdminSearchResults === 0 ? (
+                        <div className={styles.searchEmptyState}>
+                          No results for &quot;{adminSearchQuery.trim()}&quot;.
+                        </div>
+                      ) : (
+                        <>
+                          {adminSearchResults.applications.length ? (
+                            <div className={styles.searchGroup}>
+                              <div className={styles.searchGroupLabel}>Applications</div>
+                              {adminSearchResults.applications.map((item, index) => {
+                                const flatIndex = index;
+                                const active = flatIndex === adminSearchActiveIndex;
+                                return (
+                                  <button
+                                    type="button"
+                                    key={`app-${item.app.id}`}
+                                    data-search-index={flatIndex}
+                                    className={`${styles.searchResultItem}${active ? ` ${styles.searchResultItemActive}` : ""}`}
+                                    onMouseEnter={() => setAdminSearchActiveIndex(flatIndex)}
+                                    onClick={() => performAdminSearchSelect(item)}
+                                  >
+                                    <span className={styles.searchResultIconWrap}>
+                                      <AppImage
+                                        app={item.app}
+                                        supabaseUrl={config.url}
+                                        className={styles.searchResultAppImage}
+                                        placeholderClassName={styles.searchResultAppPlaceholder}
+                                        placeholderIconSize={16}
+                                        alt={item.app.name}
+                                      />
+                                    </span>
+                                    <span className={styles.searchResultBody}>
+                                      <span className={styles.searchResultTitle}>{item.app.name}</span>
+                                      <span className={styles.searchResultMeta}>
+                                        {formatApplicationStatus(item.app.status)}
+                                        {item.app.version ? ` · v${item.app.version}` : ""}
+                                      </span>
+                                    </span>
+                                    <Layers3 size={14} className={styles.searchResultTypeIcon} aria-hidden="true" />
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : null}
+
+                          {adminSearchResults.licenses.length ? (
+                            <div className={styles.searchGroup}>
+                              <div className={styles.searchGroupLabel}>Licenses</div>
+                              {adminSearchResults.licenses.map((item, index) => {
+                                const flatIndex = adminSearchResults.applications.length + index;
+                                const active = flatIndex === adminSearchActiveIndex;
+                                const keyLabel = String(item.license.license_key || item.license.id || "");
+                                return (
+                                  <button
+                                    type="button"
+                                    key={`license-${item.license.id}`}
+                                    data-search-index={flatIndex}
+                                    className={`${styles.searchResultItem}${active ? ` ${styles.searchResultItemActive}` : ""}`}
+                                    onMouseEnter={() => setAdminSearchActiveIndex(flatIndex)}
+                                    onClick={() => performAdminSearchSelect(item)}
+                                  >
+                                    <span className={styles.searchResultIconWrap}>
+                                      <KeyRound size={16} className={styles.searchResultKeyIcon} aria-hidden="true" />
+                                    </span>
+                                    <span className={styles.searchResultBody}>
+                                      <span className={styles.searchResultTitle}>{keyLabel}</span>
+                                      <span className={styles.searchResultMeta}>
+                                        {item.app ? item.app.name : "Unknown app"}
+                                        {item.license.status ? ` · ${formatLicenseStatus(item.license.status)}` : ""}
+                                      </span>
+                                    </span>
+                                    {item.reseller ? (
+                                      <span className={styles.searchResultTag} title={`Reseller: ${item.resellerName}`}>
+                                        <Users size={11} aria-hidden="true" />
+                                        {item.resellerName}
+                                      </span>
+                                    ) : null}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : null}
+
+                          {adminSearchResults.users.length ? (
+                            <div className={styles.searchGroup}>
+                              <div className={styles.searchGroupLabel}>Discord Users</div>
+                              {adminSearchResults.users.map((item, index) => {
+                                const flatIndex =
+                                  adminSearchResults.applications.length + adminSearchResults.licenses.length + index;
+                                const active = flatIndex === adminSearchActiveIndex;
+                                return (
+                                  <button
+                                    type="button"
+                                    key={`user-${item.name}`}
+                                    data-search-index={flatIndex}
+                                    className={`${styles.searchResultItem}${active ? ` ${styles.searchResultItemActive}` : ""}`}
+                                    onMouseEnter={() => setAdminSearchActiveIndex(flatIndex)}
+                                    onClick={() => performAdminSearchSelect(item)}
+                                  >
+                                    <span className={styles.searchResultIconWrap}>
+                                      {item.avatar ? (
+                                        <img
+                                          className={styles.searchResultAvatar}
+                                          src={item.avatar}
+                                          alt={item.name}
+                                        />
+                                      ) : (
+                                        <span className={styles.searchResultAvatarPlaceholder} aria-hidden="true">
+                                          <House size={14} />
+                                        </span>
+                                      )}
+                                    </span>
+                                    <span className={styles.searchResultBody}>
+                                      <span className={styles.searchResultTitle}>{item.name}</span>
+                                      <span className={styles.searchResultMeta}>
+                                        {item.licenseCount} {item.licenseCount === 1 ? "license" : "licenses"}
+                                        {item.app ? ` · ${item.app.name}` : ""}
+                                      </span>
+                                    </span>
+                                    {item.reseller ? (
+                                      <span className={styles.searchResultTag} title={`Reseller: ${item.resellerName}`}>
+                                        <Users size={11} aria-hidden="true" />
+                                        {item.resellerName}
+                                      </span>
+                                    ) : null}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : null}
+
+                          {adminSearchResults.resellers.length ? (
+                            <div className={styles.searchGroup}>
+                              <div className={styles.searchGroupLabel}>Resellers</div>
+                              {adminSearchResults.resellers.map((item, index) => {
+                                const flatIndex =
+                                  adminSearchResults.applications.length +
+                                  adminSearchResults.licenses.length +
+                                  adminSearchResults.users.length +
+                                  index;
+                                const active = flatIndex === adminSearchActiveIndex;
+                                return (
+                                  <button
+                                    type="button"
+                                    key={`reseller-${item.reseller.id}`}
+                                    data-search-index={flatIndex}
+                                    className={`${styles.searchResultItem}${active ? ` ${styles.searchResultItemActive}` : ""}`}
+                                    onMouseEnter={() => setAdminSearchActiveIndex(flatIndex)}
+                                    onClick={() => performAdminSearchSelect(item)}
+                                  >
+                                    <span className={styles.searchResultIconWrap}>
+                                      {item.reseller.discord_avatar_url ? (
+                                        <img
+                                          className={styles.searchResultAvatar}
+                                          src={item.reseller.discord_avatar_url}
+                                          alt={item.name}
+                                        />
+                                      ) : (
+                                        <span className={styles.searchResultAvatarPlaceholder} aria-hidden="true">
+                                          <Users size={14} />
+                                        </span>
+                                      )}
+                                    </span>
+                                    <span className={styles.searchResultBody}>
+                                      <span className={styles.searchResultTitle}>{item.name}</span>
+                                      <span className={styles.searchResultMeta}>
+                                        {item.reseller.role === "panel_access" ? "Panel Access" : "Reseller"}
+                                        {item.reseller.status ? ` · ${item.reseller.status}` : ""}
+                                        {typeof item.reseller.balance === "number"
+                                          ? ` · ${formatMoney(item.reseller.balance)}`
+                                          : ""}
+                                      </span>
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : null}
+                        </>
+                      )}
+                    </div>
+
+                    <div className={styles.searchFooter}>
+                      <span className={styles.searchFooterHint}>
+                        <kbd>&uarr;</kbd>
+                        <kbd>&darr;</kbd>
+                        navigate
+                      </span>
+                      <span className={styles.searchFooterHint}>
+                        <kbd>Enter</kbd>
+                        open
+                      </span>
+                      <span className={styles.searchFooterHint}>
+                        <kbd>Esc</kbd>
+                        close
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.adminTopbarSearch}
+                  aria-label="Search"
+                  onClick={() => setAdminSearchOpen(true)}
+                >
+                  <Search size={13} />
+                  <span>Search applications, licenses...</span>
+                  <kbd>Ctrl K</kbd>
+                </button>
+              )}
             </div>
             <nav className={styles.adminTopbarNav}>
-              <a href="https://unbanhwid.com" target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
-                <Globe size={13} /> Website
+              <a href="https://phantom-cheats.com" target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
+                <Globe size={13} /> <span className={styles.adminTopbarLinkLabel}>Website</span>
               </a>
               <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
-                <DiscordIcon size={14} /> Discord
+                <DiscordIcon size={14} /> <span className={styles.adminTopbarLinkLabel}>Discord</span>
               </a>
               <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className={styles.adminTopbarLink}>
-                <HelpCircle size={13} /> Support
+                <HelpCircle size={13} /> <span className={styles.adminTopbarLinkLabel}>Support</span>
               </a>
               <AdminResponseMonitor configUrl={config.url} signedIn={signedIn} theme={adminTheme} />
               <button
@@ -5025,19 +6568,38 @@ export default function AdminPage() {
               </button>
             </nav>
           </header>
+          <button
+            type="button"
+            className={`${styles.adminNavBackdrop}${mobileNavOpen ? ` ${styles.adminNavBackdropVisible}` : ""}`}
+            aria-label="Close navigation"
+            tabIndex={mobileNavOpen ? 0 : -1}
+            onClick={() => setMobileNavOpen(false)}
+          />
           <div className={styles.adminBody}>
-          <aside className={styles.adminSidebar}>
+          <aside
+            id="admin-sidebar-nav"
+            className={`${styles.adminSidebar}${mobileNavOpen ? ` ${styles.adminSidebarOpen}` : ""}`}
+          >
             <div className={styles.adminSidebarScroll}>
               <div className={styles.adminNavSection}>
                 <div className={styles.adminNavSectionLabel}>Getting Started</div>
                 <div className={styles.adminNavItems}>
                   <button
                     type="button"
-                    className={`${styles.adminNavItem}${adminView === "welcome" ? ` ${styles.adminNavItemActive}` : ""}`}
-                    onClick={() => setAdminView("welcome")}
+                    className={gatedNavClass("welcome", adminView === "welcome")}
+                    onClick={() => requestView("welcome")}
                   >
                     <House size={14} />
                     <span className={styles.adminNavItemLabel}>Welcome</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={gatedNavClass("faq", adminView === "faq")}
+                    onClick={() => requestView("faq")}
+                    aria-label="FAQ"
+                  >
+                    <HelpCircle size={14} />
+                    <span className={styles.adminNavItemLabel}>FAQ</span>
                   </button>
                 </div>
               </div>
@@ -5047,45 +6609,45 @@ export default function AdminPage() {
                 <div className={styles.adminNavItems}>
                   <button
                     type="button"
-                    className={`${styles.adminNavItem}${adminView === "applications" ? ` ${styles.adminNavItemActive}` : ""}`}
-                    onClick={() => setAdminView("applications")}
+                    className={gatedNavClass("applications", adminView === "applications")}
+                    onClick={() => requestView("applications")}
                   >
                     <Layers3 size={14} />
                     <span className={styles.adminNavItemLabel}>Applications</span>
                   </button>
                   <button
                     type="button"
-                    className={`${styles.adminNavItem}${adminView === "notifications" ? ` ${styles.adminNavItemActive}` : ""}`}
-                    onClick={() => setAdminView("notifications")}
-                    aria-label="Notifications"
-                  >
-                    <Bell size={14} />
-                    <span className={styles.adminNavItemLabel}>Notifications</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.adminNavItem}${adminView === "licenses" ? ` ${styles.adminNavItemActive}` : ""}`}
-                    onClick={() => setAdminView("licenses")}
+                    className={gatedNavClass("licenses", adminView === "licenses")}
+                    onClick={() => requestView("licenses")}
                   >
                     <KeyRound size={14} />
                     <span className={styles.adminNavItemLabel}>Licenses</span>
                   </button>
                   <button
                     type="button"
-                    className={`${styles.adminNavItem}${adminView === "transactions" ? ` ${styles.adminNavItemActive}` : ""}`}
-                    onClick={() => setAdminView("transactions")}
+                    className={gatedNavClass("transactions", adminView === "transactions")}
+                    onClick={() => requestView("transactions")}
                   >
                     <ArrowLeftRight size={14} />
                     <span className={styles.adminNavItemLabel}>Transactions</span>
                   </button>
                   <button
                     type="button"
-                    className={`${styles.adminNavItem}${adminView === "changelogs" ? ` ${styles.adminNavItemActive}` : ""}`}
-                    onClick={() => setAdminView("changelogs")}
+                    className={gatedNavClass("changelogs", adminView === "changelogs")}
+                    onClick={() => requestView("changelogs")}
                     aria-label="Changelogs"
                   >
                     <Zap size={14} />
                     <span className={styles.adminNavItemLabel}>Changelogs</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={gatedNavClass("notifications", adminView === "notifications")}
+                    onClick={() => requestView("notifications")}
+                    aria-label="Notifications"
+                  >
+                    <Bell size={14} />
+                    <span className={styles.adminNavItemLabel}>Notifications</span>
                   </button>
                 </div>
               </div>
@@ -5095,8 +6657,8 @@ export default function AdminPage() {
                 <div className={styles.adminNavItems}>
                   <button
                     type="button"
-                    className={`${styles.adminNavItem}${adminView === "resellers" ? ` ${styles.adminNavItemActive}` : ""}`}
-                    onClick={() => setAdminView("resellers")}
+                    className={gatedNavClass("resellers", adminView === "resellers")}
+                    onClick={() => requestView("resellers")}
                     aria-label="Resellers"
                   >
                     <Users size={14} />
@@ -5104,8 +6666,8 @@ export default function AdminPage() {
                   </button>
                   <button
                     type="button"
-                    className={`${styles.adminNavItem}${adminView === "products" ? ` ${styles.adminNavItemActive}` : ""}`}
-                    onClick={() => setAdminView("products")}
+                    className={gatedNavClass("products", adminView === "products")}
+                    onClick={() => requestView("products")}
                     aria-label="Products"
                   >
                     <Package size={14} />
@@ -5119,8 +6681,8 @@ export default function AdminPage() {
                 <div className={styles.adminNavItems}>
                   <button
                     type="button"
-                    className={`${styles.adminNavItem}${adminView === "security" ? ` ${styles.adminNavItemActive}` : ""}`}
-                    onClick={() => setAdminView("security")}
+                    className={gatedNavClass("security", adminView === "security")}
+                    onClick={() => requestView("security")}
                     aria-label="Security"
                   >
                     <Shield size={14} />
@@ -5128,8 +6690,8 @@ export default function AdminPage() {
                   </button>
                   <button
                     type="button"
-                    className={`${styles.adminNavItem}${adminView === "protection-logs" ? ` ${styles.adminNavItemActive}` : ""}`}
-                    onClick={() => setAdminView("protection-logs")}
+                    className={gatedNavClass("protection-logs", adminView === "protection-logs")}
+                    onClick={() => requestView("protection-logs")}
                     aria-label="Protections-Logs"
                   >
                     <ScrollText size={14} />
@@ -5139,12 +6701,54 @@ export default function AdminPage() {
               </div>
 
               <div className={styles.adminNavSection}>
+                <div className={styles.adminNavSectionLabel}>Branding</div>
+                <div className={styles.adminNavItems}>
+                  <button
+                    type="button"
+                    className={gatedNavClass("branding-loader", adminView === "branding-loader")}
+                    onClick={() => requestView("branding-loader")}
+                    aria-label="Loader branding"
+                  >
+                    <Monitor size={14} />
+                    <span className={styles.adminNavItemLabel}>Loader</span>
+                    <span className={styles.adminNavNewBadge}>
+                      <img
+                        className={styles.adminNavNewBadgeIcon}
+                        src="https://cdn.discordapp.com/emojis/1429040489503395881.webp?size=96&animated=true"
+                        alt=""
+                        draggable={false}
+                      />
+                      NEW
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className={gatedNavClass("branding-menu-ui", adminView === "branding-menu-ui")}
+                    onClick={() => requestView("branding-menu-ui")}
+                    aria-label="Menu(s) branding"
+                  >
+                    <PanelsTopLeft size={14} />
+                    <span className={styles.adminNavItemLabel}>Menu(s)</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className={styles.adminNavSection}>
                 <div className={styles.adminNavSectionLabel}>Other</div>
                 <div className={styles.adminNavItems}>
                   <button
                     type="button"
-                    className={`${styles.adminNavItem}${adminView === "settings" ? ` ${styles.adminNavItemActive}` : ""}`}
-                    onClick={() => setAdminView("settings")}
+                    className={gatedNavClass("team", adminView === "team")}
+                    onClick={() => requestView("team")}
+                    aria-label="Team"
+                  >
+                    <Users size={14} />
+                    <span className={styles.adminNavItemLabel}>Team</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={gatedNavClass("settings", adminView === "settings")}
+                    onClick={() => requestView("settings")}
                     aria-label="Settings"
                   >
                     <Settings size={14} />
@@ -5154,29 +6758,39 @@ export default function AdminPage() {
               </div>
             </div>
             <div className={styles.adminSidebarFooter}>
-              <div className={styles.sidebarUserCard}>
-                {session.discordAvatarUrl ? (
-                  <img className={styles.sidebarUserAvatar} src={session.discordAvatarUrl} alt="" />
-                ) : (
-                  <span className={styles.sidebarUserAvatarFallback} aria-hidden="true">
-                    <DiscordIcon size={16} />
-                  </span>
-                )}
-                <div className={styles.sidebarUserMeta}>
-                  <strong className={styles.sidebarUserName}>{adminDisplayName}</strong>
-                  <span className={styles.sidebarUserBalance}>Administrator</span>
+              <PermissionDeniedToast message={permissionDeniedMessage} />
+              <div className={styles.sidebarUserStack}>
+                <div className={styles.sidebarUserCard}>
+                  {session.discordAvatarUrl ? (
+                    <img className={styles.sidebarUserAvatar} src={session.discordAvatarUrl} alt="" />
+                  ) : (
+                    <span className={styles.sidebarUserAvatarFallback} aria-hidden="true">
+                      <DiscordIcon size={16} />
+                    </span>
+                  )}
+                  <div className={styles.sidebarUserMeta}>
+                    <strong className={styles.sidebarUserName}>{adminDisplayName}</strong>
+                    <span className={styles.sidebarUserBalance}>
+                      {isAdminStaff ? "Admin staff" : "Administrator"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className={`${styles.adminTopbarSignOut} ${styles.sidebarUserLogout}`}
+                    aria-label="Sign out"
+                    onClick={() => {
+                      clearSession();
+                      setAuthMessage({ text: "", type: "" });
+                    }}
+                  >
+                    <LogOut size={15} />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className={`${styles.adminTopbarSignOut} ${styles.sidebarUserLogout}`}
-                  aria-label="Sign out"
-                  onClick={() => {
-                    clearSession();
-                    setAuthMessage({ text: "", type: "" });
-                  }}
-                >
-                  <LogOut size={15} />
-                </button>
+                {isAdminStaff ? (
+                  <div className={styles.sidebarStaffRibbon} aria-label="Admin staff">
+                    ADMIN STAFF
+                  </div>
+                ) : null}
               </div>
             </div>
           </aside>
@@ -5188,8 +6802,8 @@ export default function AdminPage() {
               {adminView === "welcome" ? (
                 <section className={styles.welcomeHub}>
                   <div className={styles.welcomeHero}>
-                    <img className={styles.welcomeLogo} src="/images/unbanhwid-logo.png" alt="unbanhwid.com" />
-                    <h1 className={styles.welcomeTitle}>unbanhwid.com</h1>
+                    <img className={styles.welcomeLogo} src="/images/phantom.png" alt="phantom-cheats.com" />
+                    <h1 className={styles.welcomeTitle}>phantom-cheats.com</h1>
                     <p className={styles.welcomeSubtitle}>
                       Management panel for applications, licenses, and delivery packages.
                     </p>
@@ -6041,6 +7655,372 @@ export default function AdminPage() {
                     </div>
                   </div>
                 </section>
+              ) : adminView === "branding-loader" ? (
+                <section className={styles.tableModule}>
+                  <div className={styles.tableHeader}>
+                    <h2 className={styles.noSpaceBottom}>Loader branding</h2>
+                    <p>Reseller loader branding status and links.</p>
+                  </div>
+                  <div className={styles.tableContent}>
+                      <div className={styles.tableList}>
+                      <div className={styles.brandingTableHeaders}>
+                        <div>Username</div>
+                        <div>Role</div>
+                        <div>Apps</div>
+                        <div>Access</div>
+                        <div>Action</div>
+                      </div>
+
+                      {resellersBusy && !resellers.length ? (
+                        <div className={styles.emptyState}>Loading resellers…</div>
+                      ) : resellers.filter((entry) => entry.status === "active").length ? (
+                        resellers
+                          .filter((entry) => entry.status === "active")
+                          .map((reseller) => {
+                            const displayUser = getResellerUsername(reseller);
+                            const brand = reseller.loader_brand || null;
+                            const hasBrand = Boolean(brand?.slug);
+                            const isBlocked = Boolean(brand?.blocked);
+                            const origin =
+                              String(process.env.NEXT_PUBLIC_SITE_URL || "").trim() ||
+                              (typeof window !== "undefined" ? window.location.origin : "");
+                            const loaderLink = hasBrand && !isBlocked
+                              ? `${origin.replace(/\/$/, "")}/loader?${brand.slug}`
+                              : "";
+                            return (
+                              <div className={styles.brandingTableRow} key={reseller.id}>
+                                <div className={styles.licenseDiscordUser}>
+                                  {reseller.discord_avatar_url ? (
+                                    <img
+                                      className={styles.licenseAvatar}
+                                      src={reseller.discord_avatar_url}
+                                      alt={displayUser}
+                                    />
+                                  ) : (
+                                    <div className={styles.licenseAvatarPlaceholder} />
+                                  )}
+                                  <span className={styles.licenseDiscordName}>{displayUser}</span>
+                                </div>
+                                <div>
+                                  {reseller.role === "panel_access" ? "Panel Access" : "Reseller"}
+                                </div>
+                                <div>
+                                  {Array.isArray(reseller.application_access)
+                                    ? reseller.application_access.length
+                                    : 0}
+                                </div>
+                                <div>
+                                  {isBlocked ? (
+                                    <span className={styles.accessBadgeBlocked}>
+                                      <Ban size={14} />
+                                      Blocked
+                                    </span>
+                                  ) : hasBrand ? (
+                                    <span className={styles.accessBadgeYes}>
+                                      <Check size={14} />
+                                      Yes
+                                    </span>
+                                  ) : (
+                                    <span className={styles.accessBadgeNo}>
+                                      <X size={14} />
+                                      No
+                                    </span>
+                                  )}
+                                </div>
+                                <div className={styles.tableActionsCell}>
+                                  <div className={styles.adminInlineActions}>
+                                    {loaderLink ? (
+                                      <a
+                                        href={loaderLink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={styles.rowActionButton}
+                                        title="Open reseller loader page"
+                                        aria-label="Open reseller loader page"
+                                      >
+                                        <ExternalLink size={15} />
+                                      </a>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        className={styles.rowActionButton}
+                                        title={
+                                          isBlocked
+                                            ? "Loader is blocked"
+                                            : "No loader branding configured"
+                                        }
+                                        aria-label={
+                                          isBlocked
+                                            ? "Loader is blocked"
+                                            : "No loader branding configured"
+                                        }
+                                        disabled
+                                      >
+                                        <ExternalLink size={15} />
+                                      </button>
+                                    )}
+                                    <button
+                                      type="button"
+                                      className={`${styles.rowActionButton}${isBlocked ? ` ${styles.rowActionButtonActive}` : ""}`}
+                                      title={isBlocked ? "Unblock custom loader" : "Block custom loader"}
+                                      aria-label={isBlocked ? "Unblock custom loader" : "Block custom loader"}
+                                      disabled={resellersBusy}
+                                      onClick={() => handleToggleLoaderBrandBlock(reseller)}
+                                    >
+                                      <Ban size={15} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={styles.rowActionButton}
+                                      title={brand ? "Delete custom loader" : "No loader branding to delete"}
+                                      aria-label={brand ? "Delete custom loader" : "No loader branding to delete"}
+                                      disabled={resellersBusy || !brand}
+                                      onClick={() => handleDeleteLoaderBrand(reseller)}
+                                    >
+                                      <Trash2 size={15} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                      ) : (
+                        <div className={styles.emptyState}>No active resellers yet.</div>
+                      )}
+                    </div>
+                  </div>
+                  <div className={styles.tableBottomCaption}>
+                    <div>Resellers configure their loader branding from the reseller panel → Branding → Loader.</div>
+                  </div>
+                </section>
+              ) : adminView === "branding-menu-ui" ? (
+                <section className={styles.tableModule}>
+                  <div className={styles.tableContent}>
+                    <div className={styles.emptyState}>
+                      Cheat(s) / Software custom menu dashboard - Soon...
+                    </div>
+                  </div>
+                </section>
+              ) : adminView === "team" ? (
+                <>
+                  <section className={styles.tableModule}>
+                    <div className={styles.tableHeader}>
+                      <div>
+                        <h2 className={styles.noSpaceBottom}>Reseller teams</h2>
+                        <p className={styles.mutedText}>
+                          Preview members, set invite limits, and block invites per reseller.
+                        </p>
+                      </div>
+                    </div>
+                    <div className={styles.tableContent}>
+                      {!canAct("resellers.team_view") ? (
+                        <div className={styles.emptyState}>
+                          You do not have permission to view reseller teams.
+                        </div>
+                      ) : teamResellerBusy && !teamResellerRows.length ? (
+                        <div className={styles.emptyState}>Loading reseller teams…</div>
+                      ) : teamResellerRows.length ? (
+                        <div className={`${styles.tableList} ${styles.teamResellerTable}`}>
+                          <div className={styles.resellerTableHeaders}>
+                            <div>Reseller</div>
+                            <div>Apps</div>
+                            <div>Members</div>
+                            <div>Limit</div>
+                            <div>Blocked</div>
+                            <div>Actions</div>
+                          </div>
+                          {teamResellerRows.map((row) => {
+                            const selected = selectedTeamResellerId === row.id;
+                            return (
+                              <div key={row.id} className={styles.resellerTableRow}>
+                                <div className={styles.licenseDiscordUser}>
+                                  {row.discord_avatar_url ? (
+                                    <img
+                                      className={styles.licenseAvatar}
+                                      src={row.discord_avatar_url}
+                                      alt=""
+                                    />
+                                  ) : (
+                                    <div className={styles.licenseAvatarPlaceholder} />
+                                  )}
+                                  <div>
+                                    <span className={styles.licenseDiscordName}>
+                                      {row.username || row.discord_username || row.email || "Reseller"}
+                                    </span>
+                                    <div className={styles.appIdBlur}>{row.discord_user_id || "—"}</div>
+                                  </div>
+                                </div>
+                                <div>{Number(row.application_count) || 0}</div>
+                                <div>{Number(row.team_member_count) || 0}</div>
+                                <div>{Number(row.team_member_limit) || 0}</div>
+                                <div>{row.team_invite_blocked ? "Yes" : "No"}</div>
+                                <div className={styles.tableActionsCell}>
+                                  <div className={styles.adminInlineActions}>
+                                    <button
+                                      type="button"
+                                      className={styles.rowActionButton}
+                                      title={selected ? "Hide team" : "Preview team"}
+                                      aria-label={selected ? "Hide team" : "Preview team"}
+                                      disabled={teamResellerBusy}
+                                      onClick={() =>
+                                        selected
+                                          ? (setSelectedTeamResellerId(""), setSelectedTeamResellerDetail(null))
+                                          : previewTeamReseller(row.id)
+                                      }
+                                    >
+                                      <Eye size={15} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={`${styles.rowActionButton}${
+                                        !canAct("resellers.team_limits") ? ` ${styles.rowActionButtonDenied}` : ""
+                                      }`}
+                                      title="Set member limit"
+                                      aria-label="Set member limit"
+                                      disabled={teamResellerBusy}
+                                      onClick={() => {
+                                        if (!canAct("resellers.team_limits")) {
+                                          denyPermission("You do not have permission to change team limits.");
+                                          return;
+                                        }
+                                        const raw = window.prompt(
+                                          `Team member limit for ${row.username || row.discord_username || "reseller"}`,
+                                          String(row.team_member_limit ?? 3)
+                                        );
+                                        if (raw == null) return;
+                                        const next = Number(raw);
+                                        if (!Number.isFinite(next) || next < 0) {
+                                          setDashboardMessage({ text: "Enter a valid limit.", type: "error" });
+                                          return;
+                                        }
+                                        void patchTeamResellerLimits(row.id, { team_member_limit: next });
+                                      }}
+                                    >
+                                      <Users size={15} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={`${styles.rowActionButton}${
+                                        !canAct("resellers.team_limits") ? ` ${styles.rowActionButtonDenied}` : ""
+                                      }`}
+                                      title={row.team_invite_blocked ? "Unblock invites" : "Block invites"}
+                                      aria-label={row.team_invite_blocked ? "Unblock invites" : "Block invites"}
+                                      disabled={teamResellerBusy}
+                                      onClick={() => {
+                                        if (!canAct("resellers.team_limits")) {
+                                          denyPermission("You do not have permission to change team limits.");
+                                          return;
+                                        }
+                                        void patchTeamResellerLimits(row.id, {
+                                          team_invite_blocked: !row.team_invite_blocked,
+                                        });
+                                      }}
+                                    >
+                                      <Ban size={15} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className={styles.emptyState}>No resellers found.</div>
+                      )}
+                    </div>
+                  </section>
+
+                  <ResellerTeamPreviewDrawer
+                    open={Boolean(selectedTeamResellerDetail)}
+                    reseller={selectedTeamResellerDetail}
+                    limitDraft={teamResellerLimitDraft}
+                    onLimitDraftChange={setTeamResellerLimitDraft}
+                    onSaveLimit={() =>
+                      patchTeamResellerLimits(selectedTeamResellerDetail.id, {
+                        team_member_limit: teamResellerLimitDraft,
+                      })
+                    }
+                    onEditMember={openTeamResellerMemberDrawer}
+                    onRemoveMember={removeTeamResellerMember}
+                    busy={teamResellerBusy}
+                    busyMemberId={teamMemberBusyId}
+                    canEditLimits={canAct("resellers.team_limits")}
+                    canEditMembers={canAct("resellers.team_edit")}
+                    onDeniedClick={denyPermission}
+                    onClose={() => {
+                      setSelectedTeamResellerId("");
+                      setSelectedTeamResellerDetail(null);
+                    }}
+                  />
+
+                  <section className={styles.tableModule}>
+                    <div className={styles.tableHeader}>
+                      <div>
+                        <h2 className={styles.noSpaceBottom}>Admin staff</h2>
+                        <p className={styles.mutedText}>
+                          Staff accounts that can sign in to the admin panel with limited permissions.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className={`${styles.primaryButton}${
+                          !canManageAdminStaff || !canView("team") ? ` ${styles.primaryButtonDenied}` : ""
+                        }`}
+                        onClick={openAdminStaffAddDrawer}
+                      >
+                        <Users size={14} />
+                        Add member
+                      </button>
+                    </div>
+                    <div className={styles.tableContent}>
+                      {adminStaffBusy && !adminStaffMembers.length ? (
+                        <div className={styles.emptyState}>Loading admin staff…</div>
+                      ) : (
+                        <TeamMembersTable
+                          members={adminStaffMembers}
+                          onEdit={openAdminStaffEditDrawer}
+                          onRemove={removeAdminStaffMember}
+                          busyId={adminStaffBusyId}
+                          actionsDenied={!canManageAdminStaff}
+                          onDeniedClick={denyPermission}
+                        />
+                      )}
+                    </div>
+                  </section>
+
+                  <TeamMemberDrawer
+                    open={teamResellerMemberDrawerOpen}
+                    title="Edit reseller team member"
+                    mode="edit"
+                    discordUserId={teamResellerMemberDraft?.discord_user_id || ""}
+                    onDiscordUserIdChange={() => {}}
+                    permissions={teamResellerMemberPerms}
+                    onPermissionsChange={setTeamResellerMemberPerms}
+                    kind="reseller"
+                    applications={applications}
+                    busy={teamResellerMemberBusy}
+                    error={teamResellerMemberError}
+                    onClose={() => setTeamResellerMemberDrawerOpen(false)}
+                    onSubmit={submitTeamResellerMemberDrawer}
+                  />
+                  <TeamMemberDrawer
+                    open={adminStaffDrawerOpen}
+                    title={adminStaffDrawerMode === "edit" ? "Edit admin staff" : "Add admin staff"}
+                    mode={adminStaffDrawerMode}
+                    discordUserId={adminStaffDraftDiscordId}
+                    onDiscordUserIdChange={setAdminStaffDraftDiscordId}
+                    permissions={adminStaffDraftPerms}
+                    onPermissionsChange={setAdminStaffDraftPerms}
+                    kind="admin"
+                    applications={applications}
+                    busy={adminStaffBusy}
+                    error={adminStaffDrawerError}
+                    onClose={() => setAdminStaffDrawerOpen(false)}
+                    onSubmit={submitAdminStaffDrawer}
+                  />
+                </>
+              ) : adminView === "faq" ? (
+                <AdminFaqView onNavigate={requestView} />
               ) : adminView === "settings" ? (
                 <section className={styles.settingsPanel}>
                   <div className={styles.settingsCard}>
@@ -6074,7 +8054,13 @@ export default function AdminPage() {
                         </div>
                         <div className={styles.settingsField}>
                           <span className={styles.settingsFieldLabel}>Role</span>
-                          <span className={styles.settingsFieldValue}>Administrator</span>
+                          <span className={styles.settingsFieldValue}>
+                            {session.actor === "staff"
+                              ? "Admin staff"
+                              : session.isMainAdmin
+                                ? "Main administrator"
+                                : "Administrator"}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -6121,6 +8107,213 @@ export default function AdminPage() {
                       </div>
                     </div>
                   </div>
+
+                  <div className={styles.settingsCard}>
+                    <div className={styles.settingsCardHeader}>
+                      <div className={styles.settingsCardHeaderRow}>
+                        <div>
+                          <h2 className={styles.licenseFormatTitleRow}>
+                            Custom Generation License Format
+                            <span
+                              className={styles.settingsHelpTip}
+                              tabIndex={0}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                setLicenseFormatInfoOpen((open) => !open);
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                  event.preventDefault();
+                                  setLicenseFormatInfoOpen((open) => !open);
+                                }
+                              }}
+                              aria-expanded={licenseFormatInfoOpen}
+                              aria-label="How custom license format works"
+                            >
+                              <HelpCircle size={14} />
+                              <span className={styles.settingsHelpTipBubble} role="tooltip">
+                                Use * for random slots. Example: PREFIX-******** → PREFIX-Av4Fk2mQ
+                              </span>
+                            </span>
+                          </h2>
+                          <p>
+                            Shared key format for every administrator. Only head admins can change it; staff
+                            use the same pattern when generating.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className={`${styles.primaryButton}${
+                            !canEditLicenseFormat ? ` ${styles.primaryButtonDenied}` : ""
+                          }`}
+                          onClick={() => void handleSaveLicenseFormat()}
+                          disabled={licenseFormatSaving || !canEditLicenseFormat}
+                        >
+                          {licenseFormatSaving ? (
+                            <Loader2 size={14} className={styles.loaderGenerateSpinner} />
+                          ) : (
+                            <Save size={14} />
+                          )}
+                          {licenseFormatSaving ? "Saving…" : "Save format"}
+                        </button>
+                      </div>
+                    </div>
+                    <div className={`${styles.settingsCardBody} ${styles.licenseFormatBody}`}>
+                      {licenseFormatInfoOpen ? (
+                        <div className={styles.licenseFormatHint} role="note">
+                          <Info size={14} aria-hidden="true" />
+                          <p>
+                            <code>*</code> is a random character. Everything else stays literal —{" "}
+                            <code>PREFIX-********</code> becomes something like <code>PREFIX-Av4Fk2mQ</code>.
+                            Options below control what each star can roll. This format is shared across the
+                            whole admin team.
+                          </p>
+                        </div>
+                      ) : null}
+
+                      <div className={styles.licenseFormatStudio}>
+                        <div className={styles.licenseFormatFieldsRow}>
+                          <label className={styles.licenseFormatField} htmlFor="admin-license-format-pattern">
+                            <span className={styles.licenseFormatFieldLabel}>
+                              Pattern
+                              <span className={styles.loaderFieldRequired}>*</span>
+                            </span>
+                            <div className={styles.licenseFormatInputShell}>
+                              <KeyRound size={15} aria-hidden="true" />
+                              <input
+                                id="admin-license-format-pattern"
+                                type="text"
+                                value={licenseFormatForm.pattern}
+                                maxLength={48}
+                                spellCheck={false}
+                                autoComplete="off"
+                                placeholder="PREFIX-********"
+                                disabled={!canEditLicenseFormat}
+                                onChange={(event) =>
+                                  setLicenseFormatForm((current) => ({
+                                    ...current,
+                                    pattern: event.target.value,
+                                  }))
+                                }
+                              />
+                            </div>
+                          </label>
+
+                          <div className={styles.licenseFormatField}>
+                            <div className={styles.licenseFormatLiveTop}>
+                              <span className={styles.licenseFormatFieldLabel}>Live key</span>
+                              <button
+                                type="button"
+                                className={styles.licenseFormatRegenBtn}
+                                onClick={() => refreshLicenseFormatExample()}
+                                title="Generate another example"
+                                aria-label="Generate another example"
+                              >
+                                <RefreshCw size={13} />
+                                Regenerate
+                              </button>
+                            </div>
+                            <div className={styles.licenseFormatLiveShell} title={licenseFormatExample}>
+                              <code>{licenseFormatExample || "—"}</code>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className={styles.licenseFormatOptionGrid}>
+                          <label
+                            className={`${styles.licenseFormatOptionCard}${
+                              licenseFormatForm.specialChars ? ` ${styles.licenseFormatOptionCardOn}` : ""
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={licenseFormatForm.specialChars}
+                              disabled={!canEditLicenseFormat}
+                              onChange={(event) =>
+                                setLicenseFormatForm((current) => ({
+                                  ...current,
+                                  specialChars: event.target.checked,
+                                }))
+                              }
+                            />
+                            <span className={styles.licenseFormatOptionCheck} aria-hidden="true">
+                              {licenseFormatForm.specialChars ? <Check size={12} strokeWidth={3} /> : null}
+                            </span>
+                            <span className={styles.licenseFormatOptionCopy}>
+                              <strong>Special characters</strong>
+                              <span>Include symbols like ! @ # $ in *</span>
+                            </span>
+                          </label>
+
+                          <label
+                            className={`${styles.licenseFormatOptionCard}${
+                              licenseFormatForm.digits ? ` ${styles.licenseFormatOptionCardOn}` : ""
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={licenseFormatForm.digits}
+                              disabled={!canEditLicenseFormat}
+                              onChange={(event) =>
+                                setLicenseFormatForm((current) => ({
+                                  ...current,
+                                  digits: event.target.checked,
+                                }))
+                              }
+                            />
+                            <span className={styles.licenseFormatOptionCheck} aria-hidden="true">
+                              {licenseFormatForm.digits ? <Check size={12} strokeWidth={3} /> : null}
+                            </span>
+                            <span className={styles.licenseFormatOptionCopy}>
+                              <strong>Generate digits</strong>
+                              <span>Allow 0–9 inside each *</span>
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className={styles.licenseFormatMeta}>
+                        <span className={`${styles.licenseFormatMetaStatus} ${styles.licenseFormatMetaStatusOn}`}>
+                          <CircleCheck size={13} />
+                          {canEditLicenseFormat
+                            ? "Shared format · editable by head admins"
+                            : "Shared format · view only for staff"}
+                        </span>
+                        {licenseFormatMessage.text ? (
+                          <span
+                            className={`${styles.message} ${
+                              licenseFormatMessage.type ? styles[`message${licenseFormatMessage.type}`] : ""
+                            }`}
+                          >
+                            {licenseFormatMessage.text}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+
+                  <DiscordNotificationWebhookPanel
+                    canEdit={canAct("notifications.edit_discord")}
+                    notifications={notifications}
+                    apiPath="/api/admin/notification-webhook"
+                    persistId="admin"
+                    initialWebhook={adminDiscordWebhook}
+                    initialBranding={adminDiscordWebhookBranding}
+                    initialUpdatedAt={adminDiscordWebhookUpdatedAt}
+                    getAccessToken={async () => getAdminAccessToken() || null}
+                    authHeaders={(token, extra = {}) => ({
+                      Authorization: `Bearer ${token}`,
+                      ...extra,
+                    })}
+                    onRevokedResponse={async () => false}
+                    idPrefix="admin-settings"
+                    readOnlyHint="You do not have permission to edit Discord notifications."
+                    onSaved={(savedWebhook, savedBranding, savedAt) => {
+                      setAdminDiscordWebhook(savedWebhook || "");
+                      setAdminDiscordWebhookBranding(savedBranding || null);
+                      setAdminDiscordWebhookUpdatedAt(savedAt || "");
+                    }}
+                  />
 
                   <div className={styles.settingsCard}>
                     <div className={styles.settingsCardHeader}>
@@ -6580,19 +8773,33 @@ export default function AdminPage() {
                           />
                         </label>
                         <button
-                          className={styles.secondaryButton}
+                          className={`${styles.secondaryButton}${
+                            !canAct("apps.freeze") ? ` ${styles.secondaryButtonDenied}` : ""
+                          }`}
                           type="button"
                           disabled={!selectedApp}
-                          onClick={() => selectedApp && handleToggleAppFreeze(selectedApp)}
+                          onClick={() => {
+                            if (!canAct("apps.freeze")) {
+                              denyPermission("You do not have permission to freeze applications.");
+                              return;
+                            }
+                            if (selectedApp) handleToggleAppFreeze(selectedApp);
+                          }}
                         >
                           <Snowflake size={16} />
                           {selectedApp && isApplicationFrozen(selectedApp) ? "Unfreeze" : "Freeze"}
                         </button>
                         <button
-                          className={styles.primaryButton}
+                          className={`${styles.primaryButton}${
+                            !canAct("licenses.generate") ? ` ${styles.primaryButtonDenied}` : ""
+                          }`}
                           type="button"
                           disabled={!selectedApp}
                           onClick={() => {
+                            if (!canAct("licenses.generate")) {
+                              denyPermission("You do not have permission to generate licenses.");
+                              return;
+                            }
                             setGenerateMessage({ text: "", type: "" });
                             setLicenseDrawerOpen(true);
                           }}
@@ -6607,6 +8814,7 @@ export default function AdminPage() {
                       <div className={styles.tableList}>
                         <div className={styles.licenseTableHeaders}>
                           <div>Discord User</div>
+                          <div>Application</div>
                           <div>License Key</div>
                           <div>Duration</div>
                           <div>Status</div>
@@ -6631,6 +8839,12 @@ export default function AdminPage() {
                                       <div className={styles.licenseAvatarPlaceholder} />
                                     )}
                                     <span className={styles.licenseDiscordName}>{displayUser}</span>
+                                  </div>
+                                  <div className={styles.licenseAppCell}>
+                                    {(() => {
+                                      const app = findAppForLicense(license);
+                                      return app ? app.name : "—";
+                                    })()}
                                   </div>
                                   <div className={styles.licenseKeyCell}>
                                     <button
@@ -6677,7 +8891,9 @@ export default function AdminPage() {
                                     <div className={styles.adminInlineActions}>
                                       <button
                                         type="button"
-                                        className={styles.rowActionButton}
+                                        className={`${styles.rowActionButton}${
+                                          !canAct("licenses.reset_hwid") ? ` ${styles.rowActionButtonDenied}` : ""
+                                        }`}
                                         title="HWID Reset"
                                         aria-label="HWID Reset"
                                         onClick={() => handleResetHwid(license)}
@@ -6686,7 +8902,9 @@ export default function AdminPage() {
                                       </button>
                                       <button
                                         type="button"
-                                        className={styles.rowActionButton}
+                                        className={`${styles.rowActionButton}${
+                                          !canAct("licenses.edit") ? ` ${styles.rowActionButtonDenied}` : ""
+                                        }`}
                                         title="Extend Time"
                                         aria-label="Extend Time"
                                         onClick={() => openExtendLicense(license)}
@@ -6704,7 +8922,9 @@ export default function AdminPage() {
                                       </button>
                                       <button
                                         type="button"
-                                        className={styles.rowActionButton}
+                                        className={`${styles.rowActionButton}${
+                                          !canAct("licenses.ban") ? ` ${styles.rowActionButtonDenied}` : ""
+                                        }`}
                                         title="Ban"
                                         aria-label="Ban"
                                         onClick={() => handleToggleBan(license)}
@@ -6713,7 +8933,9 @@ export default function AdminPage() {
                                       </button>
                                       <button
                                         type="button"
-                                        className={styles.rowActionButton}
+                                        className={`${styles.rowActionButton}${
+                                          !canAct("licenses.delete") ? ` ${styles.rowActionButtonDenied}` : ""
+                                        }`}
                                         title="Delete"
                                         aria-label="Delete"
                                         onClick={() => handleDeleteLicense(license)}
@@ -6806,6 +9028,7 @@ export default function AdminPage() {
                                 : amount < 0
                                   ? styles.transactionAmountNegative
                                   : styles.transactionAmountNeutral;
+                            const staffGenerator = getTransactionStaffGenerator(entry);
                             return (
                               <div
                                 className={`${styles.licenseTableRow} ${styles.transactionsColumnsAdmin}`}
@@ -6820,7 +9043,16 @@ export default function AdminPage() {
                                     {entry.type_label || entry.type}
                                   </span>
                                 </div>
-                                <div className={styles.transactionDescription}>{entry.description || "—"}</div>
+                                <div className={styles.transactionDescriptionCell}>
+                                  <StaffGeneratorMarker
+                                    generator={staffGenerator}
+                                    subtitle="Created this transaction"
+                                    title="Created by team staff"
+                                  />
+                                  <span className={styles.transactionDescription}>
+                                    {entry.description || "—"}
+                                  </span>
+                                </div>
                                 <div className={amountClass}>
                                   {amount > 0 ? "+" : ""}
                                   {formatMoney(amount)}
@@ -7108,6 +9340,28 @@ export default function AdminPage() {
 
                 {adminView === "notifications" ? (
                 <section className={styles.notificationsStack} id="admin-notifications">
+                      <DiscordNotificationWebhookPanel
+                        canEdit={canAct("notifications.edit_discord")}
+                        notifications={notifications}
+                        apiPath="/api/admin/notification-webhook"
+                        persistId="admin"
+                        initialWebhook={adminDiscordWebhook}
+                        initialBranding={adminDiscordWebhookBranding}
+                        initialUpdatedAt={adminDiscordWebhookUpdatedAt}
+                        getAccessToken={async () => getAdminAccessToken() || null}
+                        authHeaders={(token, extra = {}) => ({
+                          Authorization: `Bearer ${token}`,
+                          ...extra,
+                        })}
+                        onRevokedResponse={async () => false}
+                        idPrefix="admin"
+                        readOnlyHint="You do not have permission to edit Discord notifications."
+                        onSaved={(savedWebhook, savedBranding, savedAt) => {
+                          setAdminDiscordWebhook(savedWebhook || "");
+                          setAdminDiscordWebhookBranding(savedBranding || null);
+                          setAdminDiscordWebhookUpdatedAt(savedAt || "");
+                        }}
+                      />
                       <article className={styles.notificationComposer}>
                         <div className={styles.settingsCardHeader}>
                           <h2>New notification</h2>
@@ -7329,8 +9583,34 @@ export default function AdminPage() {
                               </div>
                               <p className={styles.notificationCardDesc}>{entry.description}</p>
                               <div className={styles.notificationCardMeta}>
-                                {formatDisplayDateTime(entry.created_at)}
-                                {entry.created_by ? ` · ${entry.created_by}` : ""}
+                                {entry.created_by ? (
+                                  <>
+                                    <span className={styles.notificationAuthorChip}>
+                                      {entry.created_by_avatar_url ? (
+                                        <img
+                                          className={styles.notificationAuthorAvatar}
+                                          src={entry.created_by_avatar_url}
+                                          alt=""
+                                          referrerPolicy="no-referrer"
+                                        />
+                                      ) : (
+                                        <span
+                                          className={`${styles.notificationAuthorAvatar} ${styles.notificationAuthorAvatarFallback}`}
+                                          aria-hidden="true"
+                                        >
+                                          <DiscordIcon size={11} />
+                                        </span>
+                                      )}
+                                      <span className={styles.notificationAuthorName}>
+                                        {entry.created_by}
+                                      </span>
+                                    </span>
+                                    <span className={styles.notificationCardMetaSep} aria-hidden="true">
+                                      ·
+                                    </span>
+                                  </>
+                                ) : null}
+                                <span>{formatDisplayDateTime(entry.created_at)}</span>
                               </div>
                             </div>
                           </article>
@@ -7397,6 +9677,7 @@ export default function AdminPage() {
                         <div className={styles.tableList}>
                           <div className={styles.licenseTableHeaders}>
                             <div>Discord User</div>
+                            <div>Application</div>
                             <div>License Key</div>
                             <div>Duration</div>
                             <div>Status</div>
@@ -7421,6 +9702,12 @@ export default function AdminPage() {
                                       <div className={styles.licenseAvatarPlaceholder} />
                                     )}
                                     <span className={styles.licenseDiscordName}>{displayUser}</span>
+                                  </div>
+                                  <div className={styles.licenseAppCell}>
+                                    {(() => {
+                                      const app = findAppForLicense(license);
+                                      return app ? app.name : "—";
+                                    })()}
                                   </div>
                                   <div className={styles.licenseKeyCell}>
                                     <button
@@ -7467,7 +9754,9 @@ export default function AdminPage() {
                                     <div className={styles.adminInlineActions}>
                                       <button
                                         type="button"
-                                        className={styles.rowActionButton}
+                                        className={`${styles.rowActionButton}${
+                                          !canAct("licenses.reset_hwid") ? ` ${styles.rowActionButtonDenied}` : ""
+                                        }`}
                                         title="HWID Reset"
                                         aria-label="HWID Reset"
                                         onClick={() => handleResellerLicenseResetHwid(license)}
@@ -7476,7 +9765,9 @@ export default function AdminPage() {
                                       </button>
                                       <button
                                         type="button"
-                                        className={styles.rowActionButton}
+                                        className={`${styles.rowActionButton}${
+                                          !canAct("licenses.edit") ? ` ${styles.rowActionButtonDenied}` : ""
+                                        }`}
                                         title="Extend Time"
                                         aria-label="Extend Time"
                                         onClick={() => openExtendLicense(license)}
@@ -7494,7 +9785,9 @@ export default function AdminPage() {
                                       </button>
                                       <button
                                         type="button"
-                                        className={styles.rowActionButton}
+                                        className={`${styles.rowActionButton}${
+                                          !canAct("licenses.ban") ? ` ${styles.rowActionButtonDenied}` : ""
+                                        }`}
                                         title="Ban"
                                         aria-label="Ban"
                                         onClick={() => handleResellerLicenseToggleBan(license)}
@@ -7503,7 +9796,9 @@ export default function AdminPage() {
                                       </button>
                                       <button
                                         type="button"
-                                        className={styles.rowActionButton}
+                                        className={`${styles.rowActionButton}${
+                                          !canAct("licenses.delete") ? ` ${styles.rowActionButtonDenied}` : ""
+                                        }`}
                                         title="Delete"
                                         aria-label="Delete"
                                         onClick={() => handleResellerLicenseDelete(license)}
@@ -7616,17 +9911,27 @@ export default function AdminPage() {
                                         </button>
                                         <button
                                           type="button"
-                                          className={styles.rowActionButton}
+                                          className={`${styles.rowActionButton}${
+                                            !canAct("resellers.edit") ? ` ${styles.rowActionButtonDenied}` : ""
+                                          }`}
                                           title="Edit reseller"
                                           aria-label="Edit reseller"
                                           disabled={resellersBusy}
-                                          onClick={() => openEditResellerDrawer(reseller)}
+                                          onClick={() => {
+                                            if (!canAct("resellers.edit")) {
+                                              denyPermission("You do not have permission to edit resellers.");
+                                              return;
+                                            }
+                                            openEditResellerDrawer(reseller);
+                                          }}
                                         >
                                           <Pencil size={15} />
                                         </button>
                                         <button
                                           type="button"
-                                          className={styles.rowActionButton}
+                                          className={`${styles.rowActionButton}${
+                                            !canAct("resellers.delete") ? ` ${styles.rowActionButtonDenied}` : ""
+                                          }`}
                                           title="Remove reseller"
                                           aria-label="Remove reseller"
                                           disabled={resellersBusy}

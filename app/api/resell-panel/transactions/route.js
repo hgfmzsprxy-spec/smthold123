@@ -1,5 +1,8 @@
 import { requireReseller } from "../../../../lib/resell-panel-auth";
-import { listTransactions } from "../../../../lib/transactions";
+import {
+  enrichTransactionsWithStaffProfiles,
+  listTransactions,
+} from "../../../../lib/transactions";
 
 export const dynamic = "force-dynamic";
 
@@ -10,9 +13,9 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const limit = Number(searchParams.get("limit") || 500);
-    const transactions = await listTransactions(
-      { resellerId: auth.reseller.id, limit },
-      auth.admin
+    const transactions = enrichTransactionsWithStaffProfiles(
+      await listTransactions({ resellerId: auth.reseller.id, limit }, auth.admin),
+      [auth.reseller]
     );
 
     return Response.json({ ok: true, transactions });

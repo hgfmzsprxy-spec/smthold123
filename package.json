@@ -1,7 +1,7 @@
 {
-  "name": "unbanhwid-storefront",
+  "name": "phantom-cheat-storefront",
   "version": "1.0.0",
-  "description": "unbanhwid.com storefront built with Next.js and React.",
+  "description": "phantom-cheats.com storefront built with Next.js and React.",
   "main": "index.js",
   "scripts": {
     "dev": "next dev --webpack",

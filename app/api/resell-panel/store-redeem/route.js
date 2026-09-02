@@ -1,3 +1,4 @@
+import { hasPermission, permissionDeniedResponse } from "../../../../lib/panel-permissions";
 import { requireReseller } from "../../../../lib/resell-panel-auth";
 import {
   consumeDepositCouponById,
@@ -223,6 +224,13 @@ export async function POST(request) {
   try {
     const auth = await requireReseller(request);
     if (auth.error) return auth.error;
+
+    if (
+      !hasPermission(auth.permissions, "store.redeem") &&
+      !hasPermission(auth.permissions, "deposit.checkout")
+    ) {
+      return permissionDeniedResponse("Missing permission: Redeem store or deposit coupons.");
+    }
 
     const body = await request.json().catch(() => ({}));
     const code = normalizeCouponCode(body?.code || body?.coupon || body?.couponCode);

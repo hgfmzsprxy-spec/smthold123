@@ -1,6 +1,28 @@
 import { computeResellerUnitPrice, getVariantById } from "../../../../lib/application-variants";
+import {
+  CUSTOM_LICENSE_FORMAT_SLUG,
+  generateDefaultLicenseKey,
+  generateLicenseKeyFromFormat,
+  normalizeLicenseFormat,
+  resellerOwnsStoreProductId,
+} from "../../../../lib/license-key-format";
+import {
+  buildBanLicensePatch,
+  buildUnbanLicensePatch,
+  isBannedLicense,
+} from "../../../../lib/license-freeze";
+import { extractDiscordProfile } from "../../../../lib/loader-redeem";
+import { assertPermission, canAccessApp } from "../../../../lib/panel-permissions";
+import { getResellerProductBySlug } from "../../../../lib/reseller-products";
 import { requireReseller } from "../../../../lib/resell-panel-auth";
-import { normalizeResellerDiscount, normalizeResellerRole, updateResellerRecord } from "../../../../lib/resellers";
+import {
+  attachStaffGeneratorsToLicenses,
+  normalizeResellerDiscount,
+  normalizeResellerRole,
+  normalizeStaffLicenseGenerators,
+  pruneStaffLicenseGenerators,
+  updateResellerRecord,
+} from "../../../../lib/resellers";
 import {
   appendTransaction,
   buildResellerTransactionActor,
@@ -9,17 +31,32 @@ import {
 
 export const dynamic = "force-dynamic";
 
-function randomAlphaNum(length) {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  const result = [];
-  const bytes = new Uint8Array(Math.max(16, length * 2));
-  while (result.length < length) {
-    crypto.getRandomValues(bytes);
-    for (let index = 0; index < bytes.length && result.length < length; index += 1) {
-      result.push(alphabet[bytes[index] % alphabet.length]);
+function resellerOwnsLicense(reseller, license) {
+  const licenseId = String(license?.id || "").trim();
+  if (!licenseId || !reseller) return false;
+  const ownedIds = Array.isArray(reseller.generated_license_ids)
+    ? reseller.generated_license_ids.map((value) => String(value || "").trim()).filter(Boolean)
+    : [];
+  if (ownedIds.includes(licenseId)) return true;
+  return (
+    license.reseller_id != null && String(license.reseller_id).trim() === String(reseller.id).trim()
+  );
+}
+
+async function resolveResellerLicenseKey(reseller, admin) {
+  const format = normalizeLicenseFormat(reseller?.license_format);
+  if (!format) return generateDefaultLicenseKey();
+
+  try {
+    const product = await getResellerProductBySlug(CUSTOM_LICENSE_FORMAT_SLUG, admin);
+    if (product?.id && resellerOwnsStoreProductId(reseller, product.id)) {
+      return generateLicenseKeyFromFormat(format);
     }
+  } catch {
+    // fall through to default key format
   }
-  return result.join("");
+
+  return generateDefaultLicenseKey();
 }
 
 export async function POST(request) {
@@ -27,10 +64,13 @@ export async function POST(request) {
     const auth = await requireReseller(request);
     if (auth.error) return auth.error;
 
+    const deniedGenerate = assertPermission(auth.permissions, "licenses.generate");
+    if (deniedGenerate) return deniedGenerate;
+
     const body = await request.json().catch(() => ({}));
     const applicationId = String(body?.applicationId || body?.application_id || "").trim();
     const variantId = String(body?.variantId || body?.variant_id || "").trim();
-    const quantity = Math.max(1, Math.min(50, Number(body?.quantity || 1)));
+    let quantity = Math.max(1, Math.min(50, Number(body?.quantity || 1)));
 
     if (!applicationId) {
       return Response.json({ error: "applicationId is required." }, { status: 400 });
@@ -42,6 +82,17 @@ export async function POST(request) {
     const accessIds = Array.isArray(auth.reseller.application_access) ? auth.reseller.application_access : [];
     if (!accessIds.includes(applicationId)) {
       return Response.json({ error: "You do not have permission for this application." }, { status: 403 });
+    }
+    if (!canAccessApp(auth.permissions, applicationId, accessIds)) {
+      return Response.json(
+        { error: "You do not have permission for this application.", code: "ERR_PERMISSION_DENIED" },
+        { status: 403 }
+      );
+    }
+
+    const maxQty = auth.permissions?.["limits.generate_max_qty"];
+    if (maxQty != null && Number.isFinite(Number(maxQty))) {
+      quantity = Math.min(quantity, Math.max(1, Number(maxQty)));
     }
 
     const variant = await getVariantById(variantId, auth.admin);
@@ -87,7 +138,10 @@ export async function POST(request) {
       return Response.json({ error: "Application not found." }, { status: 404 });
     }
 
-    const keys = Array.from({ length: quantity }).map(() => randomAlphaNum(14));
+    const keys = [];
+    for (let index = 0; index < quantity; index += 1) {
+      keys.push(await resolveResellerLicenseKey(auth.reseller, auth.admin));
+    }
     const rowsFull = keys.map((key) => ({
       license_key: key,
       status: "Not Activated",
@@ -136,6 +190,49 @@ export async function POST(request) {
     const nextBalance = Math.round((currentBalance - totalCost) * 100) / 100;
     const nextSpent = Math.round(((Number(auth.reseller.total_spent) || 0) + totalCost) * 100) / 100;
 
+    const staffGeneratorsPatch = {};
+    const staffDiscord =
+      auth.actor === "staff" && auth.user ? extractDiscordProfile(auth.user) : null;
+    const staffProfile =
+      auth.actor === "staff" && auth.teamMember
+        ? {
+            team_member_id: auth.teamMember.id || null,
+            discord_user_id:
+              auth.teamMember.discord_user_id ||
+              staffDiscord?.discordUserId ||
+              auth.publicReseller?.discord_user_id ||
+              null,
+            discord_username:
+              auth.teamMember.discord_username ||
+              staffDiscord?.username ||
+              auth.publicReseller?.discord_username ||
+              null,
+            discord_avatar_url:
+              auth.teamMember.discord_avatar_url ||
+              staffDiscord?.avatarUrl ||
+              auth.publicReseller?.discord_avatar_url ||
+              null,
+          }
+        : null;
+
+    if (staffProfile && createdIds.length) {
+      const generatedAt = new Date().toISOString();
+      const nextGenerators = {
+        ...normalizeStaffLicenseGenerators(auth.reseller.staff_license_generators),
+      };
+      const generator = {
+        ...staffProfile,
+        generated_at: generatedAt,
+      };
+      createdIds.forEach((id) => {
+        nextGenerators[id] = generator;
+      });
+      staffGeneratorsPatch.staff_license_generators = pruneStaffLicenseGenerators(
+        nextGenerators,
+        nextLicenseIds
+      );
+    }
+
     const updatedReseller = await updateResellerRecord(
       auth.reseller.id,
       {
@@ -143,6 +240,7 @@ export async function POST(request) {
         total_licenses: nextLicenseIds.length,
         balance: nextBalance,
         total_spent: nextSpent,
+        ...staffGeneratorsPatch,
       },
       auth.admin
     );
@@ -157,7 +255,7 @@ export async function POST(request) {
           balance_before: currentBalance,
           balance_after: nextBalance,
           description: `Purchased ${quantity}× ${variant.label} for ${app.name}`,
-          actor: "reseller",
+          actor: auth.actor === "staff" ? "reseller_staff" : "reseller",
           meta: {
             application_id: app.id,
             application_name: app.name,
@@ -168,6 +266,15 @@ export async function POST(request) {
             total_cost: totalCost,
             license_ids: createdIds,
             license_keys: createdRows.map((row) => row.license_key).filter(Boolean),
+            ...(staffProfile
+              ? {
+                  staff_team_member_id: staffProfile.team_member_id,
+                  staff_discord_user_id: staffProfile.discord_user_id,
+                  staff_discord_username: staffProfile.discord_username,
+                  staff_discord_avatar_url: staffProfile.discord_avatar_url,
+                  staff_generated_at: new Date().toISOString(),
+                }
+              : {}),
           },
         },
         auth.admin
@@ -178,7 +285,10 @@ export async function POST(request) {
 
     return Response.json({
       ok: true,
-      licenses: createdRows,
+      licenses: attachStaffGeneratorsToLicenses(
+        createdRows,
+        updatedReseller.staff_license_generators || staffGeneratorsPatch.staff_license_generators
+      ),
       transaction,
       pricing: {
         variantId: variant.id,
@@ -207,10 +317,89 @@ export async function POST(request) {
   }
 }
 
+export async function PATCH(request) {
+  try {
+    const auth = await requireReseller(request);
+    if (auth.error) return auth.error;
+
+    const body = await request.json().catch(() => ({}));
+    const licenseId = String(body?.id || body?.licenseId || "").trim();
+    const action = String(body?.action || "").trim().toLowerCase();
+    if (!licenseId) {
+      return Response.json({ error: "License id is required." }, { status: 400 });
+    }
+    if (!["ban", "unban", "toggle_ban", "reset_hwid"].includes(action)) {
+      return Response.json({ error: "Unsupported license action." }, { status: 400 });
+    }
+
+    const neededPerm = action === "reset_hwid" ? "licenses.reset_hwid" : "licenses.ban";
+    const denied = assertPermission(auth.permissions, neededPerm);
+    if (denied) return denied;
+
+    const { data: license, error: fetchError } = await auth.admin
+      .from("licenses")
+      .select("*")
+      .eq("id", licenseId)
+      .maybeSingle();
+
+    if (fetchError) {
+      return Response.json({ error: fetchError.message || String(fetchError) }, { status: 500 });
+    }
+    if (!license) {
+      return Response.json({ error: "License not found." }, { status: 404 });
+    }
+    if (!resellerOwnsLicense(auth.reseller, license)) {
+      return Response.json({ error: "You can only manage licenses you generated." }, { status: 403 });
+    }
+
+    const accessIds = Array.isArray(auth.reseller.application_access) ? auth.reseller.application_access : [];
+    const applicationId = String(license.application_id || "").trim();
+    if (applicationId && !canAccessApp(auth.permissions, applicationId, accessIds)) {
+      return Response.json(
+        { error: "You do not have permission for this application.", code: "ERR_PERMISSION_DENIED" },
+        { status: 403 }
+      );
+    }
+
+    let patch = null;
+    if (action === "reset_hwid") {
+      patch = { hwid: null };
+    } else if (action === "ban") {
+      patch = buildBanLicensePatch(license);
+    } else if (action === "unban") {
+      patch = buildUnbanLicensePatch(license);
+    } else {
+      patch = isBannedLicense(license) ? buildUnbanLicensePatch(license) : buildBanLicensePatch(license);
+    }
+
+    const { data: updated, error: updateError } = await auth.admin
+      .from("licenses")
+      .update(patch)
+      .eq("id", licenseId)
+      .select("*")
+      .maybeSingle();
+
+    if (updateError) {
+      return Response.json({ error: updateError.message || String(updateError) }, { status: 500 });
+    }
+
+    return Response.json({
+      ok: true,
+      action,
+      license: updated || { ...license, ...patch },
+    });
+  } catch (error) {
+    return Response.json({ error: error?.message || String(error) }, { status: 500 });
+  }
+}
+
 export async function DELETE(request) {
   try {
     const auth = await requireReseller(request);
     if (auth.error) return auth.error;
+
+    const deniedDelete = assertPermission(auth.permissions, "licenses.delete");
+    if (deniedDelete) return deniedDelete;
 
     const body = await request.json().catch(() => ({}));
     const { searchParams } = new URL(request.url);
@@ -236,10 +425,7 @@ export async function DELETE(request) {
       return Response.json({ error: "License not found." }, { status: 404 });
     }
 
-    const ownedByList = ownedIds.includes(licenseId);
-    const ownedByCol =
-      license.reseller_id != null && String(license.reseller_id).trim() === String(auth.reseller.id).trim();
-    if (!ownedByList && !ownedByCol) {
+    if (!resellerOwnsLicense(auth.reseller, license)) {
       return Response.json({ error: "You can only delete licenses you generated." }, { status: 403 });
     }
 
@@ -254,6 +440,10 @@ export async function DELETE(request) {
       {
         generated_license_ids: nextLicenseIds,
         total_licenses: nextLicenseIds.length,
+        staff_license_generators: pruneStaffLicenseGenerators(
+          auth.reseller.staff_license_generators,
+          nextLicenseIds
+        ),
       },
       auth.admin
     );

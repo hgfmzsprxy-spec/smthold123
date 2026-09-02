@@ -1,3 +1,4 @@
+import { assertPermission } from "../../../../lib/panel-permissions";
 import { requireReseller } from "../../../../lib/resell-panel-auth";
 import { getResellerProductById } from "../../../../lib/reseller-products";
 import { claimNextCouponForProduct } from "../../../../lib/reseller-store-coupons";
@@ -15,6 +16,9 @@ export async function POST(request) {
   try {
     const auth = await requireReseller(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "store.purchase");
+    if (denied) return denied;
 
     const body = await request.json().catch(() => ({}));
     const productId = String(body?.productId || body?.product_id || "").trim();

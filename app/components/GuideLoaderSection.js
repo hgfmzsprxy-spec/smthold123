@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Download, ExternalLink, Monitor, Rocket, Shield, ShieldOff, Timer } from "lucide-react";
+import { ArrowRight, Download, ExternalLink, Gamepad2, Monitor, Rocket, Shield, ShieldOff, Timer } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import styles from "./AdminPage.module.css";
 
@@ -11,7 +11,7 @@ const NEXT_PRODUCTS = [
   { id: "fortnite-private", label: "Fortnite Private", image: "/images/guide-icons/fortnite.png" },
   { id: "call-of-duty", label: "Call of Duty", image: "/images/guide-icons/call-of-duty.png" },
   { id: "apex-legends", label: "Apex Legends", image: "/images/guide-icons/apex-legends.png" },
-  { id: "arc-raiders", label: "Arc Raiders", image: "/images/guide-icons/arc-raiders.png" },
+  { id: "controller-emulator", label: "Controller Emulator", icon: Gamepad2 },
   { id: "permanent-spoofer", label: "Permanent Spoofer", icon: Shield },
   { id: "temporary-spoofer", label: "Temporary Spoofer", icon: Timer },
 ];
@@ -320,7 +320,7 @@ export default function GuideLoaderSection({
                   <span>
                     Go to{" "}
                     <a href="/loader" target="_blank" rel="noopener noreferrer">
-                      unbanhwid.com/loader
+                      phantom-cheats.com/loader
                     </a>
                     .
                   </span>

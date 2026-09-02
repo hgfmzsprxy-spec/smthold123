@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { requireAdmin } from "../../../../lib/admin-auth";
+import { assertPermission } from "../../../../lib/panel-permissions";
 import {
   normalizeResellerProduct,
   readResellerProductsStore,
@@ -29,6 +30,9 @@ export async function GET(request) {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
 
+    const denied = assertPermission(auth.permissions, "products.view");
+    if (denied) return denied;
+
     const admin = getSupabaseAdmin();
     const store = await readResellerProductsStore(admin);
     return NextResponse.json({ products: store.products });
@@ -41,6 +45,9 @@ export async function POST(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "products.edit");
+    if (denied) return denied;
 
     const body = await request.json().catch(() => ({}));
     const name = String(body?.name || "").trim();
@@ -93,6 +100,9 @@ export async function PATCH(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "products.edit");
+    if (denied) return denied;
 
     const body = await request.json().catch(() => ({}));
     const id = String(body?.id || "").trim();
@@ -159,6 +169,9 @@ export async function DELETE(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "products.edit");
+    if (denied) return denied;
 
     const body = await request.json().catch(() => ({}));
     const id = String(body?.id || "").trim();

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../../lib/admin-auth";
+import { assertPermission } from "../../../../lib/panel-permissions";
 import {
   listCouponsForDepositVariant,
   parseCouponCodesBulk,
@@ -14,6 +15,9 @@ export async function GET(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "products.view");
+    if (denied) return denied;
 
     const variantId = String(
       request.nextUrl.searchParams.get("variantId") ||
@@ -48,6 +52,9 @@ export async function PUT(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "products.edit");
+    if (denied) return denied;
 
     const body = await request.json().catch(() => ({}));
     const variantId = String(body?.variantId || body?.variant_id || body?.productId || body?.product_id || "").trim();

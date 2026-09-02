@@ -36,10 +36,10 @@ function RedeemThankyouStage({ playing }) {
       <svg className="redeem-thankyou-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
         <defs>
           <linearGradient id="redeemOutroGrad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#7b202a" />
-            <stop offset="28%" stopColor="#a32e3b" />
-            <stop offset="62%" stopColor="#c43a4a" />
-            <stop offset="100%" stopColor="#7b202a" />
+            <stop offset="0%" stopColor="#7568a8" />
+            <stop offset="28%" stopColor="#9783d1" />
+            <stop offset="62%" stopColor="#8db4e2" />
+            <stop offset="100%" stopColor="#7568a8" />
           </linearGradient>
         </defs>
         <rect className="redeem-outro-bar" x="122" y="376" width="556" height="10" rx="5" fill="url(#redeemOutroGrad)" />
@@ -54,23 +54,23 @@ function RedeemThankyouStage({ playing }) {
           </text>
         </g>
         <g className="redeem-outro-confetti">
-          <rect x="180" y="178" width="12" height="8" fill="#a32e3b" />
+          <rect x="180" y="178" width="12" height="8" fill="#9783d1" />
           <rect x="220" y="152" width="11" height="7" fill="#fbda4f" />
           <rect x="272" y="190" width="10" height="8" fill="#ab63df" />
           <rect x="318" y="150" width="13" height="8" fill="#5fc581" />
-          <rect x="372" y="170" width="12" height="8" fill="#a32e3b" />
+          <rect x="372" y="170" width="12" height="8" fill="#9783d1" />
           <rect x="422" y="146" width="11" height="7" fill="#fbda4f" />
           <rect x="468" y="186" width="10" height="8" fill="#ab63df" />
           <rect x="520" y="156" width="13" height="8" fill="#5fc581" />
-          <rect x="575" y="182" width="12" height="8" fill="#a32e3b" />
+          <rect x="575" y="182" width="12" height="8" fill="#9783d1" />
           <rect x="626" y="160" width="11" height="7" fill="#fbda4f" />
           <rect x="668" y="196" width="10" height="8" fill="#ab63df" />
           <rect x="210" y="214" width="12" height="8" fill="#5fc581" />
-          <rect x="260" y="228" width="10" height="7" fill="#a32e3b" />
+          <rect x="260" y="228" width="10" height="7" fill="#9783d1" />
           <rect x="308" y="210" width="13" height="8" fill="#fbda4f" />
           <rect x="360" y="224" width="12" height="8" fill="#ab63df" />
           <rect x="414" y="212" width="11" height="7" fill="#5fc581" />
-          <rect x="462" y="232" width="10" height="8" fill="#a32e3b" />
+          <rect x="462" y="232" width="10" height="8" fill="#9783d1" />
           <rect x="518" y="216" width="13" height="8" fill="#fbda4f" />
         </g>
       </svg>

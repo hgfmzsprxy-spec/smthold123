@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../../lib/admin-auth";
+import { assertPermission } from "../../../../lib/panel-permissions";
 import {
   LOCAL_PROTECTION_SOURCE_ID,
   LOCAL_PROTECTION_SOURCE_LABEL,
@@ -7,13 +8,16 @@ import {
   defaultProtectionLogColumns,
   deleteProtectionLogById,
   deleteProtectionLogsByFilter,
+  loadProtectionLogScreenshotsByIds,
   readProtectionLogStore,
+  signProtectionLogScreenshotPaths,
   writeIgnoredProtectionLogUserIds,
 } from "../../../../lib/panel-protection-logs";
 import { getResellerDisplayName, readResellersStore } from "../../../../lib/resellers";
 import { getSupabaseAdmin } from "../../../../lib/supabase-admin";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 function readFilterParams(request) {
   const url = new URL(request.url);
@@ -30,16 +34,36 @@ export async function GET(request) {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
 
+    const denied = assertPermission(auth.permissions, "protections.view");
+    if (denied) return denied;
+
     const admin = getSupabaseAdmin();
     const { appId, sourceId } = readFilterParams(request);
 
-    const [store, resellerStore] = await Promise.all([
-      readProtectionLogStore(admin).catch((e) => {
-        console.error("readProtectionLogStore error:", e);
-        return { entries: [], ignored_user_ids: [] };
-      }),
-      readResellersStore(admin).catch(() => ({ resellers: [] }))
-    ]);
+    // Never sign screenshots on the list GET — that was timing out (504) on Vercel.
+    // Thumbnails are signed lazily via POST { sign_paths: [...] }.
+    let store;
+    try {
+      store = await readProtectionLogStore(admin, { signScreenshots: false });
+    } catch (e) {
+      console.error("readProtectionLogStore error:", e);
+      return NextResponse.json(
+        {
+          ok: false,
+          error: e?.message || String(e),
+          entries: [],
+          sources: [],
+          ignored_user_ids: [],
+          columns: PROTECTION_LOG_COLUMNS,
+          default_columns: defaultProtectionLogColumns(),
+          local_source_id: LOCAL_PROTECTION_SOURCE_ID,
+          screenshots_signed: false,
+        },
+        { status: 500 }
+      );
+    }
+
+    const resellerStore = await readResellersStore(admin).catch(() => ({ resellers: [] }));
 
     let entries = store.entries || [];
     if (appId && appId !== "all") {
@@ -71,9 +95,54 @@ export async function GET(request) {
       columns: PROTECTION_LOG_COLUMNS,
       default_columns: defaultProtectionLogColumns(),
       local_source_id: LOCAL_PROTECTION_SOURCE_ID,
+      screenshots_signed: false,
     });
   } catch (error) {
     console.error("GET protection-logs ERROR:", error);
+    return NextResponse.json({ error: error?.message || String(error) }, { status: 500 });
+  }
+}
+
+export async function POST(request) {
+  try {
+    const auth = await requireAdmin(request);
+    if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "protections.view");
+    if (denied) return denied;
+
+    const body = await request.json().catch(() => ({}));
+    const admin = getSupabaseAdmin();
+
+    const entryIds = Array.isArray(body.entry_ids)
+      ? body.entry_ids
+      : Array.isArray(body.entryIds)
+        ? body.entryIds
+        : [];
+
+    // Lazy-load slim screenshot meta (+ signed URLs) for visible log rows only.
+    if (entryIds.length) {
+      const result = await loadProtectionLogScreenshotsByIds(entryIds, admin, {
+        sign: true,
+        // Allow data: URLs only for legacy rows that never uploaded to storage.
+        allowDataUrl: true,
+      });
+      return NextResponse.json({
+        ok: true,
+        by_id: result.by_id,
+        urls: result.urls,
+      });
+    }
+
+    const paths = Array.isArray(body.sign_paths)
+      ? body.sign_paths
+      : Array.isArray(body.signPaths)
+        ? body.signPaths
+        : [];
+
+    const urls = await signProtectionLogScreenshotPaths(paths, admin);
+    return NextResponse.json({ ok: true, urls });
+  } catch (error) {
     return NextResponse.json({ error: error?.message || String(error) }, { status: 500 });
   }
 }
@@ -82,6 +151,9 @@ export async function PUT(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "protections.edit");
+    if (denied) return denied;
 
     const body = await request.json().catch(() => ({}));
     const admin = getSupabaseAdmin();
@@ -111,6 +183,9 @@ export async function DELETE(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "protections.edit");
+    if (denied) return denied;
 
     const admin = getSupabaseAdmin();
     const { appId, sourceId, id } = readFilterParams(request);
