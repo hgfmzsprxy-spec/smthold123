@@ -3,12 +3,17 @@ import {
   RESELL_APPLICATION_SELECT,
   fetchResellLicensesByIds,
 } from "../../../../lib/panel-bootstrap-selects";
+import { canAccessApp } from "../../../../lib/panel-permissions";
 import { readNotificationStore } from "../../../../lib/panel-notifications";
 import { readDepositVariantsStore } from "../../../../lib/reseller-deposit-variants";
 import { requireReseller } from "../../../../lib/resell-panel-auth";
 import { readResellerProductsStore } from "../../../../lib/reseller-products";
 import { touchResellerSession } from "../../../../lib/reseller-sessions";
-import { listTransactions } from "../../../../lib/transactions";
+import { attachStaffGeneratorsToLicenses } from "../../../../lib/resellers";
+import {
+  enrichTransactionsWithStaffProfiles,
+  listTransactions,
+} from "../../../../lib/transactions";
 
 export const dynamic = "force-dynamic";
 
@@ -117,8 +122,10 @@ export async function GET(request) {
       variantsByApp[key].push(variant);
     });
 
+    // Keep admin order. Unassigned apps stay in the list as locked (blurred in UI).
     const applicationsWithVariants = allApplications.map((app) => {
-      const hasAccess = accessIdSet.has(String(app.id));
+      const hasAccess =
+        accessIdSet.has(String(app.id)) && canAccessApp(auth.permissions, app.id, accessIds);
       return {
         ...app,
         has_access: hasAccess,
@@ -128,10 +135,13 @@ export async function GET(request) {
     });
 
     const accessibleApps = applicationsWithVariants.filter((app) => app.has_access);
-    const scopedLicenses = licenses.filter(
-      (license) =>
-        accessIdSet.has(String(license.application_id || "")) ||
-        accessibleApps.some((app) => app.app_id && app.app_id === license.app_id)
+    const scopedLicenses = attachStaffGeneratorsToLicenses(
+      licenses.filter((license) => {
+        const applicationId = String(license.application_id || "").trim();
+        if (applicationId && canAccessApp(auth.permissions, applicationId, accessIds)) return true;
+        return accessibleApps.some((app) => app.app_id && app.app_id === license.app_id);
+      }),
+      auth.reseller.staff_license_generators
     );
 
     return Response.json({
@@ -145,7 +155,10 @@ export async function GET(request) {
       storeProducts: Array.isArray(productsStore?.products) ? productsStore.products : [],
       depositVariants: Array.isArray(depositStore?.variants) ? depositStore.variants : [],
       notifications: Array.isArray(notificationStore?.entries) ? notificationStore.entries : [],
-      transactions: Array.isArray(transactions) ? transactions : [],
+      transactions: enrichTransactionsWithStaffProfiles(
+        Array.isArray(transactions) ? transactions : [],
+        [auth.reseller]
+      ),
       fetchedAt: new Date().toISOString(),
     });
   } catch (error) {

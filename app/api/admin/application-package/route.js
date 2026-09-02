@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../../lib/admin-auth";
+import { assertPermission } from "../../../../lib/panel-permissions";
 import { APPLICATION_PACKAGE_BUCKET, getSupabaseAdmin } from "../../../../lib/supabase-admin";
 import {
   buildApplicationPackagePath,
@@ -36,6 +37,9 @@ export async function GET(request) {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
 
+    const denied = assertPermission(auth.permissions, "apps.view");
+    if (denied) return denied;
+
     const url = new URL(request.url);
     const appId = String(url.searchParams.get("appId") || url.searchParams.get("id") || "").trim();
     if (!appId) {
@@ -69,6 +73,9 @@ export async function POST(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "apps.package");
+    if (denied) return denied;
 
     const body = await request.json().catch(() => ({}));
     const appId = String(body?.appId || "").trim();
@@ -105,6 +112,9 @@ export async function DELETE(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "apps.package");
+    if (denied) return denied;
 
     const body = await request.json().catch(() => ({}));
     const appId = String(body?.appId || "").trim();

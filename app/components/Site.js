@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { createPortal } from "react-dom";
+import ProductImageLightbox from "./ProductImageLightbox";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowLeft,
   ArrowRight,
   BadgePercent,
+  Ban,
   CalendarDays,
   Camera,
   Check,
@@ -22,6 +25,7 @@ import {
   Gamepad2,
   HardDrive,
   Headphones,
+  HelpCircle,
   House,
   KeyRound,
   Layers,
@@ -62,11 +66,11 @@ import {
 } from "lucide-react";
 import { computeAverageRating } from "../../lib/myvouches";
 import {
-  arcRaidersFeatures,
   apexLegendsFeatures,
   callOfDutyFeatures,
   fortniteFeatures,
   hwidSpooferFeatures,
+  kbmAimAssistFeatures,
   productFeatures,
   temporarySpooferFeatures,
 } from "../../lib/product-features";
@@ -76,6 +80,8 @@ import { PurchaseCountryFlag } from "./PurchaseCountryFlag";
 import { SkeletonBlock } from "./Skeleton";
 import { LoaderDownloadModal } from "./LoaderDownloadModal";
 import { LoaderRedeemModal } from "./LoaderRedeemModal";
+import HeroStats from "./HeroStats";
+import useScrollReveal from "../hooks/useScrollReveal";
 import { getProductGuideHref, LOADER_INSTALLATION_GUIDE_HREF } from "../../lib/guide-links";
 import { ProductCheckoutModal } from "./ProductCheckoutModal";
 import {
@@ -144,80 +150,6 @@ const homeGameCards = Array.from({ length: 8 }, (_, index) => ({
   image: "/images/rainbow-six-card.png",
   products: homeGameProducts,
 }));
-const heroStatsBase = [
-  { value: "1542", label: "Purchases", icon: SolidCartIcon },
-  { key: "reviews", label: "Verified Reviews", icon: SolidReviewIcon },
-  { key: "rating", label: "Our Rating", icon: SolidStarIcon, iconSize: 40 },
-  { value: "72", label: "Online Users", icon: SolidUsersIcon },
-];
-
-function SolidCartIcon({ size = 34 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M3.62 3.15a1.05 1.05 0 0 0 0 2.1h1.31l1.69 8.49a3.4 3.4 0 0 0 3.33 2.73h6.58a3.4 3.4 0 0 0 3.22-2.31l1.03-3.05a2.74 2.74 0 0 0-2.6-3.61H7.28l-.47-2.35a2.5 2.5 0 0 0-2.45-2H3.62Z"
-      />
-      <path fill="#fff" d="M9.15 10.05h8.96l-.66 1.98a1.2 1.2 0 0 1-1.14.82H9.85a1.2 1.2 0 0 1-1.18-.96l-.37-1.84h.85Z" opacity=".2" />
-      <path
-        fill="currentColor"
-        d="M9.18 21a1.75 1.75 0 1 0 0-3.5 1.75 1.75 0 0 0 0 3.5Zm7.95 0a1.75 1.75 0 1 0 0-3.5 1.75 1.75 0 0 0 0 3.5Z"
-      />
-    </svg>
-  );
-}
-
-function SolidReviewIcon({ size = 34 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M12 2.7 20.2 5.6v5.84c0 4.84-3.28 8.63-8.2 9.86-4.92-1.23-8.2-5.02-8.2-9.86V5.6L12 2.7Z"
-      />
-      <path
-        fill="#fff"
-        d="m10.92 14.72 5.02-5.02a1.08 1.08 0 0 0-1.53-1.53l-3.72 3.72-1.28-1.28a1.08 1.08 0 0 0-1.53 1.53l2.04 2.04c.3.3.7.48 1 .54Z"
-        opacity=".88"
-      />
-    </svg>
-  );
-}
-
-function SolidStarIcon({ size = 34 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M12 2.35 14.76 8.1l6.34.92-4.58 4.47 1.08 6.31L12 16.78l-5.6 2.94 1.08-6.31L2.9 9.02l6.34-.92L12 2.35Z"
-      />
-      <path
-        fill="#fff"
-        d="m9.35 14.95 4.65-2.44-1.01-5.9L12 8.62l-.99-2.01-1.01 5.9 4.65 2.44-3.65.53-.65 3.47-.65-3.47-3.65-.53Z"
-        opacity=".18"
-      />
-    </svg>
-  );
-}
-
-function SolidUsersIcon({ size = 34 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-      <path fill="currentColor" d="M12 12.15a4.05 4.05 0 1 0 0-8.1 4.05 4.05 0 0 0 0 8.1Z" />
-      <path
-        fill="currentColor"
-        d="M4.32 20.08c.58-3.62 3.64-6.38 7.68-6.38s7.1 2.76 7.68 6.38c.1.62-.38 1.17-1.01 1.17H5.33c-.63 0-1.11-.55-1.01-1.17Z"
-      />
-      <path
-        fill="currentColor"
-        d="M18.05 12.2a2.92 2.92 0 1 0-1.74-5.26 5.58 5.58 0 0 1-.42 4.7c.62.36 1.36.56 2.16.56Zm-12.1 0c.8 0 1.54-.2 2.16-.56a5.58 5.58 0 0 1-.42-4.7 2.92 2.92 0 1 0-1.74 5.26Z"
-        opacity=".48"
-      />
-      <circle cx="18.8" cy="5.25" r="2.15" fill="#29ff91" />
-      <circle cx="18.8" cy="5.25" r=".85" fill="#07130d" opacity=".35" />
-    </svg>
-  );
-}
-
 function SolidProductsIcon({ size = 34 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
@@ -245,8 +177,8 @@ function scrollTop() {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-const CART_STORAGE_KEY = "unbanhwid.com-cart";
-const CART_EVENT = "unbanhwid.com-cart-change";
+const CART_STORAGE_KEY = "phantom-cheats.com-cart";
+const CART_EVENT = "phantom-cheats.com-cart-change";
 
 function CartBasketIcon({ size = 19 }) {
   return (
@@ -326,7 +258,7 @@ function readCartItems() {
   const cookieItems = readCookieCartItems();
   if (cookieItems.length) return cookieItems;
 
-  return normalizeCartItems(window.__unbanhwidComCartItems || []);
+  return normalizeCartItems(window.__phantomCheatsComCartItems || []);
 }
 
 function persistCartItems(items) {
@@ -342,7 +274,7 @@ function persistCartItems(items) {
     // Keep cart usable when browser storage is unavailable.
   }
 
-  window.__unbanhwidComCartItems = normalized;
+  window.__phantomCheatsComCartItems = normalized;
   writeCookieCartItems(normalized);
   window.dispatchEvent(new CustomEvent(CART_EVENT, { detail: normalized }));
 
@@ -414,112 +346,6 @@ function addProductToCart(product, variant) {
   return persistCartItems(next);
 }
 
-const revealSelector = [
-  "[data-reveal]",
-  ".fade-up",
-  ".game-banner-card",
-  ".best-product-card",
-  ".why-choose-card",
-  ".purchase-item",
-  ".hero-stat-item",
-  ".package-card",
-  ".product-card",
-  ".rank-card",
-  ".requirement-card",
-  ".product-feature-card",
-  ".cart-row",
-  ".cart-summary-card",
-  ".features-legend > div",
-  ".review-card-reveal",
-  ".reviews-pagination-arrow",
-  ".reviews-pagination-page",
-  ".reviews-pagination-ellipsis",
-].join(",");
-
-function useScrollReveal() {
-  useEffect(() => {
-    const root = document.documentElement;
-    const observed = new WeakSet();
-    let frame = 0;
-    let lastScrollY = window.scrollY;
-    let scrollingUp = false;
-
-    root.classList.add("reveal-enabled");
-
-    if (!("IntersectionObserver" in window)) {
-      document.querySelectorAll(revealSelector).forEach((node) => node.classList.add("is-visible"));
-      return () => root.classList.remove("reveal-enabled");
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            if (scrollingUp) {
-              entry.target.classList.add("reveal-instant");
-            }
-
-            entry.target.classList.add("is-visible");
-            observer.unobserve(entry.target);
-
-            if (scrollingUp) {
-              requestAnimationFrame(() => entry.target.classList.remove("reveal-instant"));
-            }
-          }
-        });
-      },
-      { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }
-    );
-
-    function updateScrollDirection() {
-      const nextScrollY = window.scrollY;
-      scrollingUp = nextScrollY < lastScrollY;
-      lastScrollY = nextScrollY;
-    }
-
-    function applyGroupDelays() {
-      document.querySelectorAll("[data-reveal-group]").forEach((group) => {
-        const base = Number(group.getAttribute("data-reveal-base") || 0);
-        const step = Number(group.getAttribute("data-reveal-step") || 95);
-
-        group.querySelectorAll(revealSelector).forEach((item, index) => {
-          item.style.setProperty("--reveal-delay", `${Math.min(base + index * step, 720)}ms`);
-        });
-      });
-    }
-
-    function collect() {
-      applyGroupDelays();
-
-      document.querySelectorAll(revealSelector).forEach((node) => {
-        if (!observed.has(node) && !node.classList.contains("is-visible")) {
-          observed.add(node);
-          observer.observe(node);
-        }
-      });
-    }
-
-    function scheduleCollect() {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(collect);
-    }
-
-    scheduleCollect();
-    window.addEventListener("scroll", updateScrollDirection, { passive: true });
-
-    const mutationObserver = new MutationObserver(scheduleCollect);
-    mutationObserver.observe(document.body, { childList: true, subtree: true });
-
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", updateScrollDirection);
-      mutationObserver.disconnect();
-      observer.disconnect();
-      root.classList.remove("reveal-enabled");
-    };
-  }, []);
-}
-
 function CustomScrollbar() {
   const [bar, setBar] = useState({ height: 0, top: 0, visible: false });
 
@@ -571,18 +397,79 @@ function CustomScrollbar() {
   );
 }
 
-export function PageChrome({ active, children }) {
+function applyBrandName(text, brandName) {
+  if (!brandName || !text) return text;
+  return String(text).replace(/phantom-cheats\.com/gi, brandName);
+}
+
+function hexToRgbTuple(hex) {
+  const raw = String(hex || "").trim().toLowerCase();
+  const stripped = raw.replace(/^#/, "");
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  if (/^[0-9a-f]{6}$/.test(stripped)) {
+    r = parseInt(stripped.slice(0, 2), 16);
+    g = parseInt(stripped.slice(2, 4), 16);
+    b = parseInt(stripped.slice(4, 6), 16);
+  } else if (/^[0-9a-f]{3}$/.test(stripped)) {
+    r = parseInt(stripped[0] + stripped[0], 16);
+    g = parseInt(stripped[1] + stripped[1], 16);
+    b = parseInt(stripped[2] + stripped[2], 16);
+  } else {
+    return null;
+  }
+  return [r, g, b];
+}
+
+function buildBrandColorVars(color) {
+  const tuple = hexToRgbTuple(color);
+  if (!tuple) return null;
+  const [r, g, b] = tuple;
+  const dark = [
+    Math.round(r * 0.75),
+    Math.round(g * 0.75),
+    Math.round(b * 0.75),
+  ];
+  const light = [
+    Math.min(255, Math.round(r + (255 - r) * 0.22)),
+    Math.min(255, Math.round(g + (255 - g) * 0.22)),
+    Math.min(255, Math.round(b + (255 - b) * 0.22)),
+  ];
+  return {
+    "--primary": `rgb(${r}, ${g}, ${b})`,
+    "--primary-rgb": `${r}, ${g}, ${b}`,
+    "--primary-dark": `rgb(${dark[0]}, ${dark[1]}, ${dark[2]})`,
+    "--primary-soft": `rgba(${r}, ${g}, ${b}, 0.2)`,
+    "--primary-start": `rgb(${r}, ${g}, ${b})`,
+    "--primary-end": `rgb(${light[0]}, ${light[1]}, ${light[2]})`,
+    "--primary-gradient": `linear-gradient(135deg, rgb(${r}, ${g}, ${b}) 0%, rgb(${light[0]}, ${light[1]}, ${light[2]}) 100%)`,
+    "--loader-brand-color": `rgb(${r}, ${g}, ${b})`,
+  };
+}
+
+export function PageChrome({ active, children, brand }) {
   useScrollReveal();
 
+  const brandVars = brand
+    ? { ...buildBrandColorVars(brand.color), "--site-announce-height": "0px" }
+    : null;
+
   return (
-    <div className="site-shell reveal-enabled">
-      <div className="site-announce-bar" role="status">
-        WE ARE STARTING SOON...
-      </div>
+    <div
+      className={`site-shell${brand ? " site-shell--branded" : ""}`}
+      style={brandVars || undefined}
+    >
+      {brand ? null : (
+        <div className="site-announce-bar" role="status">
+          WE ARE STARTING SOON...
+        </div>
+      )}
       <HeroBackdrop />
-      <Navbar active={active} />
+      {brand ? <div className="branded-grid-bg" aria-hidden="true" /> : null}
+      <Navbar active={active} brand={brand} />
       {children}
-      <Footer />
+      {brand ? null : <Footer />}
       <CustomScrollbar />
     </div>
   );
@@ -618,18 +505,241 @@ function DiscordIcon({ size = 15 }) {
   );
 }
 
-function Brand({ compact = false }) {
+function Brand({ compact = false, brand }) {
+  if (brand) {
+    return (
+      <span className={`brand-link brand-link--static ${compact ? "brand-link--compact" : ""}`}>
+        <span className="brand-logo">
+          {brand.logo ? (
+            <img src={brand.logo} alt={brand.brandName || "Brand"} />
+          ) : (
+            <img src="/images/phantom.png" alt={brand.brandName || "Brand"} />
+          )}
+        </span>
+        <span className="brand-name">{brand.brandName || "phantom-cheats.com"}</span>
+      </span>
+    );
+  }
   return (
     <Link className={`brand-link ${compact ? "brand-link--compact" : ""}`} href="/">
       <span className="brand-logo">
-        <img src="/images/unbanhwid-logo.png" alt="unbanhwid.com" />
+        <img src="/images/phantom.png" alt="phantom-cheats.com" />
       </span>
-      <span className="brand-name">unbanhwid.com</span>
+      <span className="brand-name">phantom-cheats.com</span>
     </Link>
   );
 }
 
-function Navbar({ active }) {
+const SITE_RESPONSE_HISTORY_LIMIT = 60;
+
+function SiteResponseChart({ history }) {
+  const width = 600;
+  const height = 150;
+  const pad = { l: 38, r: 14, t: 12, b: 22 };
+  const gridStroke = "rgba(255,255,255,0.06)";
+  const labelFill = "#7c7c7c";
+  const metaFill = "#bdbdbd";
+
+  if (history.length < 2) {
+    return <div className="site-response-chart-empty">Collecting response samples…</div>;
+  }
+
+  const values = history.map((h) => h.ms);
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const yMax = Math.max(max, 50);
+  const yMin = 0;
+  const innerW = width - pad.l - pad.r;
+  const innerH = height - pad.t - pad.b;
+  const xStep = innerW / Math.max(history.length - 1, 1);
+  const y = (v) => pad.t + innerH - ((v - yMin) / (yMax - yMin)) * innerH;
+  const x = (i) => pad.l + i * xStep;
+  const linePath = history.map((h, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(h.ms).toFixed(1)}`).join(" ");
+  const areaPath = `${linePath} L${x(history.length - 1).toFixed(1)},${(pad.t + innerH).toFixed(1)} L${x(0).toFixed(1)},${(pad.t + innerH).toFixed(1)} Z`;
+  const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+  const gridLevels = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(yMin + f * (yMax - yMin)));
+  const last = history[history.length - 1];
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="site-response-chart" role="img" aria-label="Response time chart">
+      {gridLevels.map((g, i) => (
+        <g key={i}>
+          <line x1={pad.l} x2={width - pad.r} y1={y(g)} y2={y(g)} stroke={gridStroke} strokeWidth="1" />
+          <text x={pad.l - 6} y={y(g) + 3} textAnchor="end" fontSize="9" fill={labelFill}>
+            {g}ms
+          </text>
+        </g>
+      ))}
+      <path d={areaPath} className="site-response-chart-area" />
+      <path d={linePath} className="site-response-chart-line" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={x(history.length - 1)} cy={y(last.ms)} r="3" className="site-response-chart-point" strokeWidth="1.5" />
+      <text x={width - pad.r} y={height - 6} textAnchor="end" fontSize="9" fill={labelFill}>
+        now
+      </text>
+      <text x={pad.l} y={height - 6} textAnchor="start" fontSize="9" fill={labelFill}>
+        -{history.length}s
+      </text>
+      <text x={width - pad.r} y={pad.t + 8} textAnchor="end" fontSize="9" fill={metaFill}>
+        cur {last.ms}ms · avg {avg}ms · min {min}ms · max {max}ms
+      </text>
+    </svg>
+  );
+}
+
+function SiteResponseMonitor({ preview = false, portalRef = null }) {
+  const [responseMs, setResponseMs] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [region, setRegion] = useState("");
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    let timer = null;
+    let regionFetched = false;
+
+    async function ping() {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      if (!origin) return;
+      const target = `${origin.replace(/\/+$/, "")}/api/ping?t=${Date.now()}`;
+      const start = performance.now();
+      try {
+        const res = await fetch(target, { method: "GET", cache: "no-store" });
+        if (!regionFetched && res.ok) {
+          regionFetched = true;
+          const data = await res.json().catch(() => null);
+          if (data?.region) setRegion(String(data.region));
+        }
+      } catch {
+        // ignore — round-trip still measured
+      }
+      if (cancelled) return;
+      const ms = Math.round(performance.now() - start);
+      setResponseMs(ms);
+      setHistory((h) => [...h, { t: Date.now(), ms }].slice(-SITE_RESPONSE_HISTORY_LIMIT));
+    }
+
+    ping();
+    timer = setInterval(ping, 1000);
+    return () => {
+      cancelled = true;
+      if (timer) clearInterval(timer);
+    };
+  }, []);
+
+  return (
+    <>
+      <button
+        type="button"
+        className="branded-toolbar-btn"
+        onClick={() => setOpen(true)}
+        title="Backend response monitor"
+      >
+        <Info size={13} />
+        <span>Response: {responseMs == null ? "—" : `${responseMs}ms`}</span>
+      </button>
+
+      {open
+        ? preview
+          ? createPortal(
+            <div className="site-response-overlay site-response-overlay--preview" onClick={() => setOpen(false)}>
+              <div className="redeem-panel site-response-panel" onClick={(event) => event.stopPropagation()}>
+                <div className="redeem-panel-header">
+                  <div>
+                    <div className="redeem-panel-kicker">Backend monitor</div>
+                    <h3>Response time</h3>
+                  </div>
+                  <button type="button" className="redeem-close" aria-label="Close" onClick={() => setOpen(false)}>
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="redeem-panel-body">
+                  <div className="site-response-stats">
+                    <div className="site-response-stat">
+                      <span className="site-response-stat-label">Current</span>
+                      <strong className="site-response-stat-value">{responseMs == null ? "—" : `${responseMs}ms`}</strong>
+                    </div>
+                    <div className="site-response-stat">
+                      <span className="site-response-stat-label">Average</span>
+                      <strong className="site-response-stat-value">
+                        {history.length ? `${Math.round(history.reduce((a, h) => a + h.ms, 0) / history.length)}ms` : "—"}
+                      </strong>
+                    </div>
+                    <div className="site-response-stat">
+                      <span className="site-response-stat-label">Samples</span>
+                      <strong className="site-response-stat-value">{history.length}</strong>
+                    </div>
+                  </div>
+
+                  <div className="site-response-chart-wrap">
+                    <SiteResponseChart history={history} />
+                  </div>
+
+                  <p className="site-response-footnote">
+                    Response time is measured every second against the backend REST endpoint.{" "}
+                    <span className="site-response-region">
+                      <span className="site-response-region-label">Region:</span>
+                      <span className="site-response-region-value">{region || "—"}</span>
+                    </span>
+                  </p>
+                </div>
+              </div>
+            </div>,
+            portalRef?.current ?? null
+          )
+          : createPortal(
+            <div className="site-response-overlay" onClick={() => setOpen(false)}>
+              <div className="redeem-panel site-response-panel" onClick={(event) => event.stopPropagation()}>
+                <div className="redeem-panel-header">
+                  <div>
+                    <div className="redeem-panel-kicker">Backend monitor</div>
+                    <h3>Response time</h3>
+                  </div>
+                  <button type="button" className="redeem-close" aria-label="Close" onClick={() => setOpen(false)}>
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="redeem-panel-body">
+                  <div className="site-response-stats">
+                    <div className="site-response-stat">
+                      <span className="site-response-stat-label">Current</span>
+                      <strong className="site-response-stat-value">{responseMs == null ? "—" : `${responseMs}ms`}</strong>
+                    </div>
+                    <div className="site-response-stat">
+                      <span className="site-response-stat-label">Average</span>
+                      <strong className="site-response-stat-value">
+                        {history.length ? `${Math.round(history.reduce((a, h) => a + h.ms, 0) / history.length)}ms` : "—"}
+                      </strong>
+                    </div>
+                    <div className="site-response-stat">
+                      <span className="site-response-stat-label">Samples</span>
+                      <strong className="site-response-stat-value">{history.length}</strong>
+                    </div>
+                  </div>
+
+                  <div className="site-response-chart-wrap">
+                    <SiteResponseChart history={history} />
+                  </div>
+
+                  <p className="site-response-footnote">
+                    Response time is measured every second against the backend REST endpoint.{" "}
+                    <span className="site-response-region">
+                      <span className="site-response-region-label">Region:</span>
+                      <span className="site-response-region-value">{region || "—"}</span>
+                    </span>
+                  </p>
+                </div>
+              </div>
+            </div>,
+            typeof document !== "undefined" ? document.body : null
+          )
+        : null}
+    </>
+  );
+}
+
+function Navbar({ active, brand }) {
   const [open, setOpen] = useState(false);
   const [cartItems] = useCartItems();
   const cartCount = cartTotalQuantity(cartItems);
@@ -652,11 +762,13 @@ function Navbar({ active }) {
     return user.user_metadata?.full_name || user.user_metadata?.name || user.email;
   };
 
+  if (brand) return null;
+
   return (
-    <nav className="navbar">
+    <nav className={`navbar${brand ? " navbar--branded" : ""}`}>
       <div className="container nav-inner">
         <div className="nav-head">
-          <Brand />
+          <Brand brand={brand} />
           <button
             className={`burger ${open ? "is-open" : ""}`}
             type="button"
@@ -694,16 +806,16 @@ function Navbar({ active }) {
               <li className="nav-user-wrap">
                 <div className="nav-user">
                   {getDiscordAvatar() ? (
-                    <img 
-                      src={getDiscordAvatar()} 
-                      alt="User Avatar" 
-                      className="nav-user-avatar" 
+                    <img
+                      src={getDiscordAvatar()}
+                      alt="User Avatar"
+                      className="nav-user-avatar"
                     />
                   ) : (
                     <div className="nav-user-avatar-placeholder" />
                   )}
                   <span className="nav-user-name">{getDiscordUsername()}</span>
-                  <button 
+                  <button
                     className="nav-logout"
                     onClick={handleLogout}
                     title="Logout"
@@ -740,7 +852,7 @@ function Footer() {
             <div className="footer-contact-card" data-reveal>
               <span>
                 <small>CONTACT US AT</small>
-                <strong>admin@unbanhwid.com</strong>
+                <strong>admin@phantom-cheats.com</strong>
               </span>
               <a className="footer-contact-action" href={DISCORD_INVITE_URL} aria-label="Contact support on Discord">
                 <ArrowRight size={21} strokeWidth={3.2} />
@@ -764,13 +876,13 @@ function Footer() {
           <div className="footer-links">
             <Link href="/pomoc#regulamin">Terms</Link>
             <Link href="/pomoc#polityka-prywatnosci">Refunds & Privacy Policy</Link>
-            <a className="powered-by" href="https://unbanhwid.com">
+            <a className="powered-by" href="https://phantom-cheats.com">
               <span className="powered-by-icon">
-                <img src="/images/unbanhwid-logo.png" alt="" />
+                <img src="/images/phantom.png" alt="" />
               </span>
               <span>
                 <small>Powered by</small>
-                UNBANHWID.COM
+                phantom-cheats.com
               </span>
             </a>
           </div>
@@ -788,7 +900,7 @@ function HeaderStatus() {
 
   async function copyIp() {
     try {
-      await navigator.clipboard.writeText("unbanhwid.com");
+      await navigator.clipboard.writeText("phantom-cheats.com");
       setCopied(true);
       setTimeout(() => setCopied(false), 1400);
     } catch {
@@ -805,7 +917,7 @@ function HeaderStatus() {
       <div className="status-content">
         <div className="status-row">
           <div className="status-name">
-            <strong>unbanhwid.com</strong>
+            <strong>phantom-cheats.com</strong>
             <button className="copy-ip" type="button" onClick={copyIp} aria-label="Copy address">
               {copied ? <Check size={18} /> : <Copy size={18} />}
             </button>
@@ -830,7 +942,7 @@ function HomeHero() {
       <div className="container">
         <div className="hero-banner" data-reveal data-reveal-group data-reveal-base="140">
           <div data-reveal>
-            <h1>unbanhwid.com</h1>
+            <h1>phantom-cheats.com</h1>
             <h2>Elevate your gameplay with cheats!</h2>
           </div>
           <p data-reveal>Top Provider of Undetected Premium Game Cheats - Instant Delivery &amp; 24/7 Support</p>
@@ -847,159 +959,6 @@ function HomeHero() {
         </div>
       </div>
     </header>
-  );
-}
-
-function getRevealDelayMs(node) {
-  const cssDelay = getComputedStyle(node).getPropertyValue("--reveal-delay").trim();
-  if (cssDelay.endsWith("ms")) {
-    return Number.parseFloat(cssDelay);
-  }
-
-  if (cssDelay.endsWith("s")) {
-    return Number.parseFloat(cssDelay) * 1000;
-  }
-
-  const group = node.closest("[data-reveal-group]");
-  return Number(group?.getAttribute("data-reveal-base") || 0);
-}
-
-function HeroStatItem({ stat, value }) {
-  const itemRef = useRef(null);
-  const decimals = stat.key === "rating" ? 2 : 0;
-  const target = useMemo(() => {
-    const parsed = Number.parseFloat(String(value).replace(",", "."));
-    return Number.isFinite(parsed) ? parsed : 0;
-  }, [value]);
-  const [display, setDisplay] = useState(() => (decimals > 0 ? "0.00" : "0"));
-  const Icon = stat.icon;
-
-  useEffect(() => {
-    const node = itemRef.current;
-    if (!node) return undefined;
-
-    let frame = 0;
-    let revealTimer = 0;
-    let started = false;
-
-    function runCountUp() {
-      if (started) return;
-      started = true;
-
-      const prefersReducedMotion =
-        typeof window.matchMedia === "function" &&
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-      if (prefersReducedMotion) {
-        setDisplay(decimals > 0 ? target.toFixed(decimals) : String(Math.round(target)));
-        return;
-      }
-
-      const durationMs = 2000;
-      let startTime = 0;
-
-      setDisplay(decimals > 0 ? "0.00" : "0");
-
-      function tick(timestamp) {
-        if (!startTime) startTime = timestamp;
-        const progress = Math.min((timestamp - startTime) / durationMs, 1);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        const currentValue = target * eased;
-
-        setDisplay(decimals > 0 ? currentValue.toFixed(decimals) : String(Math.round(currentValue)));
-
-        if (progress < 1) {
-          frame = requestAnimationFrame(tick);
-        } else {
-          setDisplay(decimals > 0 ? target.toFixed(decimals) : String(Math.round(target)));
-        }
-      }
-
-      frame = requestAnimationFrame(tick);
-    }
-
-    function scheduleCountUp() {
-      window.clearTimeout(revealTimer);
-      revealTimer = window.setTimeout(runCountUp, getRevealDelayMs(node));
-    }
-
-    if (node.classList.contains("is-visible")) {
-      scheduleCountUp();
-    } else {
-      const mutation = new MutationObserver(() => {
-        if (!node.classList.contains("is-visible")) return;
-        mutation.disconnect();
-        scheduleCountUp();
-      });
-
-      mutation.observe(node, { attributes: true, attributeFilter: ["class"] });
-
-      const fallback = new IntersectionObserver(
-        ([entry]) => {
-          if (!entry.isIntersecting) return;
-          fallback.disconnect();
-          mutation.disconnect();
-          scheduleCountUp();
-        },
-        { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }
-      );
-
-      fallback.observe(node);
-
-      return () => {
-        mutation.disconnect();
-        fallback.disconnect();
-        window.clearTimeout(revealTimer);
-        cancelAnimationFrame(frame);
-      };
-    }
-
-    return () => {
-      window.clearTimeout(revealTimer);
-      cancelAnimationFrame(frame);
-    };
-  }, [decimals, target]);
-
-  return (
-    <div className="hero-stat-item" ref={itemRef}>
-      <div className="hero-stat-icon">
-        <Icon size={stat.iconSize || 34} />
-      </div>
-      <div>
-        <strong className="hero-stat-value">{display}</strong>
-        <span>{stat.label}</span>
-      </div>
-    </div>
-  );
-}
-
-function HeroStats({ reviewCount = 0, averageRating = null }) {
-  const heroStats = useMemo(
-    () =>
-      heroStatsBase.map((stat) => {
-        if (stat.key === "reviews") {
-          return { ...stat, value: reviewCount > 0 ? String(reviewCount) : "0" };
-        }
-
-        if (stat.key === "rating") {
-          return { ...stat, value: averageRating || "0.00" };
-        }
-
-        return stat;
-      }),
-    [reviewCount, averageRating]
-  );
-
-  return (
-    <section className="hero-stats-section" aria-label="unbanhwid.com stats">
-      <div className="container">
-        <div className="hero-stats-panel" data-reveal-group data-reveal-base="70">
-          {heroStats.map((stat) => (
-            <HeroStatItem key={stat.label} stat={stat} value={stat.value} />
-          ))}
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -1067,14 +1026,6 @@ const bestSellerProducts = [
     tags: ["# UNDETECTED "],
   },
   {
-    slug: "arc-raiders",
-    name: "Arc Raiders",
-    price: "4.99 USD",
-    oldPrice: "9.99 USD",
-    image: "/images/arc_raiders.png",
-    tags: ["# UNDETECTED"],
-  },
-  {
     slug: "call-of-duty",
     name: "Call of Duty",
     price: "4.99 USD",
@@ -1089,6 +1040,14 @@ const bestSellerProducts = [
     oldPrice: "9.99 USD",
     image: "/images/apex-legends.png",
     tags: ["# UNDETECTED"],
+  },
+  {
+    slug: "kbm-aim-assist",
+    name: "KBM Aim Assist",
+    price: "19.99 USD",
+    oldPrice: "29.99 USD",
+    image: "/images/aim-assist.png",
+    tags: ["# NEW"],
   },
   {
     slug: "permanent-spoofer",
@@ -1141,36 +1100,16 @@ const whyChooseUsBenefits = [
   },
 ];
 
-const beforeSpoofPoints = [
-  "Hardware serials banned",
-  "Blocked Matchmaking & Lobbies",
-  "Fear of Losing Progress",
-  "Wasting Time on Ban Appeals",
-  "Failed manual bypass attempts",
-  "Friends play without you",
-  "Wasting your skill progress",
-];
-
-const afterSpoofPoints = [
-  "Permanently HWID unbanned",
-  "Fresh hardware serials identity",
-  "Play again without instant kicks",
-  "No worries and determination",
-  "Ranked ladder await once more",
-  "A Fresh and Clean Start",
-  "Friends can join you",
-];
-
-const RECENT_PURCHASES_STORAGE_KEY = "unbanhwid.com-recent-purchases-v2";
+const RECENT_PURCHASES_STORAGE_KEY = "phantom-cheats.com-recent-purchases-v2";
 const RECENT_PURCHASES_MAX = 4;
 const RECENT_PURCHASE_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const RECENT_PURCHASE_MAX_INTERVAL_MS = 300 * 60 * 1000;
 
 const recentPurchaseProducts = [
   { slug: "fortnite-private", name: "Fortnite Private", image: "/images/fortnite.png" },
-  { slug: "arc-raiders", name: "Arc Raiders", image: "/images/arc_raiders.png" },
   { slug: "call-of-duty", name: "Call of Duty", image: "/images/cod.png" },
   { slug: "apex-legends", name: "Apex Legends", image: "/images/apex-legends.png" },
+  { slug: "kbm-aim-assist", name: "KBM Aim Assist", image: "/images/aim-assist.png" },
   { slug: "permanent-spoofer", name: "Permanent Spoofer", image: "/images/perm-spoofer.png" },
   { slug: "temporary-spoofer", name: "Temporary Spoofer", image: "/images/temp-spoofer.png" },
 ];
@@ -1381,6 +1320,15 @@ const temporarySpooferRequirements = [
   { label: "Spoofer Type", value: "Temporary", icon: Fingerprint },
   { label: "Disk Spoofing", value: "Yes", icon: HardDrive },
   { label: "TPM Spoofing", value: "Yes", icon: KeyRound },
+];
+
+const kbmAimAssistRequirements = [
+  { label: "Operating System", value: "Windows 10 & 11", icon: Monitor },
+  { label: "Processors", value: "AMD & Intel", icon: Cpu },
+  { label: "Input", value: "Mouse & Keyboard", icon: Gamepad2 },
+  { label: "Output", value: "Virtual Xbox 360 Pad", icon: Gamepad2 },
+  { label: "Driver", value: "ViGEm Bus (auto-install)", icon: ShieldCheck },
+  { label: "Platform", value: "Any controller-only game", icon: Layers },
 ];
 
 const apexLegendsRequirements = [
@@ -1604,7 +1552,7 @@ const checkoutProducts = [
     price: "9.99 USD",
     image: "/images/best-seller-product.png",
     description:
-      "A clean unbanhwid.com build for Rainbow Six players who want a lightweight setup, instant delivery, and simple configuration.",
+      "A clean phantom-cheats.com build for Rainbow Six players who want a lightweight setup, instant delivery, and simple configuration.",
     variants: [
       { label: "1 Day", price: "9.99 USD" },
       { label: "3 Days", price: "14.99 USD" },
@@ -1619,13 +1567,36 @@ const checkoutProducts = [
     price: "14.99 USD",
     image: "/images/best-seller-product.png",
     description:
-      "The balanced unbanhwid.com package with more tools, stronger visuals, and premium configuration options for Rainbow Six.",
+      "The balanced phantom-cheats.com package with more tools, stronger visuals, and premium configuration options for Rainbow Six.",
     variants: [
       { label: "1 Day", price: "14.99 USD" },
       { label: "3 Days", price: "24.99 USD" },
       { label: "1 Week", price: "39.99 USD" },
       { label: "1 Month", price: "59.99 USD" },
     ],
+  },
+  {
+    slug: "kbm-aim-assist",
+    name: "KBM Aim Assist",
+    shortName: "Aim Assist",
+    price: "19.99 USD",
+    image: "/images/aim-assist.png",
+    description:
+      "Turn mouse and keyboard into a virtual Xbox 360 controller with sticky aim, recoil control, and full stick tuning for controller-only games.",
+    variants: [
+      { label: "7 Days License", price: "19.99 USD" },
+      { label: "30 Days License", price: "29.99 USD" },
+      { label: "365 Days License", price: "89.99 USD" },
+    ],
+    secondaryImages: [
+      { src: "/images/secondary-images/emu1.png", alt: "KBM Aim Assist | Main Panel" },
+      { src: "/images/secondary-images/emu2.png", alt: "KBM Aim Assist | Stick Settings" },
+      { src: "/images/secondary-images/emu3.png", alt: "KBM Aim Assist | Keybinds" },
+      { src: "/images/secondary-images/emu4.png", alt: "KBM Aim Assist | Aim Assist" },
+      { src: "/images/secondary-images/emu5.png", alt: "KBM Aim Assist | Crosshair & Configs" },
+    ],
+    requirements: kbmAimAssistRequirements,
+    features: kbmAimAssistFeatures,
   },
   {
     slug: "permanent-spoofer",
@@ -1640,8 +1611,8 @@ const checkoutProducts = [
       { label: "Lifetime License", price: "29.99 USD" },
     ],
     secondaryImages: [
-      { src: "/images/secondary-images/beforespoof.png", alt: "Before Spoof" },
       { src: "/images/secondary-images/spoofing.png", alt: "Spoofing" },
+      { src: "/images/secondary-images/beforespoof.png", alt: "Before Spoof" },
       { src: "/images/secondary-images/afterspoof.png", alt: "After Spoof" },
     ],
     requirements: hwidSpooferRequirements,
@@ -1670,38 +1641,17 @@ const checkoutProducts = [
     features: temporarySpooferFeatures,
   },
   {
-    slug: "arc-raiders",
-    name: "Arc Raiders",
-    shortName: "Arc Raiders",
-    price: "4.99 USD",
-    image: "/images/arc_raiders.png",
-    description:
-      "A stable Arc Raiders product with fast setup, instant access, and the unbanhwid.com product panel.",
-    variants: [
-      { label: "1 Day License", price: "4.99 USD" },
-      { label: "7 Days License", price: "19.99 USD" },
-      { label: "30 Days License", price: "49.99 USD" },
-    ],
-    features: arcRaidersFeatures,
-    secondaryImages: [
-      { src: "/images/secondary-images/arc_menu.png", alt: "Arc Raiders Menu" },
-      { src: "/images/secondary-images/arc_aimbot.png", alt: "Arc Raiders Aimbot" },
-      { src: "/images/secondary-images/arc_esp.png", alt: "Arc Raiders ESP" },
-      { src: "/images/secondary-images/arc_world_esp.png", alt: "Arc Raiders World ESP", lightboxOnly: true },
-    ],
-  },
-  {
     slug: "call-of-duty",
     name: "Call of Duty",
     shortName: "Call of Duty",
     price: "4.99 USD",
     image: "/images/cod.png",
     description:
-      "A stable Call of Duty product with fast setup, instant access, and the unbanhwid.com product panel.",
+      "A stable Call of Duty product with fast setup, instant access, and the phantom-cheats.com product panel.",
     variants: [
       { label: "1 Day License", price: "4.99 USD" },
-      { label: "7 Days License", price: "19.99 USD" },
-      { label: "30 Days License", price: "49.99 USD" },
+      { label: "7 Days License", price: "14.99 USD" },
+      { label: "30 Days License", price: "39.99 USD" },
       { label: "Lifetime License", price: "99.99 USD" },
     ],
     requirements: callOfDutyRequirements,
@@ -1723,11 +1673,11 @@ const checkoutProducts = [
     price: "4.99 USD",
     image: "/images/apex-legends.png",
     description:
-      "A stable Apex Legends product with fast setup, instant access, and the unbanhwid.com product panel.",
+      "A stable Apex Legends product with fast setup, instant access, and the phantom-cheats.com product panel.",
     variants: [
       { label: "1 Day License", price: "4.99 USD" },
-      { label: "7 Days License", price: "19.99 USD" },
-      { label: "30 Days License", price: "49.99 USD" },
+      { label: "7 Days License", price: "14.99 USD" },
+      { label: "30 Days License", price: "39.99 USD" },
       { label: "Lifetime License", price: "99.99 USD" },
     ],
     requirements: apexLegendsRequirements,
@@ -1789,31 +1739,12 @@ const loaderProducts = [
     note: "Use the latest game build and disable overlays before launch for the cleanest session.",
     subscription: "Redeem your active license to unlock the current Fortnite Private loader build and sync access instantly.",
     steps: [
-      "Open the unbanhwid.com launcher and sign in to your active license.",
+      "Open the phantom-cheats.com launcher and sign in to your active license.",
       "Select Fortnite Private and let the loader sync the current build.",
       "Start the game in borderless or windowed mode and wait for the session check.",
       "Press Launch Loader and confirm the in-game ready status before playing.",
     ],
     modules: ["Aimbot", "Visuals", "Radar", "Streamproof", "Config Sync", "FOV Control", "Quick Launch", "Hotkeys"],
-  },
-  {
-    slug: "arc-raiders",
-    name: "Arc Raiders",
-    image: "/images/arc_raiders.png",
-    featurePreviewCount: 3,
-    version: "v1.8.4",
-    updated: "26.06.2026",
-    compatibility: "Windows 10/11",
-    description: "External Cheat, remains undetected at all times, making it perfect for long-term casual gameplay.",
-    note: "Always let the loader finish file verification before attaching to the running game process.",
-    subscription: "Redeem your Arc Raiders key to activate the loader subscription and pull the latest verified package.",
-    steps: [
-      "Log in to the unbanhwid.com panel and choose the Arc Raiders license.",
-      "Run the pre-launch verification to sync the current loader package.",
-      "Open Arc Raiders, stay in the lobby, and return to the loader panel.",
-      "Inject the selected module pack and wait for the ready confirmation.",
-    ],
-    modules: ["Aimbot", "Visuals", "Radar", "Triggerbot", "Realtime Status", "Config Presets"],
   },
   {
     slug: "call-of-duty",
@@ -1827,7 +1758,7 @@ const loaderProducts = [
     note: "Launch Call of Duty in borderless or windowed mode and stay in the lobby before injecting.",
     subscription: "Redeem your Call of Duty key to unlock the loader subscription and sync the latest package.",
     steps: [
-      "Open the unbanhwid.com panel and select the Call of Duty license.",
+      "Open the phantom-cheats.com panel and select the Call of Duty license.",
       "Let the loader verify and sync the current build.",
       "Start Call of Duty, stay in the lobby, then return to the loader.",
       "Press Launch and wait for the in-game ready confirmation.",
@@ -1846,12 +1777,31 @@ const loaderProducts = [
     note: "Launch Apex in borderless or windowed mode and stay in the lobby before injecting.",
     subscription: "Redeem your Apex Legends key to unlock the loader subscription and sync the latest package.",
     steps: [
-      "Open the unbanhwid.com panel and select the Apex Legends license.",
+      "Open the phantom-cheats.com panel and select the Apex Legends license.",
       "Let the loader verify and sync the current build.",
       "Start Apex Legends, stay in the lobby, then return to the loader.",
       "Press Launch and wait for the in-game ready confirmation.",
     ],
     modules: ["Aimbot", "Visuals", "Radar", "Skinchanger", "World ESP", "Configs", "Spectators", "V-Sync"],
+  },
+  {
+    slug: "kbm-aim-assist",
+    name: "KBM Aim Assist",
+    image: "/images/aim-assist.png",
+    featurePreviewCount: 3,
+    version: "v1.0.0",
+    updated: "31.08.2026",
+    compatibility: "Windows 10/11",
+    description: "Mouse & keyboard to virtual Xbox 360 controller with sticky aim, recoil reducer, and full stick tuning.",
+    note: "Run the emulator before launching your game and keep the panel open in the background for live tuning.",
+    subscription: "Redeem your KBM Aim Assist key to unlock loader access and download the latest emulator build.",
+    steps: [
+      "Open the phantom-cheats.com loader and select KBM Aim Assist.",
+      "Let the loader verify your license and sync the current build.",
+      "Launch the emulator, apply your config, and confirm the virtual controller is active.",
+      "Start your game and use mouse & keyboard with controller aim assist enabled.",
+    ],
+    modules: ["Emulator", "Sticky Aim", "No Recoil", "Keybinds", "Stick Curve", "Crosshair", "Bunny Hop", "Configs"],
   },
   {
     slug: "permanent-spoofer",
@@ -1865,7 +1815,7 @@ const loaderProducts = [
     note: "Close launchers and anti-cheat related processes before applying a new spoof profile.",
     subscription: "Redeem your spoofer license to enable subscription access, fresh profiles, and the latest supported build.",
     steps: [
-      "Open the unbanhwid.com spoofer loader and choose your target profile.",
+      "Open the phantom-cheats.com spoofer loader and choose your target profile.",
       "Run the environment scan and confirm that all required services are ready.",
       "Click Apply Spoof and wait until the hardware profile switch is complete.",
       "Restart the machine or selected services, then launch your game from a fresh session.",
@@ -1884,7 +1834,7 @@ const loaderProducts = [
     note: "Close anti-cheat related processes before applying a temporary spoof profile.",
     subscription: "Redeem your Temporary Spoofer key to unlock loader access and pull the latest supported build.",
     steps: [
-      "Open the unbanhwid.com temporary spoofer loader and choose your profile.",
+      "Open the phantom-cheats.com temporary spoofer loader and choose your profile.",
       "Run the environment scan and confirm all required services are ready.",
       "Click Apply Spoof and wait until the temporary profile is active.",
       "Launch your game from a fresh session for the current spoof window.",
@@ -1952,22 +1902,6 @@ const loaderChangelogBySlug = {
       ],
     },
   ],
-  "arc-raiders": [
-    {
-      version: "v1.8.4",
-      date: "26.06.2026",
-      notes: [
-        "Triggerbot delay tuning for more natural timing.",
-        "Loot ESP category filters added.",
-        "Realtime Status polling reduced to lower CPU usage.",
-      ],
-    },
-    {
-      version: "v1.8.0",
-      date: "12.06.2026",
-      notes: ["Config Presets import/export.", "Improved Denuvo compatibility."],
-    },
-  ],
   "call-of-duty": [
     {
       version: "v1.0.0",
@@ -1993,6 +1927,17 @@ const loaderChangelogBySlug = {
       version: "v1.1.4",
       date: "01.07.2026",
       notes: ["V-Sync frame pacing fix for high refresh monitors."],
+    },
+  ],
+  "kbm-aim-assist": [
+    {
+      version: "v1.0.0",
+      date: "31.08.2026",
+      notes: [
+        "Initial release with virtual Xbox 360 controller emulation.",
+        "Sticky aim, recoil reducer, and bunny hop modules added.",
+        "Config import/export and Fortnite mode included.",
+      ],
     },
   ],
   "permanent-spoofer": [
@@ -2047,27 +1992,6 @@ async function fetchLoaderChangelogs(appId) {
     return [];
   }
 }
-
-const arcRaidersLoaderFeatures = [
-  {
-    title: "Information",
-    items: [
-      "Windows 10 & 11",
-      "Processors: AMD & Intel",
-      "Anti-cheat: Denuvo",
-      "Spoofer Included: No",
-      "Platform: Steam & Epic Games",
-    ],
-  },
-  {
-    title: "Aimbot",
-    items: ["Aimbot", "Aim prediction", "Customization", "Triggerbot", "Miscellaneous"],
-  },
-  {
-    title: "Visuals",
-    items: ["ESP", "Loot ESP", "Loot Category", "Smart Loot", "Display Style"],
-  },
-];
 
 const fortniteLoaderFeatures = [
   {
@@ -2132,6 +2056,34 @@ const callOfDutyLoaderFeatures = [
   },
 ];
 
+const kbmAimAssistLoaderFeatures = [
+  {
+    title: "Information",
+    items: [
+      "Windows 10 & 11",
+      "Processors: AMD & Intel",
+      "Input: Mouse & Keyboard",
+      "Output: Virtual Xbox 360 Pad",
+      "Platform: Any controller-only game",
+    ],
+  },
+  {
+    title: "Controller Emulation",
+    items: [
+      "ViGEm virtual pad",
+      "X/Y sensitivity & invert",
+      "Dead zone & noise filter",
+      "Linear / Exponential curve",
+      "Sync with Windows mouse DPI",
+      "Fortnite mode",
+    ],
+  },
+  {
+    title: "Aim Assist",
+    items: ["Sticky aim", "ADS-only mode", "Recoil reducer", "Bunny hop", "Crosshair overlay"],
+  },
+];
+
 const temporarySpooferLoaderFeatures = [
   {
     title: "Information",
@@ -2160,9 +2112,9 @@ const temporarySpooferLoaderFeatures = [
 ];
 
 const loaderFeatureSectionsBySlug = {
+  "kbm-aim-assist": () => kbmAimAssistLoaderFeatures,
   "permanent-spoofer": () => hwidSpooferFeatures.slice(0, 2),
   "temporary-spoofer": () => temporarySpooferLoaderFeatures,
-  "arc-raiders": () => arcRaidersLoaderFeatures,
   "call-of-duty": () => callOfDutyLoaderFeatures,
   "fortnite-private": () => fortniteLoaderFeatures,
   "apex-legends": () => apexLegendsLoaderFeatures,
@@ -2175,8 +2127,13 @@ function productSlug(name = "") {
     .replace(/^-+|-+$/g, "");
 }
 
-function loaderHref(product) {
-  return `/loader/${product.slug}`;
+function loaderHref(product, brandSlug) {
+  const base = `/loader/${product.slug}`;
+  return brandSlug ? `${base}?${brandSlug}` : base;
+}
+
+function getResellerProductImage(slug) {
+  return `/images/loader-resellers/${slug}.png`;
 }
 
 function isLoaderProductInactive(displayMeta) {
@@ -2361,147 +2318,6 @@ function WhyChooseUsSection() {
   );
 }
 
-function BeforeAfterSection() {
-  const sliderRef = useRef(null);
-  const [position, setPosition] = useState(50);
-  const [frameWidth, setFrameWidth] = useState(0);
-  const draggingRef = useRef(false);
-
-  const updateFrameWidth = useCallback(() => {
-    if (!sliderRef.current) return;
-    setFrameWidth(sliderRef.current.offsetWidth);
-  }, []);
-
-  useLayoutEffect(() => {
-    updateFrameWidth();
-
-    if (!sliderRef.current || typeof ResizeObserver === "undefined") {
-      return undefined;
-    }
-
-    const observer = new ResizeObserver(() => updateFrameWidth());
-    observer.observe(sliderRef.current);
-    return () => observer.disconnect();
-  }, [updateFrameWidth]);
-
-  const setPositionFromClientX = useCallback((clientX) => {
-    const rect = sliderRef.current?.getBoundingClientRect();
-    if (!rect?.width) return;
-
-    const nextPosition = ((clientX - rect.left) / rect.width) * 100;
-    setPosition(Math.min(100, Math.max(0, nextPosition)));
-  }, []);
-
-  useEffect(() => {
-    const handlePointerMove = (event) => {
-      if (!draggingRef.current) return;
-      setPositionFromClientX(event.clientX);
-    };
-
-    const stopDragging = () => {
-      draggingRef.current = false;
-    };
-
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", stopDragging);
-    window.addEventListener("pointercancel", stopDragging);
-
-    return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", stopDragging);
-      window.removeEventListener("pointercancel", stopDragging);
-    };
-  }, [setPositionFromClientX]);
-
-  const startDragging = (event) => {
-    draggingRef.current = true;
-    sliderRef.current?.setPointerCapture?.(event.pointerId);
-    setPositionFromClientX(event.clientX);
-  };
-
-  return (
-    <section className="section before-after-section" data-reveal-group data-reveal-base="70">
-      <div className="container">
-        <div className="before-after-head" data-reveal>
-          <h2>
-            <Layers size={26} strokeWidth={2.4} />
-            Before and After Spoof
-          </h2>
-        </div>
-
-        <div className="before-after-layout" data-reveal-group data-reveal-base="130">
-          <div className="before-after-side before-after-side-before" data-reveal>
-            <h3>Before Spoof</h3>
-            <ul>
-              {beforeSpoofPoints.map((point) => (
-                <li key={point}>
-                  <X size={16} strokeWidth={2.4} aria-hidden="true" />
-                  <span>{point}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div
-            className="before-after-slider"
-            data-reveal
-            ref={sliderRef}
-            onPointerDown={startDragging}
-            role="presentation"
-          >
-            <img
-              className="before-after-image before-after-image-after"
-              src="/images/secondary-images/after.png"
-              alt="After spoof"
-              draggable={false}
-            />
-
-            <div className="before-after-before-clip" style={{ width: `${position}%` }}>
-              <img
-                className="before-after-image before-after-image-before"
-                src="/images/secondary-images/before.png"
-                alt="Before spoof"
-                style={{ width: frameWidth ? `${frameWidth}px` : "100%" }}
-                draggable={false}
-              />
-            </div>
-
-            <div className="before-after-handle" style={{ left: `${position}%` }} aria-hidden="true">
-              <span />
-            </div>
-
-            <span className="before-after-label before-after-label-before">BEFORE</span>
-            <span className="before-after-label before-after-label-after">AFTER</span>
-          </div>
-
-          <div className="before-after-side before-after-side-after" data-reveal>
-            <h3>After Spoof</h3>
-            <ul>
-              {afterSpoofPoints.map((point) => (
-                <li key={point}>
-                  <Check size={16} strokeWidth={2.4} aria-hidden="true" />
-                  <span>{point}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="before-after-actions" data-reveal>
-            <Link className="button button-secondary before-after-action-primary" href="/product/permanent-spoofer">
-              <ShoppingCart size={18} />
-              Purchase, UNBAN NOW!
-            </Link>
-            <Link className="button button-primary-soft before-after-action-secondary" href="/product/permanent-spoofer#product-features">
-              <ScrollText size={18} />
-              Check my compatibility
-            </Link>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function PurchasesSection() {
   const recent = useRecentPurchases();
   const now = useNowTick(60000);
@@ -2541,204 +2357,6 @@ function PurchasesSection() {
         </div>
       </div>
     </section>
-  );
-}
-
-function getRenderedImageBounds(img) {
-  const rect = img.getBoundingClientRect();
-  const naturalRatio = img.naturalWidth / img.naturalHeight;
-  const elementRatio = rect.width / rect.height;
-
-  if (!img.naturalWidth || !img.naturalHeight) {
-    return {
-      left: rect.left,
-      top: rect.top,
-      width: rect.width,
-      height: rect.height,
-    };
-  }
-
-  if (naturalRatio > elementRatio) {
-    const height = rect.width / naturalRatio;
-    return {
-      left: rect.left,
-      top: rect.top + (rect.height - height) / 2,
-      width: rect.width,
-      height,
-    };
-  }
-
-  const width = rect.height * naturalRatio;
-  return {
-    left: rect.left + (rect.width - width) / 2,
-    top: rect.top,
-    width,
-    height: rect.height,
-  };
-}
-
-function ProductImageMagnifier({ src, alt }) {
-  const containerRef = useRef(null);
-  const [lens, setLens] = useState(null);
-  const zoom = 2.5;
-  const lensSize = 180;
-
-  useEffect(() => {
-    setLens(null);
-  }, [src]);
-
-  function updateLens(event) {
-    const container = containerRef.current;
-    const img = container?.querySelector("img");
-
-    if (!container || !img) {
-      return;
-    }
-
-    const bounds = getRenderedImageBounds(img);
-    const x = event.clientX - bounds.left;
-    const y = event.clientY - bounds.top;
-
-    if (x < 0 || y < 0 || x > bounds.width || y > bounds.height) {
-      setLens(null);
-      return;
-    }
-
-    const containerRect = container.getBoundingClientRect();
-    const ratioX = x / bounds.width;
-    const ratioY = y / bounds.height;
-    const backgroundWidth = bounds.width * zoom;
-    const backgroundHeight = bounds.height * zoom;
-
-    setLens({
-      left: event.clientX - containerRect.left - lensSize / 2,
-      top: event.clientY - containerRect.top - lensSize / 2,
-      backgroundPosition: `${-(ratioX * backgroundWidth - lensSize / 2)}px ${-(ratioY * backgroundHeight - lensSize / 2)}px`,
-      backgroundSize: `${backgroundWidth}px ${backgroundHeight}px`,
-    });
-  }
-
-  return (
-    <div
-      ref={containerRef}
-      className="product-image-magnifier"
-      onMouseMove={updateLens}
-      onMouseLeave={() => setLens(null)}
-    >
-      <img src={src} alt={alt} draggable={false} />
-      {lens ? (
-        <div
-          className="product-image-magnifier-lens"
-          style={{
-            width: lensSize,
-            height: lensSize,
-            transform: `translate(${lens.left}px, ${lens.top}px)`,
-            backgroundImage: `url(${src})`,
-            backgroundPosition: lens.backgroundPosition,
-            backgroundSize: lens.backgroundSize,
-          }}
-          aria-hidden="true"
-        />
-      ) : null}
-    </div>
-  );
-}
-
-function ProductImageLightbox({ images, index, onIndexChange, onClose }) {
-  useEffect(() => {
-    if (index === null) {
-      return undefined;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    function onKeyDown(event) {
-      if (event.key === "Escape") {
-        onClose();
-      }
-
-      if (event.key === "ArrowLeft") {
-        onIndexChange((index - 1 + images.length) % images.length);
-      }
-
-      if (event.key === "ArrowRight") {
-        onIndexChange((index + 1) % images.length);
-      }
-    }
-
-    window.addEventListener("keydown", onKeyDown);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [images.length, index, onClose, onIndexChange]);
-
-  if (index === null || typeof document === "undefined") {
-    return null;
-  }
-
-  const image = images[index];
-
-  return createPortal(
-    <div
-      className="product-image-lightbox"
-      role="dialog"
-      aria-modal="true"
-      aria-label={image.alt}
-      onClick={onClose}
-    >
-      <div className="product-image-lightbox-inner" onClick={(event) => event.stopPropagation()}>
-        <button
-          type="button"
-          className="product-image-lightbox-arrow product-image-lightbox-arrow-prev"
-          onClick={() => onIndexChange((index - 1 + images.length) % images.length)}
-          aria-label="Previous image"
-        >
-          <ChevronLeft size={24} strokeWidth={2.2} />
-        </button>
-
-        <figure className="product-image-lightbox-figure">
-          <div className="product-image-lightbox-stage">
-            <ProductImageMagnifier src={image.src} alt={image.alt} />
-            <div className="product-secondary-more product-image-lightbox-counter" aria-live="polite">
-              <Images size={12} strokeWidth={2.4} />
-              <span>
-                {index + 1}/{images.length}
-              </span>
-            </div>
-          </div>
-          <figcaption>{image.alt}</figcaption>
-        </figure>
-
-        <button
-          type="button"
-          className="product-image-lightbox-arrow product-image-lightbox-arrow-next"
-          onClick={() => onIndexChange((index + 1) % images.length)}
-          aria-label="Next image"
-        >
-          <ChevronRight size={24} strokeWidth={2.2} />
-        </button>
-
-        <div className="product-image-lightbox-thumbs" role="tablist" aria-label="Image previews">
-          {images.map((thumb, thumbIndex) => (
-            <button
-              type="button"
-              key={thumb.src}
-              role="tab"
-              aria-selected={thumbIndex === index}
-              className={`product-image-lightbox-thumb${thumbIndex === index ? " is-active" : ""}`}
-              onClick={() => onIndexChange(thumbIndex)}
-              aria-label={thumb.alt || `Image ${thumbIndex + 1}`}
-            >
-              <img src={thumb.src} alt="" />
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>,
-    document.body,
   );
 }
 
@@ -3292,6 +2910,11 @@ const callOfDutyShowcaseChapters = [
   { time: 169, label: "Clip 3" },
 ];
 
+const kbmAimAssistShowcaseChapters = [
+  { time: 1, label: "Aim Assist" },
+  { time: 77, label: "No Recoil" },
+];
+
 const loaderGuideChapters = [
   { time: 2, label: "Login" },
   { time: 14, label: "Redeem License" },
@@ -3303,16 +2926,33 @@ const productShowcaseBySlug = {
   "call-of-duty": {
     streamableId: "of6gbj",
     chapters: callOfDutyShowcaseChapters,
+    legacyBranding: true,
   },
   "apex-legends": {
     streamableId: "wvgyc8",
     chapters: apexShowcaseChapters,
+    legacyBranding: true,
   },
   "fortnite-private": {
     streamableId: "4l66yt",
     chapters: [],
+    legacyBranding: true,
+  },
+  "kbm-aim-assist": {
+    src: "https://cdn.discordapp.com/attachments/1489341051855438084/1537965885220978688/2026-08-14_16-22-16.mp4?ex=6a96b699&is=6a956519&hm=b09aa6dc78bce9f62a73695276ba469367deb7585ef47e220c1760ceddc46910",
+    chapters: kbmAimAssistShowcaseChapters,
   },
 };
+
+function ProductShowcaseLegacyNotice() {
+  return (
+    <div className="loader-note product-showcase-legacy-notice" role="note">
+      <p>
+        This showcase uses our previous branding, but the product itself is unchanged and works exactly the same.
+      </p>
+    </div>
+  );
+}
 
 function formatShowcaseTime(seconds) {
   const total = Math.max(0, Math.floor(Number(seconds) || 0));
@@ -4057,13 +3697,15 @@ function ProductCheckout({ slug }) {
             ) : null}
           </div>
           {showcaseConfig ? (
-            <ProductShowcaseVideo
-              id="showcase"
-              className="product-features-video"
-              src={showcaseConfig.src || ""}
-              streamableId={showcaseConfig.streamableId || ""}
-              chapters={showcaseConfig.chapters || []}
-            />
+            <div className="product-showcase-wrap product-features-video" id="showcase">
+              {showcaseConfig.legacyBranding ? <ProductShowcaseLegacyNotice /> : null}
+              <ProductShowcaseVideo
+                className="product-showcase-video-embed"
+                src={showcaseConfig.src || ""}
+                streamableId={showcaseConfig.streamableId || ""}
+                chapters={showcaseConfig.chapters || []}
+              />
+            </div>
           ) : null}
         </div>
       </section>
@@ -4303,11 +3945,30 @@ function CartContent() {
   );
 }
 
-function SimpleHeader({ title, subtitle, linkText, className = "" }) {
+function SimpleHeader({
+  title,
+  subtitle,
+  linkText,
+  className = "",
+  brandLogo,
+  brandAutoLogo = true,
+  brandLogoPlaceholder = false,
+}) {
+  const showBrandMark = Boolean(brandLogo) || brandLogoPlaceholder;
   return (
-    <header className={`simple-header ${className}`}>
+    <header className={`simple-header ${showBrandMark ? "simple-header--branded" : ""} ${className}`}>
       <div className="container">
         <div className="simple-header-inner fade-up">
+          {brandLogo ? (
+            <div className={`simple-header-brand-logo${brandAutoLogo ? "" : " simple-header-brand-logo--fixed"}`}>
+              <img src={brandLogo} alt="" />
+            </div>
+          ) : brandLogoPlaceholder ? (
+            <div className="simple-header-brand-logo simple-header-brand-logo--placeholder" aria-hidden="true">
+              <Images size={22} strokeWidth={1.8} />
+              <span>LOGO</span>
+            </div>
+          ) : null}
           <h1>{title}</h1>
           {subtitle ? <p>{subtitle}</p> : null}
           {linkText ? (
@@ -4350,7 +4011,7 @@ function VoucherForm() {
     >
       <div className="voucher-row">
         <div className="mc-head">
-          <img src="/images/unbanhwid-logo.png" alt="" />
+          <img src="/images/phantom.png" alt="" />
         </div>
         <FloatingInput label="EMAIL" value={email} onChange={setEmail} type="email" />
       </div>
@@ -4687,7 +4348,7 @@ function RulesContent() {
           </div>
         </div>
         <div className="rules-note">
-          Remember that you accepted the unbanhwid.com rules when you created an account in the service.
+          Remember that you accepted the phantom-cheats.com rules when you created an account in the service.
         </div>
         <article id={selected.slug} className="terms-content" dangerouslySetInnerHTML={{ __html: selected.content }} />
       </div>
@@ -4695,17 +4356,26 @@ function RulesContent() {
   );
 }
 
-function LoaderCard({ item, displayMeta, subscriptionBadge = null }) {
+function LoaderCard({ item, displayMeta, subscriptionBadge = null, brandSlug = "", brandName = "", locked = false, onNavigate }) {
   const previewCount = item.featurePreviewCount || 3;
   const visibleModules = item.modules.slice(0, previewCount);
   const hiddenModulesCount = Math.max(0, item.modules.length - visibleModules.length);
   const status = displayMeta?.status || "Undetected";
   const lastUpdate = displayMeta?.lastUpdate || item.updated || "-";
 
-  return (
-    <Link className="loader-card" href={loaderHref(item)}>
+  const inner = (
+    <>
       <div className="loader-card-media">
-        <img src={item.image} alt={item.name} loading="eager" fetchPriority="high" decoding="async" />
+        <img
+          src={brandSlug ? getResellerProductImage(item.slug) : item.image}
+          alt={item.name}
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
+          onError={brandSlug ? (event) => {
+            if (event.currentTarget.src !== item.image) event.currentTarget.src = item.image;
+          } : undefined}
+        />
         {subscriptionBadge === "active" ? (
           <span className="loader-card-active-badge">ACTIVE</span>
         ) : subscriptionBadge === "banned" ? (
@@ -4718,7 +4388,7 @@ function LoaderCard({ item, displayMeta, subscriptionBadge = null }) {
       </div>
       <div className="loader-card-body">
         <h3>{item.name}</h3>
-        <p className="loader-card-description">{item.description}</p>
+        <p className="loader-card-description">{applyBrandName(item.description, brandName)}</p>
         <div className="loader-card-spacer" />
         <div className="loader-card-info">
           <div className="loader-card-feature-label">
@@ -4755,14 +4425,41 @@ function LoaderCard({ item, displayMeta, subscriptionBadge = null }) {
           </span>
         </div>
       </div>
+    </>
+  );
+
+  if (locked) {
+    return (
+      <div className="loader-card loader-card--locked" aria-disabled="true">
+        {inner}
+      </div>
+    );
+  }
+
+  if (onNavigate) {
+    return (
+      <button
+        type="button"
+        className="loader-card"
+        onClick={() => onNavigate(item.slug)}
+      >
+        {inner}
+      </button>
+    );
+  }
+
+  return (
+    <Link className="loader-card" href={loaderHref(item, brandSlug)}>
+      {inner}
     </Link>
   );
 }
 
-function LoaderContent() {
+function LoaderContent({ brandSlug = "", brandName = "", brandProductSlugs = null, onNavigate, onReady }) {
   const { user, ready: authReady } = useAuthUser();
   const [displayMetaBySlug, setDisplayMetaBySlug] = useState(() => getStaticLoaderDisplayMetaMap(loaderProducts));
   const displayMetaRef = useRef(displayMetaBySlug);
+  const [metaReady, setMetaReady] = useState(false);
   const [productBadges, setProductBadges] = useState(() =>
     Object.fromEntries(loaderProducts.map((item) => [item.slug, "inactive"])),
   );
@@ -4821,6 +4518,10 @@ function LoaderContent() {
   }, [authReady, refreshProductBadges, user?.id, displayMetaBySlug]);
 
   useEffect(() => {
+    if (metaReady && authReady) onReady?.();
+  }, [metaReady, authReady, onReady]);
+
+  useEffect(() => {
     const onStorage = (event) => {
       if (!event.key || event.key.includes("loader_completed_redeem")) {
         void refreshProductBadges();
@@ -4846,7 +4547,10 @@ function LoaderContent() {
 
     async function loadMeta() {
       const nextMeta = await refreshLoaderDisplayMetaMap(loaderProducts);
-      if (!cancelled) setDisplayMetaBySlug(nextMeta);
+      if (!cancelled) {
+        setDisplayMetaBySlug(nextMeta);
+        setMetaReady(true);
+      }
     }
 
     setDisplayMetaBySlug(getInitialLoaderDisplayMetaMap(loaderProducts));
@@ -4877,40 +4581,53 @@ function LoaderContent() {
   }, []);
 
   return (
-    <section className="section loader-section fade-up" data-scroll-target>
+    <section className={`section loader-section fade-up${brandSlug ? " loader-section--branded" : ""}`} data-scroll-target>
       <div className="container">
-        <div className="loader-intro">
-          <button
-            className="loader-note loader-guide-cta"
-            type="button"
-            onClick={() => {
-              history.replaceState(null, "", "#instruction");
-              document.getElementById("instruction")?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }}
-          >
-            <span>How Does it works? — Watch the video.</span>
-            <span className="loader-guide-cta-icons" aria-hidden="true">
-              <Camera size={16} strokeWidth={2.2} />
-              <CircleArrowDown size={16} strokeWidth={2.2} />
-            </span>
-          </button>
-        </div>
+        {brandSlug ? null : (
+          <div className="loader-intro">
+            <button
+              className="loader-note loader-guide-cta"
+              type="button"
+              onClick={() => {
+                history.replaceState(null, "", "#instruction");
+                document.getElementById("instruction")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+            >
+              <span>How Does it works? — Watch the video.</span>
+              <span className="loader-guide-cta-icons" aria-hidden="true">
+                <Camera size={16} strokeWidth={2.2} />
+                <CircleArrowDown size={16} strokeWidth={2.2} />
+              </span>
+            </button>
+          </div>
+        )}
         <div className="loader-grid">
-          {loaderProducts.map((item) => (
-            <LoaderCard
-              item={item}
-              displayMeta={displayMetaBySlug[item.slug]}
-              subscriptionBadge={productBadges[item.slug] || "inactive"}
-              key={item.slug}
-            />
-          ))}
+          {loaderProducts.map((item) => {
+            const locked = brandSlug && Array.isArray(brandProductSlugs)
+              ? !brandProductSlugs.includes(item.slug)
+              : false;
+            return (
+              <LoaderCard
+                item={item}
+                displayMeta={displayMetaBySlug[item.slug]}
+                subscriptionBadge={productBadges[item.slug] || "inactive"}
+                brandSlug={brandSlug}
+                brandName={brandName}
+                locked={locked}
+                onNavigate={onNavigate}
+                key={item.slug}
+              />
+            );
+          })}
         </div>
-        <ProductShowcaseVideo
-          id="instruction"
-          src="/images/video/guide.mp4"
-          poster="/images/video/thumbnail.png"
-          chapters={loaderGuideChapters}
-        />
+        {brandSlug ? null : (
+          <ProductShowcaseVideo
+            id="instruction"
+            src="/images/video/guide.mp4"
+            poster="/images/video/thumbnail.png"
+            chapters={loaderGuideChapters}
+          />
+        )}
       </div>
     </section>
   );
@@ -4988,7 +4705,17 @@ function LoaderLaunchToast({ item, onClose }) {
   );
 }
 
-function LoaderDetailContent({ slug }) {
+function LoaderDetailContent({
+  slug,
+  brandSlug = "",
+  brandName = "",
+  brandProductSlugs = null,
+  removeLoaderFaq = false,
+  removeGuides = false,
+  onBack,
+  onReady,
+  preview = false,
+}) {
   const product = getLoaderProduct(slug);
   const previewImages = useMemo(() => getProductPreviewImages(slug), [slug]);
   const lightboxImages = useMemo(() => getProductLightboxImages(slug), [slug]);
@@ -5024,6 +4751,13 @@ function LoaderDetailContent({ slug }) {
   const downloadUrlRef = useRef("");
   const subscriptionPollRef = useRef(null);
   const bannedMetricsSnapshotRef = useRef(null);
+
+  const brandLocked =
+    brandSlug && Array.isArray(brandProductSlugs) ? !brandProductSlugs.includes(slug) : false;
+
+  useEffect(() => {
+    if (brandLocked) onReady?.();
+  }, [brandLocked, onReady]);
 
   const hasRedeemedKey = Boolean(redeemState?.licenseKey);
   const isLaunchBanned = hasRedeemedKey && subscriptionMode === "banned";
@@ -5121,6 +4855,10 @@ function LoaderDetailContent({ slug }) {
       window.clearInterval(timerId);
     };
   }, [appId]);
+
+  useEffect(() => {
+    if (loaderMetaReady && appFreezeReady) onReady?.();
+  }, [loaderMetaReady, appFreezeReady, onReady]);
 
   const detachSubscriptionUi = useCallback(() => {
     setRedeemState(null);
@@ -5540,26 +5278,64 @@ function LoaderDetailContent({ slug }) {
           </article>
         ))}
       </div>
-      <Link className="button button-logout full loader-features-details-button" href={`${productHref({ slug })}#product-features`}>
-        Browse all Features & Details
-        <ArrowRight size={16} strokeWidth={2.4} />
-      </Link>
+      {brandSlug ? null : (
+        <Link className="button button-logout full loader-features-details-button" href={`${productHref({ slug })}#product-features`}>
+          Browse all Features & Details
+          <ArrowRight size={16} strokeWidth={2.4} />
+        </Link>
+      )}
     </div>
   );
 
+  if (brandLocked) {
+    return (
+      <section className="section loader-section fade-up loader-section--branded" data-scroll-target>
+        <div className="container">
+          <div className="loader-detail-locked">
+            <div className="loader-detail-locked-card">
+              <span className="loader-detail-locked-icon" aria-hidden="true">
+                <Lock size={28} strokeWidth={2.2} />
+              </span>
+              <h2>This product is not available</h2>
+              <p>
+                This product is not part of {brandName || "this brand"}&apos;s offering.
+              </p>
+              <Link className="button loader-detail-locked-back" href={`/loader?${brandSlug}`}>
+                <ArrowLeft size={16} strokeWidth={2.4} />
+                Back to Remote Loader
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <section className="section loader-section fade-up" data-scroll-target>
+    <section className={`section loader-section fade-up${brandSlug ? " loader-section--branded" : ""}`} data-scroll-target>
       <div className="container">
+        {onBack ? (
+          <button type="button" className="loader-preview-back" onClick={onBack}>
+            <ArrowLeft size={16} strokeWidth={2.4} />
+            Back to Remote Loader
+          </button>
+        ) : null}
         <div className="loader-detail-layout">
           <div className="loader-detail-left-column">
             <article className="loader-detail-hero">
               <div className="loader-detail-visual">
-                <img src={product.image} alt={product.name} />
+                <img
+                  src={brandSlug ? getResellerProductImage(slug) : product.image}
+                  alt={product.name}
+                  onError={brandSlug ? (event) => {
+                    if (event.currentTarget.src !== product.image) event.currentTarget.src = product.image;
+                  } : undefined}
+                />
               </div>
               <div className="loader-detail-hero-body">
                 <div className="loader-detail-copy">
                   <h2>{product.name}</h2>
-                  <p>{product.description}</p>
+                  <p>{applyBrandName(product.description, brandName)}</p>
                 </div>
                 <div className="loader-detail-meta-strip">
                   <div className="loader-detail-meta-item">
@@ -5639,6 +5415,7 @@ function LoaderDetailContent({ slug }) {
                         }`}
                         type="button"
                         disabled={
+                          preview ||
                           launchBusy ||
                           isLaunchBanned ||
                           isLaunchFrozen ||
@@ -5852,26 +5629,30 @@ function LoaderDetailContent({ slug }) {
                 </div>
               </div>
               <div className="loader-actions-body">
-                <Link className="loader-actions-item" href={LOADER_INSTALLATION_GUIDE_HREF}>
-                  <span className="loader-actions-item-icon">
-                    <Play size={18} />
-                  </span>
-                  <span className="loader-actions-item-text">
-                    <strong>How to launch loader</strong>
-                    <small>Watch the setup video guide.</small>
-                  </span>
-                  <ArrowRight size={16} strokeWidth={2.4} />
-                </Link>
-                <Link className="loader-actions-item" href={productGuideHref}>
-                  <span className="loader-actions-item-icon">
-                    <Info size={18} />
-                  </span>
-                  <span className="loader-actions-item-text">
-                    <strong>Initialization guide</strong>
-                    <small>Read the help &amp; init docs.</small>
-                  </span>
-                  <ArrowRight size={16} strokeWidth={2.4} />
-                </Link>
+                {!removeLoaderFaq ? (
+                  <Link className="loader-actions-item" href={LOADER_INSTALLATION_GUIDE_HREF}>
+                    <span className="loader-actions-item-icon">
+                      <Play size={18} />
+                    </span>
+                    <span className="loader-actions-item-text">
+                      <strong>How to launch loader</strong>
+                      <small>Watch the setup video guide.</small>
+                    </span>
+                    <ArrowRight size={16} strokeWidth={2.4} />
+                  </Link>
+                ) : null}
+                {!removeGuides ? (
+                  <Link className="loader-actions-item" href={productGuideHref}>
+                    <span className="loader-actions-item-icon">
+                      <Info size={18} />
+                    </span>
+                    <span className="loader-actions-item-text">
+                      <strong>Initialization guide</strong>
+                      <small>Read the help &amp; init docs.</small>
+                    </span>
+                    <ArrowRight size={16} strokeWidth={2.4} />
+                  </Link>
+                ) : null}
                 <a className="loader-actions-item" href={DISCORD_INVITE_URL} target="_blank" rel="noreferrer">
                   <span className="loader-actions-item-icon">
                     <Headphones size={18} />
@@ -5960,6 +5741,7 @@ function LoaderDetailContent({ slug }) {
                 )}
               </div>
             </div>
+            {brandSlug ? null : (
             <div className="loader-side-card loader-preview-card">
               <div className="loader-preview-header">
                 <div className="loader-preview-header-inner">
@@ -6034,11 +5816,12 @@ function LoaderDetailContent({ slug }) {
                 </div>
               </div>
             </div>
+            )}
           </aside>
         </div>
       </div>
 
-      {lightboxImages.length ? (
+      {brandSlug ? null : lightboxImages.length ? (
         <ProductImageLightbox
           images={lightboxImages}
           index={previewIndex}
@@ -6079,7 +5862,7 @@ function NickPanel() {
   return (
     <div className="account-panel">
       <div className="mc-head dark">
-        <img src="/images/unbanhwid-logo.png" alt="" />
+        <img src="/images/phantom.png" alt="" />
       </div>
       <div className="account-form">
         <FloatingInput label="EMAIL" value={email} onChange={setEmail} type="email" />
@@ -6098,7 +5881,7 @@ function ShopHeader({ activeServer, servers, setActiveIndex }) {
         <div className="shop-top fade-up">
           <div>
             <h1>Products</h1>
-            <p>Choose your unbanhwid.com product and complete checkout.</p>
+            <p>Choose your phantom-cheats.com product and complete checkout.</p>
           </div>
           <NickPanel />
         </div>
@@ -6468,7 +6251,6 @@ export function HomePage({ reviewCount = 0, averageRating = null }) {
       <ModesSection selectedGame={selectedGame} setSelectedGame={setSelectedGame} />
       {selectedGame ? null : <BestSellersSection />}
       {selectedGame ? null : <WhyChooseUsSection />}
-      {selectedGame ? null : <BeforeAfterSection />}
       <PurchasesSection />
     </PageChrome>
   );
@@ -6510,26 +6292,416 @@ export function RulesPage() {
   );
 }
 
-export function LoaderPage() {
+function useLoaderBrand(slug) {
+  const [brand, setBrand] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!slug) {
+      setBrand(null);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/loader-brand?slug=${encodeURIComponent(slug)}`, { cache: "no-store" })
+      .then(async (response) => {
+        const result = await response.json().catch(() => null);
+        return { ok: response.ok, status: response.status, result };
+      })
+      .then(({ ok, status, result }) => {
+        if (cancelled) return;
+        if (status === 403 && result?.blocked) {
+          setBrand({ blocked: true });
+          return;
+        }
+        if (ok && result?.brand) {
+          setBrand({
+            color: result.brand.color || "#9783d1",
+            brandName: result.brand.brand_name || "",
+            logo: result.brand.logo || "",
+            discordLink: result.brand.discord_link || "",
+            autoLogoSize: result.brand.auto_logo_size !== undefined ? Boolean(result.brand.auto_logo_size) : true,
+            removeLoaderFaq: Boolean(result.brand.remove_loader_faq),
+            removeGuides: Boolean(result.brand.remove_guides),
+            productSlugs: Array.isArray(result.brand.product_slugs) ? result.brand.product_slugs : [],
+            slug: result.brand.slug || "",
+          });
+        } else {
+          setBrand(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setBrand(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (brand && !brand.blocked) {
+      const vars = buildBrandColorVars(brand.color);
+      if (vars) {
+        Object.entries(vars).forEach(([key, value]) => {
+          root.style.setProperty(key, value);
+        });
+      }
+    }
+    return () => {
+      const vars = buildBrandColorVars("#9783d1");
+      if (vars) {
+        Object.keys(vars).forEach((key) => {
+          root.style.removeProperty(key);
+        });
+      }
+    };
+  }, [brand]);
+
+  useEffect(() => {
+    if (!brand || brand.blocked) return undefined;
+
+    const previousTitle = document.title;
+    document.title = "Remote Loader";
+
+    const logo = String(brand.logo || "").trim();
+    const iconLinks = Array.from(
+      document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]'),
+    );
+    const previousIcons = iconLinks.map((link) => ({
+      el: link,
+      href: link.getAttribute("href"),
+      type: link.getAttribute("type"),
+    }));
+
+    let createdIcon = null;
+    if (logo) {
+      if (iconLinks.length) {
+        iconLinks.forEach((link) => {
+          link.setAttribute("href", logo);
+          if (logo.startsWith("data:image/")) {
+            const mime = logo.slice(5, logo.indexOf(";")) || "image/png";
+            link.setAttribute("type", mime);
+          } else {
+            link.removeAttribute("type");
+          }
+        });
+      } else {
+        createdIcon = document.createElement("link");
+        createdIcon.setAttribute("rel", "icon");
+        createdIcon.setAttribute("href", logo);
+        if (logo.startsWith("data:image/")) {
+          const mime = logo.slice(5, logo.indexOf(";")) || "image/png";
+          createdIcon.setAttribute("type", mime);
+        }
+        document.head.appendChild(createdIcon);
+      }
+    }
+
+    return () => {
+      document.title = previousTitle;
+      previousIcons.forEach(({ el, href, type }) => {
+        if (href == null) el.removeAttribute("href");
+        else el.setAttribute("href", href);
+        if (type == null) el.removeAttribute("type");
+        else el.setAttribute("type", type);
+      });
+      if (createdIcon?.parentNode) createdIcon.parentNode.removeChild(createdIcon);
+    };
+  }, [brand]);
+
+  return { brand, loading };
+}
+
+function BrandedToolbar({ brand, backHref = "", onBack, preview = false, portalRef = null }) {
+  const { user } = useAuthUser();
+  const isClient = useIsClient();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
+  const handleDiscordLogin = async () => {
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}${window.location.pathname}${window.location.search}`
+        : undefined;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "discord",
+      options: redirectTo ? { redirectTo } : undefined,
+    });
+    if (error) console.error("Error logging in with Discord:", error);
+  };
+
+  const getDiscordAvatar = () => {
+    if (!user) return null;
+    return user.user_metadata?.avatar_url || null;
+  };
+
+  const getDiscordUsername = () => {
+    if (!user) return null;
+    return user.user_metadata?.full_name || user.user_metadata?.name || user.email;
+  };
+
   return (
-    <PageChrome active="loader">
-      <SimpleHeader title="Remote Loader" subtitle="Choose product, redeem the license and start dominating lobbies!" linkText="select product" />
-      <LoaderContent />
+    <div className="branded-toolbar">
+      <div className="container">
+        <div className="branded-toolbar-row">
+          {onBack ? (
+            <button
+              type="button"
+              className="branded-toolbar-back"
+              onClick={onBack}
+              title="Back to Remote Loader"
+              aria-label="Back to Remote Loader"
+            >
+              <ArrowLeft size={18} strokeWidth={2.2} />
+            </button>
+          ) : backHref ? (
+            <Link className="branded-toolbar-back" href={backHref} title="Back to Remote Loader" aria-label="Back to Remote Loader">
+              <ArrowLeft size={18} strokeWidth={2.2} />
+            </Link>
+          ) : null}
+          {!isClient || preview ? (
+            <button
+              type="button"
+              className="branded-toolbar-btn"
+              onClick={preview ? undefined : handleDiscordLogin}
+              disabled={preview}
+              title={preview ? "Login is disabled in preview" : "Login with Discord"}
+              aria-disabled={preview || undefined}
+            >
+              <DiscordIcon size={13} />
+              <span>Login</span>
+            </button>
+          ) : user ? (
+            <div className="branded-toolbar-user">
+              {getDiscordAvatar() ? (
+                <img src={getDiscordAvatar()} alt="User Avatar" className="branded-toolbar-avatar" />
+              ) : (
+                <div className="branded-toolbar-avatar branded-toolbar-avatar-placeholder" />
+              )}
+              <span className="branded-toolbar-username">{getDiscordUsername()}</span>
+              <button
+                type="button"
+                className="branded-toolbar-logout"
+                onClick={handleLogout}
+                title="Logout"
+                aria-label="Logout"
+              >
+                <LogOut size={13} />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="branded-toolbar-btn"
+              onClick={handleDiscordLogin}
+              title="Login with Discord"
+            >
+              <DiscordIcon size={13} />
+              <span>Login</span>
+            </button>
+          )}
+          <SiteResponseMonitor preview={preview} portalRef={portalRef} />
+          <a
+            className="branded-toolbar-link"
+            href={brand?.discordLink || DISCORD_INVITE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Contact support on Discord"
+          >
+            <Headphones size={13} />
+            <span>Support</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LoaderSplash({ brand, ready }) {
+  const [hidden, setHidden] = useState(false);
+  const hidingRef = useRef(false);
+
+  useEffect(() => {
+    if (!ready || hidingRef.current) return;
+    hidingRef.current = true;
+    const timer = window.setTimeout(() => setHidden(true), 420);
+    return () => window.clearTimeout(timer);
+  }, [ready]);
+
+  // Never leave a full-screen blocker if ready stalls (mobile/network).
+  useEffect(() => {
+    if (hidden) return undefined;
+    const failsafe = window.setTimeout(() => setHidden(true), 4500);
+    return () => window.clearTimeout(failsafe);
+  }, [hidden]);
+
+  if (hidden) return null;
+
+  return (
+    <div className={`loader-splash${ready ? " loader-splash--leaving" : ""}`} aria-hidden="true">
+      <div className="loader-splash-inner">
+        {brand?.logo ? (
+          <div className={`loader-splash-logo${brand.autoLogoSize === false ? " loader-splash-logo--fixed" : ""}`}>
+            <img src={brand.logo} alt="" />
+          </div>
+        ) : (
+          <div className="loader-splash-spinner" aria-hidden="true" />
+        )}
+        {brand?.brandName ? (
+          <strong className="loader-splash-name">{brand.brandName}</strong>
+        ) : null}
+        <span className="loader-splash-loading">Loading</span>
+      </div>
+    </div>
+  );
+}
+
+export function LoaderPreview({ brand }) {
+  const [selectedSlug, setSelectedSlug] = useState(null);
+  const portalRef = useRef(null);
+  const brandColor = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(String(brand?.color || ""))
+    ? brand.color
+    : "#9783d1";
+  const brandVars = { ...(buildBrandColorVars(brandColor) || {}), "--site-announce-height": "0px" };
+  const previewBrandSlug = brand?.slug || "preview";
+  const brandName = brand?.brandName || "";
+  const brandLogo = brand?.logo || "";
+  const autoLogo = brand?.autoLogoSize !== false;
+  const productSlugs = Array.isArray(brand?.productSlugs) ? brand.productSlugs : null;
+  const removeLoaderFaq = Boolean(brand?.removeLoaderFaq);
+  const removeGuides = Boolean(brand?.removeGuides);
+
+  return (
+    <div className="loader-preview-root" style={brandVars} ref={portalRef}>
+      <div className="branded-grid-bg branded-grid-bg--preview" aria-hidden="true" />
+      <SimpleHeader
+        title={selectedSlug ? `${getLoaderProduct(selectedSlug)?.name || "Product"} Loader` : "Remote Loader"}
+        subtitle={selectedSlug ? "Dedicated product loader page with remote setup and launch flow." : "Choose product, redeem the license and start dominating lobbies!"}
+        linkText={selectedSlug ? "Launch" : "select product"}
+        brandLogo={brandLogo}
+        brandAutoLogo={autoLogo}
+        brandLogoPlaceholder={!brandLogo}
+      />
+      <BrandedToolbar
+        brand={{ discordLink: brand?.discordLink || "" }}
+        onBack={selectedSlug ? () => setSelectedSlug(null) : undefined}
+        preview
+        portalRef={portalRef}
+      />
+      <div className="loader-preview-view">
+        {selectedSlug ? (
+          <LoaderDetailContent
+            slug={selectedSlug}
+            brandSlug={previewBrandSlug}
+            brandName={brandName}
+            removeLoaderFaq={removeLoaderFaq}
+            removeGuides={removeGuides}
+            onReady={() => {}}
+            preview
+          />
+        ) : (
+          <LoaderContent
+            brandSlug={previewBrandSlug}
+            brandName={brandName}
+            brandProductSlugs={productSlugs}
+            onNavigate={(slug) => setSelectedSlug(slug)}
+            onReady={() => {}}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LoaderBlockedPage() {
+  useEffect(() => {
+    document.title = "Remote Loader";
+  }, []);
+
+  return (
+    <div className="loader-blocked-page">
+      <div className="loader-blocked-card">
+        <Ban size={28} strokeWidth={2.2} />
+        <h1>Loader unavailable</h1>
+        <p>This custom loader page has been blocked.</p>
+      </div>
+    </div>
+  );
+}
+
+export function LoaderPage({ brandSlug }) {
+  const { brand, loading: brandLoading } = useLoaderBrand(brandSlug);
+  const [productsReady, setProductsReady] = useState(false);
+  const onReady = useCallback(() => setProductsReady(true), []);
+  const hasSlug = Boolean(brandSlug);
+  const isBlocked = Boolean(brand?.blocked);
+  const splashReady = !hasSlug || (!brandLoading && (isBlocked || productsReady));
+  const showSplash = hasSlug;
+
+  if (hasSlug && !brandLoading && isBlocked) {
+    return (
+      <>
+        {showSplash ? <LoaderSplash brand={null} ready={splashReady} /> : null}
+        <LoaderBlockedPage />
+      </>
+    );
+  }
+
+  return (
+    <PageChrome active="loader" brand={brand}>
+      {showSplash ? <LoaderSplash brand={brand} ready={splashReady} /> : null}
+      <SimpleHeader title="Remote Loader" subtitle="Choose product, redeem the license and start dominating lobbies!" linkText="select product" brandLogo={brand?.logo || ""} brandAutoLogo={brand?.autoLogoSize !== false} />
+      {hasSlug ? <BrandedToolbar brand={brand} /> : null}
+      <LoaderContent brandSlug={brandSlug} brandName={brand?.brandName || ""} brandProductSlugs={brand?.productSlugs || null} onReady={onReady} />
     </PageChrome>
   );
 }
 
-export function LoaderDetailPage({ slug }) {
-  const product = getLoaderProduct(slug);
+export function LoaderDetailPage({ slug: productSlug, brandSlug }) {
+  const product = getLoaderProduct(productSlug);
+  const { brand, loading: brandLoading } = useLoaderBrand(brandSlug);
+  const [productsReady, setProductsReady] = useState(false);
+  const onReady = useCallback(() => setProductsReady(true), []);
+  const hasSlug = Boolean(brandSlug);
+  const isBlocked = Boolean(brand?.blocked);
+  const splashReady = !hasSlug || (!brandLoading && (isBlocked || productsReady));
+  const showSplash = hasSlug;
+
+  if (hasSlug && !brandLoading && isBlocked) {
+    return (
+      <>
+        {showSplash ? <LoaderSplash brand={null} ready={splashReady} /> : null}
+        <LoaderBlockedPage />
+      </>
+    );
+  }
 
   return (
-    <PageChrome active="loader">
+    <PageChrome active="loader" brand={brand}>
+      {showSplash ? <LoaderSplash brand={brand} ready={splashReady} /> : null}
       <SimpleHeader
         title={`${product.name} Loader`}
         subtitle="Dedicated product loader page with remote setup and launch flow."
         linkText="Launch"
+        brandLogo={brand?.logo || ""}
+        brandAutoLogo={brand?.autoLogoSize !== false}
       />
-      <LoaderDetailContent slug={slug} />
+      {hasSlug ? <BrandedToolbar brand={brand} backHref={`/loader?${brandSlug}`} /> : null}
+      <LoaderDetailContent
+        slug={productSlug}
+        brandSlug={brandSlug}
+        brandName={brand?.brandName || ""}
+        brandProductSlugs={brand?.productSlugs || null}
+        removeLoaderFaq={Boolean(brand?.removeLoaderFaq)}
+        removeGuides={Boolean(brand?.removeGuides)}
+        onReady={onReady}
+      />
     </PageChrome>
   );
 }
@@ -6537,7 +6709,7 @@ export function LoaderDetailPage({ slug }) {
 export function LoginPage() {
   return (
     <PageChrome active="login">
-      <SimpleHeader className="simple-header--login" title="Login" subtitle="Access your unbanhwid.com account." />
+      <SimpleHeader className="simple-header--login" title="Login" subtitle="Access your phantom-cheats.com account." />
       <LoginContent />
     </PageChrome>
   );

@@ -37,11 +37,6 @@ const PRODUCT_META = {
     image: "/images/guide-icons/apex-legends.png",
     lead: "Launch guide for Apex Legends.",
   },
-  "arc-raiders": {
-    label: "Arc Raiders",
-    image: "/images/guide-icons/arc-raiders.png",
-    lead: "Launch guide for Arc Raiders.",
-  },
 };
 
 const SECTION_LABELS = {

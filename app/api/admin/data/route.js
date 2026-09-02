@@ -1,10 +1,56 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../../lib/admin-auth";
+import { assertPermission, hasPermission } from "../../../../lib/panel-permissions";
 import { getSupabaseAdmin } from "../../../../lib/supabase-admin";
 
 export const dynamic = "force-dynamic";
 
 const ALLOWED_TABLES = new Set(["applications", "licenses", "application_variants", "reseller_store_products"]);
+
+function isHwidResetOnlyPayload(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
+  const keys = Object.keys(payload);
+  return keys.length === 1 && keys[0] === "hwid" && (payload.hwid == null || payload.hwid === "");
+}
+
+function isBanTogglePayload(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
+  const status = String(payload.status || "").trim().toLowerCase();
+  if (status === "banned") return true;
+  // Unban / unfreeze style patches restore status and freeze snapshot fields.
+  return (
+    "status" in payload &&
+    ("frozen_at" in payload || "frozen_remaining_ms" in payload || "expires_at" in payload)
+  );
+}
+
+function gateAdminDataAction(auth, table, action, payload = null) {
+  if (hasPermission(auth.permissions, "__full") || auth.permissions?.__full) return null;
+  const isWrite = action === "insert" || action === "post" || action === "update" || action === "patch" || action === "delete";
+  if (table === "licenses") {
+    if (!isWrite) return assertPermission(auth.permissions, "licenses.view");
+    if (action === "insert" || action === "post") return assertPermission(auth.permissions, "licenses.generate");
+    if (action === "delete") return assertPermission(auth.permissions, "licenses.delete");
+    if (isHwidResetOnlyPayload(payload)) {
+      if (hasPermission(auth.permissions, "licenses.reset_hwid")) return null;
+      return assertPermission(auth.permissions, "licenses.reset_hwid");
+    }
+    if (isBanTogglePayload(payload)) {
+      if (hasPermission(auth.permissions, "licenses.ban")) return null;
+      return assertPermission(auth.permissions, "licenses.ban");
+    }
+    return assertPermission(auth.permissions, "licenses.edit");
+  }
+  if (table === "applications" || table === "application_variants") {
+    if (!isWrite) return assertPermission(auth.permissions, "apps.view");
+    return assertPermission(auth.permissions, "apps.edit");
+  }
+  if (table === "reseller_store_products") {
+    if (!isWrite) return assertPermission(auth.permissions, "products.view");
+    return assertPermission(auth.permissions, "products.edit");
+  }
+  return null;
+}
 
 function applyFilters(query, filters) {
   let next = query;
@@ -50,6 +96,9 @@ export async function POST(request) {
     if (!ALLOWED_TABLES.has(table)) {
       return NextResponse.json({ error: `Table "${table}" is not allowed.` }, { status: 400 });
     }
+
+    const denied = gateAdminDataAction(auth, table, action, payload);
+    if (denied) return denied;
 
     const admin = getSupabaseAdmin();
     let query;

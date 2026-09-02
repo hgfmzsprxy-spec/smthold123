@@ -1,8 +1,10 @@
 import GuidePage from "../components/GuidePage";
+import { createSiteMetadata } from "../../lib/site-metadata";
 
-export const metadata = {
-  title: "Guide | unbanhwid.com",
-};
+export const metadata = createSiteMetadata({
+  pageTitle: "Guide",
+  path: "/guide",
+});
 
 export default async function Page({ searchParams }) {
   const params = await searchParams;

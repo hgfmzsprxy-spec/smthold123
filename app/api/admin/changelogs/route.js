@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { requireAdmin } from "../../../../lib/admin-auth";
+import { assertPermission } from "../../../../lib/panel-permissions";
 import {
   findApplicationById,
   normalizeChangelogEntry,
@@ -33,6 +34,9 @@ export async function GET(request) {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
 
+    const denied = assertPermission(auth.permissions, "changelogs.view");
+    if (denied) return denied;
+
     const applicationId = new URL(request.url).searchParams.get("applicationId")?.trim() || "";
     if (!applicationId) {
       return NextResponse.json({ error: "applicationId is required." }, { status: 400 });
@@ -58,6 +62,9 @@ export async function POST(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "changelogs.edit");
+    if (denied) return denied;
 
     const body = await request.json().catch(() => ({}));
     const applicationId = String(body?.applicationId || "").trim();
@@ -102,6 +109,9 @@ export async function PATCH(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "changelogs.edit");
+    if (denied) return denied;
 
     const body = await request.json().catch(() => ({}));
     const applicationId = String(body?.applicationId || "").trim();
@@ -152,6 +162,9 @@ export async function DELETE(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "changelogs.edit");
+    if (denied) return denied;
 
     const body = await request.json().catch(() => ({}));
     const applicationId = String(body?.applicationId || "").trim();

@@ -1,0 +1,175 @@
+.rail {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin: 0;
+  padding: 0 0 20px;
+  list-style: none;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.railItem {
+  position: relative;
+  right: calc(-100% + 45px);
+  width: 160px;
+  height: 45px;
+  margin: 5px 0;
+  line-height: 45px;
+  border-top-left-radius: 5px;
+  border-bottom-left-radius: 5px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  text-align: left;
+  transition: right 0.3s ease;
+  pointer-events: auto;
+}
+
+.railHidden .railItem {
+  right: calc(-100% + 0px);
+}
+
+.railItem:hover {
+  right: 0;
+}
+
+.railLink {
+  position: relative;
+  z-index: 1;
+  display: block;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  padding: 0 30px 0 64px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 0;
+  border-top-left-radius: 5px;
+  border-bottom-left-radius: 5px;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(14px);
+  color: #fff;
+  text-align: left;
+  text-decoration: none;
+  transition: color 0.3s ease, background 0.3s ease, border-color 0.3s ease;
+}
+
+.railLink:hover {
+  color: #fff;
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.railLink::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.railLink:hover::after {
+  opacity: 1;
+}
+
+.railIcon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 45px;
+  height: 45px;
+  line-height: 45px;
+  font-size: 16px;
+  text-align: center;
+}
+
+.railIcon::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 1px;
+  height: 20px;
+  margin-top: -10px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.railIcon svg {
+  display: block;
+}
+
+.discord .railLink::after {
+  background: rgba(114, 137, 218, 0.42);
+}
+
+.shop .railLink::after {
+  background: linear-gradient(to left, rgba(145, 157, 218, 0.4), rgba(145, 160, 219, 0.4));
+  box-shadow: 1px 1px 40px 0 rgba(145, 157, 218, 0.12);
+}
+
+.loader .railLink::after {
+  background: linear-gradient(to left, rgba(47, 168, 102, 0.4), rgba(70, 208, 127, 0.4));
+  box-shadow: 1px 1px 40px 0 rgba(70, 208, 127, 0.12);
+}
+
+.reviews .railLink::after {
+  background: rgba(245, 183, 64, 0.42);
+}
+
+.guide .railLink::after {
+  background: rgba(145, 160, 219, 0.42);
+}
+
+.terms .railLink::after {
+  background: rgba(57, 78, 255, 0.42);
+}
+
+.toggleItem {
+  display: contents;
+}
+
+.toggleButton {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: block;
+  width: 20px;
+  height: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 0;
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(14px);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 17px;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+
+.toggleButton::after {
+  content: "›";
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.railHidden .toggleButton::after {
+  transform: rotate(180deg);
+}
+
+@media screen and (max-width: 979px) {
+  .rail {
+    display: none !important;
+  }
+}

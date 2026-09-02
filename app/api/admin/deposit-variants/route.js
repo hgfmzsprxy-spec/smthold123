@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { requireAdmin } from "../../../../lib/admin-auth";
+import { assertPermission } from "../../../../lib/panel-permissions";
 import {
   computeDepositCredit,
   normalizeDepositVariant,
@@ -31,6 +32,9 @@ export async function GET(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "products.view");
+    if (denied) return denied;
     const store = await readDepositVariantsStore(getSupabaseAdmin());
     return NextResponse.json({ variants: store.variants });
   } catch (error) {
@@ -43,6 +47,9 @@ export async function POST(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "products.edit");
+    if (denied) return denied;
 
     const body = await request.json().catch(() => ({}));
     const pay = parseMoney(body?.payAmount ?? body?.pay_amount, "Pay amount");
@@ -88,6 +95,9 @@ export async function PATCH(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "products.edit");
+    if (denied) return denied;
 
     const body = await request.json().catch(() => ({}));
     const id = String(body?.id || "").trim();
@@ -141,6 +151,9 @@ export async function DELETE(request) {
   try {
     const auth = await requireAdmin(request);
     if (auth.error) return auth.error;
+
+    const denied = assertPermission(auth.permissions, "products.edit");
+    if (denied) return denied;
 
     const body = await request.json().catch(() => ({}));
     const id = String(body?.id || "").trim();

@@ -1,5 +1,7 @@
+import { createSiteMetadata } from "../../lib/site-metadata";
+
 export const metadata = {
-  title: "Loading",
+  ...createSiteMetadata({ path: "/site-access" }),
   robots: {
     index: false,
     follow: false,
