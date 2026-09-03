@@ -21,6 +21,7 @@ import {
   CircleX,
   Copy,
   Cpu,
+  FileText,
   Fingerprint,
   Gamepad2,
   HardDrive,
@@ -61,6 +62,7 @@ import {
   TicketPercent,
   Trash2,
   Trophy,
+  User,
   Volume2,
   VolumeX,
   X,
@@ -135,6 +137,8 @@ const navOtherItems = [
   { href: "/guide", label: "Instructions", key: "guide", icon: ListChecks, tone: "guide" },
   { href: "/ai-support", label: "AI-Support", key: "ai-support", icon: Sparkles, tone: "ai" },
   { href: "/resell-program", label: "Resell program", key: "resell-panel", icon: Store, tone: "resell" },
+  { href: "/bio", label: "Bio", key: "bio", icon: User, tone: "bio" },
+  { href: "/terms", label: "Terms", key: "terms", icon: FileText, tone: "terms" },
 ];
 
 const navOtherActiveKeys = new Set(navOtherItems.map((item) => item.key));
@@ -778,7 +782,7 @@ function NavOtherMenu({ active, onNavigate }) {
                   onClick={onNavigate}
                 >
                   <span className={`nav-other-link-icon nav-other-link-icon--${item.tone}`} aria-hidden="true">
-                    <Icon size={16} strokeWidth={2.15} />
+                    <Icon size={14} strokeWidth={2.15} />
                   </span>
                   <span>{item.label}</span>
                 </Link>

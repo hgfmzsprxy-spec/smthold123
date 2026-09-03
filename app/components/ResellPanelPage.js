@@ -92,6 +92,7 @@ import {
   writeBootstrapCache,
 } from "../../lib/panel-bootstrap-cache";
 import {
+  getSandboxDepositVariants,
   getSandboxResellerProfile,
   installResellPanelSandboxFetch,
 } from "../../lib/resell-panel-sandbox";
@@ -1923,7 +1924,7 @@ function ResellDashboard({ reseller, onLogout, sandbox = false }) {
   const [storeProductsBusy, setStoreProductsBusy] = useState(false);
   const [storeMessage, setStoreMessage] = useState({ text: "", type: "" });
   const [storeCountHint, setStoreCountHint] = useState(() => readCachedCount(RESELL_CACHE_STORE_COUNT, 2));
-  const [depositVariants, setDepositVariants] = useState([]);
+  const [depositVariants, setDepositVariants] = useState(() => (sandbox ? getSandboxDepositVariants() : []));
   const [depositBusy, setDepositBusy] = useState(false);
   const [depositMessage, setDepositMessage] = useState({ text: "", type: "" });
   const [depositCountHint, setDepositCountHint] = useState(() => readCachedCount(RESELL_CACHE_DEPOSIT_COUNT, 5));
@@ -1952,7 +1953,7 @@ function ResellDashboard({ reseller, onLogout, sandbox = false }) {
   const bellSoundPlayedForUnreadRef = useRef(false);
   const bellRingTimerRef = useRef(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!sandbox) return undefined;
     return installResellPanelSandboxFetch();
   }, [sandbox]);

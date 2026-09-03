@@ -14638,6 +14638,16 @@
   -webkit-overflow-scrolling: touch;
 }
 
+.adminLayoutSandbox .adminSidebarScroll {
+  scrollbar-width: none;
+}
+
+.adminLayoutSandbox .adminSidebarScroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 .sandboxBannerCopy {
   flex: 1 1 240px;
   color: rgba(255, 255, 255, 0.68);

@@ -983,9 +983,9 @@ button.branded-toolbar-back {
   top: 10px;
   left: 0;
   display: grid;
-  gap: 4px;
-  min-width: 228px;
-  padding: 8px;
+  gap: 2px;
+  min-width: 196px;
+  padding: 6px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   background: rgba(18, 18, 18, 0.94);
@@ -1012,12 +1012,12 @@ button.branded-toolbar-back {
 .nav-other-link {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 10px;
-  border-radius: 8px;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 7px;
   color: rgba(255, 255, 255, 0.82);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 400;
   transition: background 0.2s ease, color 0.2s ease;
 }
 
@@ -1025,31 +1025,13 @@ button.branded-toolbar-back {
   display: grid;
   place-items: center;
   flex: none;
-  width: 34px;
-  height: 34px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 9px;
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(232, 236, 255, 0.92);
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(145, 157, 218, 0.28);
+  border-radius: 7px;
+  background: rgba(145, 157, 218, 0.12);
+  color: #919dda;
   transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
-}
-
-.nav-other-link-icon--guide {
-  border-color: rgba(151, 131, 209, 0.34);
-  background: linear-gradient(135deg, rgba(151, 131, 209, 0.24), rgba(145, 157, 218, 0.12));
-  color: #e2d8ff;
-}
-
-.nav-other-link-icon--ai {
-  border-color: rgba(120, 176, 255, 0.34);
-  background: linear-gradient(135deg, rgba(88, 166, 255, 0.22), rgba(145, 157, 218, 0.14));
-  color: #d4e6ff;
-}
-
-.nav-other-link-icon--resell {
-  border-color: rgba(18, 173, 129, 0.34);
-  background: linear-gradient(135deg, rgba(18, 173, 129, 0.2), rgba(229, 153, 13, 0.12));
-  color: #c9f5e4;
 }
 
 .nav-other-link:hover,
@@ -1061,21 +1043,8 @@ button.branded-toolbar-back {
 .nav-other-link:hover .nav-other-link-icon,
 .nav-other-link.active .nav-other-link-icon {
   transform: translateY(-1px);
-}
-
-.nav-other-link:hover .nav-other-link-icon--guide,
-.nav-other-link.active .nav-other-link-icon--guide {
-  border-color: rgba(184, 164, 232, 0.5);
-}
-
-.nav-other-link:hover .nav-other-link-icon--ai,
-.nav-other-link.active .nav-other-link-icon--ai {
-  border-color: rgba(145, 190, 255, 0.5);
-}
-
-.nav-other-link:hover .nav-other-link-icon--resell,
-.nav-other-link.active .nav-other-link-icon--resell {
-  border-color: rgba(52, 211, 153, 0.5);
+  border-color: rgba(145, 157, 218, 0.5);
+  color: #919dda;
 }
 
 .nav-shop {

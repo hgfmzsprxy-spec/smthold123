@@ -2,11 +2,9 @@
 
 import Link from "next/link";
 import {
-  ArrowRight,
   BadgePercent,
   Bell,
   Boxes,
-  CircleCheck,
   ExternalLink,
   HelpCircle,
   House,
@@ -15,7 +13,6 @@ import {
   Monitor,
   Palette,
   PanelsTopLeft,
-  RefreshCw,
   Settings,
   Sparkles,
   Store,
@@ -28,11 +25,10 @@ import {
   Zap,
   Gift,
   Crown,
-  Play,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { DISCORD_INVITE_URL } from "../../lib/discord";
-import { DEPOSIT_DISCOUNT_LEGEND } from "../../lib/deposit-discount-tiers";
+import { DEPOSIT_DISCOUNT_LEGEND, discountUnlockedByDepositPayAmount } from "../../lib/deposit-discount-tiers";
 import { PageChrome } from "./Site";
 import styles from "./ResellProgramPage.module.css";
 
@@ -92,13 +88,31 @@ const DASHBOARD_TOOLS = [
   { icon: BookOpen, title: "Guides", text: "Opens the public install / product guides your customers will use." },
 ];
 
+function formatDepositPack(variant) {
+  const payAmount = Number(variant.payAmount) || 0;
+  const bonusPercent = Number(variant.bonusPercent) || 0;
+  const creditAmount = Number(variant.creditAmount) || payAmount * (1 + bonusPercent / 100);
+  const unlockPercent = discountUnlockedByDepositPayAmount(payAmount);
+  const name = String(variant.name || "").trim() || `Deposit $${payAmount}`;
+
+  return {
+    name,
+    pay: variant.payLabel || `$${payAmount.toFixed(2)}`,
+    credit: variant.creditLabel || `$${creditAmount.toFixed(2)}`,
+    bonus: bonusPercent > 0 ? `+${bonusPercent}%` : null,
+    unlock: unlockPercent ? `${unlockPercent}% discount` : null,
+    popular: Boolean(variant.popular),
+    vip: /vip/i.test(name) || payAmount >= 1000,
+  };
+}
+
 const DEPOSIT_PACKS = [
-  { name: "Deposit $20", pay: "$20", credit: "$20.00", bonus: null, unlock: null },
-  { name: "Deposit $50", pay: "$50", credit: "$50.00", bonus: null, unlock: null },
-  { name: "Deposit $100", pay: "$100", credit: "$110.00", bonus: "+10%", unlock: "40% license discount", popular: true },
-  { name: "Deposit $250", pay: "$250", credit: "$312.50", bonus: "+25%", unlock: "50% license discount" },
-  { name: "VIP Guy", pay: "$1000", credit: "$2,000.00", bonus: "+100%", unlock: "60% license discount", vip: true },
-];
+  { name: "Noob", payAmount: 20, bonusPercent: 0, popular: false },
+  { name: "Standard", payAmount: 50, bonusPercent: 0, popular: false },
+  { name: "Starter", payAmount: 100, bonusPercent: 10, popular: true, creditAmount: 110 },
+  { name: "Pro", payAmount: 250, bonusPercent: 15, popular: false, creditAmount: 287.5 },
+  { name: "VIP Guy", payAmount: 1000, bonusPercent: 10, popular: false, creditAmount: 1100 },
+].map(formatDepositPack);
 
 const ADDONS = [
   { name: "Loader Rebrand", price: "$149.99", text: "White-label web loader with only the products you resell." },
@@ -107,6 +121,10 @@ const ADDONS = [
   { name: "Custom License Format", price: "$29.99", text: "Prefixes, segments, and separators that match your shop." },
   { name: "Discord Bot Auth", price: "$74.99", text: "Generate keys from Discord and let staff deliver from tickets." },
 ];
+
+function DottedBackdrop({ wide = false }) {
+  return <div className={`${styles.dotField}${wide ? ` ${styles.dotFieldWide}` : ""}`} aria-hidden="true" />;
+}
 
 function DiscordIcon({ size = 15 }) {
   return (
@@ -119,8 +137,8 @@ function DiscordIcon({ size = 15 }) {
   );
 }
 
-const EMBED_WIDTH = 1440;
-const EMBED_HEIGHT = 900;
+const EMBED_WIDTH = 1280;
+const EMBED_HEIGHT = 820;
 
 function SandboxEmbedWindow() {
   const stageRef = useRef(null);
@@ -144,21 +162,6 @@ function SandboxEmbedWindow() {
 
   return (
     <div className={styles.embedWindow}>
-      <div className={styles.embedBar}>
-        <div className={styles.embedDots} aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
-        <div className={styles.embedUrl}>
-          <span className={styles.embedLock} aria-hidden="true" />
-          phantom-cheats.com/resell-panel-sandbox
-        </div>
-        <Link href="/resell-panel-sandbox" className={styles.embedOpen} target="_blank" rel="noopener noreferrer">
-          Open
-          <ExternalLink size={12} />
-        </Link>
-      </div>
       <div
         ref={stageRef}
         className={styles.embedStage}
@@ -184,22 +187,33 @@ function SandboxEmbedWindow() {
           onLoad={() => setLoaded(true)}
         />
       </div>
-      <div className={styles.embedFooter}>
-        <span>
-          <Play size={12} />
-          Live demo — clicks work, changes are not saved
-        </span>
-        <Link href="/resell-panel-sandbox">Open full sandbox</Link>
-      </div>
     </div>
   );
 }
 
 export function ResellProgramPage() {
+  const [depositPacks, setDepositPacks] = useState(DEPOSIT_PACKS);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/deposit-variants", { cache: "no-store" })
+      .then((response) => response.json().catch(() => ({})))
+      .then((result) => {
+        if (cancelled) return;
+        const variants = Array.isArray(result.variants) ? result.variants : [];
+        if (variants.length) setDepositPacks(variants.map(formatDepositPack));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <PageChrome active="resell-panel">
       <main className={styles.page}>
         <header className={styles.hero}>
+          <DottedBackdrop />
           <div className="container">
             <div className={`${styles.heroInner} fade-up`}>
               <span className={styles.badge}>
@@ -214,7 +228,7 @@ export function ResellProgramPage() {
                 Instant keys, live deposits, branded loaders, and a real dashboard. Start free — appeal on Discord,
                 then try every tab in the sandbox below.
               </p>
-              <div className={styles.heroActions}>
+              <div className={`${styles.heroActions} ${styles.heroActionsWide}`}>
                 <a className="button button-secondary" href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer">
                   <DiscordIcon />
                   Appeal on Discord
@@ -223,34 +237,43 @@ export function ResellProgramPage() {
                   <Boxes size={16} />
                   Preview sandbox
                 </a>
-                <Link className={`button ${styles.ghostButton}`} href="/resell-panel">
-                  <ArrowRight size={16} />
-                  Live panel
-                </Link>
               </div>
               <div className={styles.statRow}>
-                <div>
+                <article className={`${styles.statCard} ${styles.statFree}`}>
+                  <span className={styles.statIcon} aria-hidden="true">
+                    <Sparkles size={16} />
+                  </span>
                   <strong>FREE</strong>
                   <span>to start</span>
-                </div>
-                <div>
+                </article>
+                <article className={`${styles.statCard} ${styles.statDiscount}`}>
+                  <span className={styles.statIcon} aria-hidden="true">
+                    <BadgePercent size={16} />
+                  </span>
                   <strong>30%</strong>
                   <span>starter discount</span>
-                </div>
-                <div>
+                </article>
+                <article className={`${styles.statCard} ${styles.statVip}`}>
+                  <span className={styles.statIcon} aria-hidden="true">
+                    <Crown size={16} />
+                  </span>
                   <strong>60%</strong>
                   <span>VIP unlock</span>
-                </div>
-                <div>
+                </article>
+                <article className={`${styles.statCard} ${styles.statLive}`}>
+                  <span className={styles.statIcon} aria-hidden="true">
+                    <Wallet size={16} />
+                  </span>
                   <strong>Live</strong>
                   <span>balance credits</span>
-                </div>
+                </article>
               </div>
             </div>
           </div>
         </header>
 
         <section className={styles.section} data-scroll-target>
+          <DottedBackdrop />
           <div className="container">
             <div className={styles.sectionHead} data-reveal>
               <span className={styles.kicker}>
@@ -280,72 +303,41 @@ export function ResellProgramPage() {
           </div>
         </section>
 
-        <section className={styles.section}>
+        <section className={styles.section} id="sandbox">
           <div className="container">
-            <div className={styles.sectionHead} data-reveal>
-              <span className={styles.kicker}>
-                <Layers3 size={13} />
-                Dashboard
-              </span>
-              <h2>What you get in the panel</h2>
-              <p>Every tab below is live in the sandbox — generate keys, poke settings, and walk the deposit flow with preview balance.</p>
-            </div>
-            <div className={styles.toolGrid}>
-              {DASHBOARD_TOOLS.map((tool) => {
-                const Icon = tool.icon;
-                return (
-                  <article key={tool.title} className={styles.toolCard} data-reveal>
-                    <span className={styles.toolIcon}>
-                      <Icon size={16} />
-                    </span>
-                    <div>
-                      <h3>{tool.title}</h3>
-                      <p>{tool.text}</p>
-                    </div>
-                  </article>
-                );
-              })}
+            <div className={styles.embedBlock}>
+              <div className={styles.sandboxAnnounce} role="status">
+                <span>
+                  Sandbox preview — demo only. Clicks work, nothing is saved or billed.
+                </span>
+                <Link href="/resell-panel-sandbox" target="_blank" rel="noopener noreferrer">
+                  Open full
+                  <ExternalLink size={11} />
+                </Link>
+              </div>
+              <SandboxEmbedWindow />
             </div>
           </div>
         </section>
 
         <section className={styles.section}>
+          <DottedBackdrop wide />
           <div className="container">
-            <div className={styles.splitHead}>
-              <div className={styles.sectionHead} data-reveal>
-                <span className={styles.kicker}>
-                  <Wallet size={13} />
-                  Deposits
-                </span>
-                <h2>Pay once. Balance updates instantly.</h2>
-                <p>
-                  Choose a pack → pay with crypto / SellAuth → you get a <strong>COUPON-CODE</strong> immediately.
-                  Paste it on Deposit or Redeem. No manual approval. If chain confirmation is still pending, wait for
-                  the checkout page or email, then redeem.
-                </p>
-              </div>
-              <ol className={styles.flowList} data-reveal>
-                <li>
-                  <CircleCheck size={15} />
-                  Pick a package in Deposit
-                </li>
-                <li>
-                  <CircleCheck size={15} />
-                  Pay and copy the coupon
-                </li>
-                <li>
-                  <CircleCheck size={15} />
-                  Redeem — balance credits live
-                </li>
-                <li>
-                  <CircleCheck size={15} />
-                  Larger packs can raise your discount
-                </li>
-              </ol>
+            <div className={styles.sectionHead} data-reveal>
+              <span className={styles.kicker}>
+                <Wallet size={13} />
+                Deposits
+              </span>
+              <h2>Pay once. Balance updates instantly.</h2>
+              <p>
+                Select a deposit package → pay with cryptocurrency → the payment will be confirmed automatically, and
+                the funds will be credited to your account instantly. No waiting, no manual approvals—everything
+                secure and reliable.
+              </p>
             </div>
 
             <div className={styles.packGrid}>
-              {DEPOSIT_PACKS.map((pack) => (
+              {depositPacks.map((pack) => (
                 <article
                   key={pack.name}
                   className={`${styles.packCard}${pack.popular ? ` ${styles.packPopular}` : ""}${
@@ -374,7 +366,7 @@ export function ResellProgramPage() {
                       Unlocks {pack.unlock}
                     </p>
                   ) : (
-                    <p className={styles.packUnlockMuted}>Does not change discount tier</p>
+                    <p className={styles.packUnlockMuted}>Does not change discount</p>
                   )}
                 </article>
               ))}
@@ -404,40 +396,38 @@ export function ResellProgramPage() {
           </div>
         </section>
 
-        <section className={styles.section} id="sandbox">
+        <section className={styles.section}>
+          <DottedBackdrop />
           <div className="container">
-            <div className={styles.embedLayout}>
-              <div className={styles.sectionHead} data-reveal>
-                <span className={styles.kicker}>
-                  <Boxes size={13} />
-                  Sandbox
-                </span>
-                <h2>Click around the real panel</h2>
-                <p>
-                  This is the same reseller dashboard — demo data only. Generate keys, open Deposit, try Store. Nothing
-                  here is saved or billed.
-                </p>
-                <div className={styles.embedNotes}>
-                  <span>
-                    <RefreshCw size={13} />
-                    Reset on refresh
-                  </span>
-                  <span>
-                    <Wallet size={13} />
-                    $100 preview balance
-                  </span>
-                  <span>
-                    <KeyRound size={13} />
-                    Example product included
-                  </span>
-                </div>
-              </div>
-              <SandboxEmbedWindow />
+            <div className={styles.sectionHead} data-reveal>
+              <span className={styles.kicker}>
+                <Layers3 size={13} />
+                Dashboard
+              </span>
+              <h2>What you get in the panel</h2>
+              <p>Every tab below is live in the sandbox — generate keys, poke settings, and walk the deposit flow with preview balance.</p>
+            </div>
+            <div className={styles.toolGrid}>
+              {DASHBOARD_TOOLS.map((tool) => {
+                const Icon = tool.icon;
+                return (
+                  <article key={tool.title} className={styles.toolCard} data-reveal>
+                    <span className={styles.toolIcon}>
+                      <Icon size={16} />
+                    </span>
+                    <div>
+                      <h3>{tool.title}</h3>
+                      <p>{tool.text}</p>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </div>
         </section>
 
         <section className={styles.section}>
+          <DottedBackdrop />
           <div className="container">
             <div className={styles.sectionHead} data-reveal>
               <span className={styles.kicker}>
