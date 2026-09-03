@@ -121,7 +121,16 @@ function isMobileOrUnreliableDevToolsEnvironment() {
   return isIOS || isAndroid || isSafari || isCoarseTouch;
 }
 
+function isInIframe() {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
+  }
+}
+
 function canReliablyDetectDevTools() {
+  if (isInIframe()) return false;
   return !isMobileOrUnreliableDevToolsEnvironment();
 }
 
@@ -247,9 +256,17 @@ function blockScraperReferrer() {
 
 function breakOutOfIframe() {
   try {
-    if (window.self !== window.top) {
-      window.top.location = window.location.href;
+    if (window.self === window.top) return;
+
+    const path = window.location.pathname || "";
+    const allowSameOriginEmbed =
+      path === "/resell-panel-sandbox" || path.startsWith("/resell-panel-sandbox/");
+
+    if (allowSameOriginEmbed && window.top.location.origin === window.location.origin) {
+      return;
     }
+
+    window.top.location = window.location.href;
   } catch {
     document.body.innerHTML = "";
   }

@@ -10,8 +10,10 @@ const SCRAPER_REFERER_PATTERN =
 const PREVIEW_BOT_PATTERN =
   /googlebot|bingbot|applebot|duckduckbot|yandexbot|slurp|facebookexternalhit|twitterbot|linkedinbot|discordbot|slackbot|telegrambot|whatsapp|embedly|iframely|skypeuripreview|vkshare|redditbot/i;
 
-function applySecurityHeaders(response) {
-  response.headers.set("X-Frame-Options", "DENY");
+function applySecurityHeaders(response, pathname = "") {
+  const allowSameOriginFrame =
+    pathname === "/resell-panel-sandbox" || pathname.startsWith("/resell-panel-sandbox/");
+  response.headers.set("X-Frame-Options", allowSameOriginFrame ? "SAMEORIGIN" : "DENY");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set("Permissions-Policy", "interest-cohort=()");
@@ -68,7 +70,7 @@ export function middleware(request) {
   const isVerified = request.cookies.get(VERIFY_COOKIE)?.value === "1";
 
   if (pathname.startsWith("/api") || pathname === "/site-access") {
-    return applySecurityHeaders(NextResponse.next());
+    return applySecurityHeaders(NextResponse.next(), pathname);
   }
 
   if (process.env.NODE_ENV === "production" && !isPreviewBot) {
@@ -91,7 +93,7 @@ export function middleware(request) {
     response.headers.set("Cache-Control", "private, no-store, no-cache, must-revalidate");
   }
 
-  return applySecurityHeaders(response);
+  return applySecurityHeaders(response, pathname);
 }
 
 export const config = {

@@ -485,9 +485,9 @@ export default function BioPage({
                   <DiscordIcon />
                   Appeal
                 </a>
-                <Link href="/resell-panel-sandbox" className={`${styles.resellerActionButton} ${styles.sandboxButton}`}>
+                <Link href="/resell-program" className={`${styles.resellerActionButton} ${styles.sandboxButton}`}>
                   <Boxes size={15} />
-                  Sandbox
+                  Program
                 </Link>
               </div>
             </article>

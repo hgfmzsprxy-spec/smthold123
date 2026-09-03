@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { BookOpen, FileText, Loader, ShoppingBag, Star } from "lucide-react";
+import { BookOpen, Bot, FileText, Loader, ShoppingBag, Star } from "lucide-react";
 import { bioSocialLinks } from "../../lib/bio-data";
 import styles from "./BioSocialRail.module.css";
 
@@ -23,6 +23,7 @@ const socialIcons = {
   loader: Loader,
   reviews: Star,
   guide: BookOpen,
+  "ai-support": Bot,
   terms: FileText,
 };
 

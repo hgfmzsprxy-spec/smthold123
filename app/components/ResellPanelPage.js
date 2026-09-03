@@ -3658,7 +3658,7 @@ function ResellDashboard({ reseller, onLogout, sandbox = false }) {
   }, [ownsCustomLicenseFormat, licenseFormatOopsOpen]);
 
   useEffect(() => {
-    if (busy || !resellerPromoScopeId) return undefined;
+    if (sandbox || busy || !resellerPromoScopeId) return undefined;
 
     const timer = window.setTimeout(() => {
       if (!shouldShowAddonsPromo(resellerPromoScopeId)) return;
@@ -3666,7 +3666,7 @@ function ResellDashboard({ reseller, onLogout, sandbox = false }) {
     }, 800);
 
     return () => window.clearTimeout(timer);
-  }, [busy, resellerPromoScopeId]);
+  }, [busy, resellerPromoScopeId, sandbox]);
 
   useEffect(() => {
     if (busy || storeProducts.length || storeProductsBusy) return;

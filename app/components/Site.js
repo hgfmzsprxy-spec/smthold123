@@ -29,6 +29,7 @@ import {
   House,
   KeyRound,
   Layers,
+  ListChecks,
   Lock,
   LogIn,
   LogOut,
@@ -39,12 +40,12 @@ import {
   Minimize2,
   Minus,
   Monitor,
-  ScrollText,
   Send,
   ShieldCheck,
   ShieldX,
   ShoppingCart,
   Snowflake,
+  Sparkles,
   Plus,
   Play,
   Pause,
@@ -55,6 +56,7 @@ import {
   Info,
   Search,
   Star,
+  Store,
   Tags,
   TicketPercent,
   Trash2,
@@ -127,8 +129,15 @@ const navItems = [
   { href: "/", label: "Home", key: "home", icon: House },
   { href: "/loader", label: "Loader", key: "loader", icon: Monitor },
   { href: "/reviews", label: "Reviews", key: "reviews", icon: Star },
-  { href: "/terms", label: "Terms", key: "terms", icon: ScrollText },
 ];
+
+const navOtherItems = [
+  { href: "/guide", label: "Instructions", key: "guide", icon: ListChecks, tone: "guide" },
+  { href: "/ai-support", label: "AI-Support", key: "ai-support", icon: Sparkles, tone: "ai" },
+  { href: "/resell-program", label: "Resell program", key: "resell-panel", icon: Store, tone: "resell" },
+];
+
+const navOtherActiveKeys = new Set(navOtherItems.map((item) => item.key));
 
 const modeColors = ["#E5990D", "#0886EB", "#12AD81", "#252525"];
 const modeDotColors = ["#22c55e", "#22c55e", "#ef4444", "#ef4444"];
@@ -740,6 +749,48 @@ function SiteResponseMonitor({ preview = false, portalRef = null }) {
   );
 }
 
+function NavOtherMenu({ active, onNavigate }) {
+  const isActive = navOtherActiveKeys.has(active);
+
+  return (
+    <li className="nav-other-wrap">
+      <div className="nav-other-anchor">
+        <button
+          type="button"
+          className={`nav-item nav-other-trigger ${isActive ? "active" : ""}`}
+          aria-haspopup="menu"
+          aria-expanded="false"
+        >
+          <ChevronDown className="nav-icon nav-other-chevron" size={16} strokeWidth={2.2} aria-hidden="true" />
+          <span>Other</span>
+        </button>
+        <div className="nav-other-menu" role="menu" aria-label="Other links">
+          <div className="nav-other-menu-panel">
+            {navOtherItems.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  className={`nav-other-link ${active === item.key ? "active" : ""}`}
+                  role="menuitem"
+                  onClick={onNavigate}
+                >
+                  <span className={`nav-other-link-icon nav-other-link-icon--${item.tone}`} aria-hidden="true">
+                    <Icon size={16} strokeWidth={2.15} />
+                  </span>
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </li>
+  );
+}
+
 function Navbar({ active, brand }) {
   const [open, setOpen] = useState(false);
   const [cartItems] = useCartItems();
@@ -795,6 +846,7 @@ function Navbar({ active, brand }) {
                 </li>
               );
             })}
+            <NavOtherMenu active={active} onNavigate={() => setOpen(false)} />
             <li className="nav-cart-wrap">
               <Link className={`nav-cart ${active === "cart" ? "active" : ""}`} href="/cart" aria-label={`Cart with ${cartCount} products`}>
                 <CartBasketIcon size={24} />
@@ -876,6 +928,7 @@ function Footer() {
         <div className="footer-bottom">
           <div className="footer-links">
             <Link href="/pomoc#regulamin">Terms</Link>
+            <Link href="/resell-program">Reseller program</Link>
             <Link href="/pomoc#polityka-prywatnosci">Refunds & Privacy Policy</Link>
             <a className="powered-by" href="https://phantom-cheats.com">
               <span className="powered-by-icon">
