@@ -3682,6 +3682,7 @@ function ProductCheckout({ slug }) {
         onOpenChange={setCheckoutOpen}
         product={product}
         variant={selectedVariant}
+        showGatewayPicker
       />
 
       <section className="product-info-section" data-reveal-group data-reveal-base="80">

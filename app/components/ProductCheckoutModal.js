@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bitcoin, Check, Copy, Download, Loader2, Wallet, X } from "lucide-react";
+import { Bitcoin, Check, Copy, Download, Ellipsis, Loader2, Users, Wallet, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   CHECKOUT_COUPON_KEY,
@@ -11,10 +11,54 @@ import {
   readCheckoutCoupon,
   startKomerzaCheckout,
 } from "../../lib/komerza";
+import {
+  getSellAuthCustomerVariant,
+  openSellAuthEmbedCheckout,
+  SELLAUTH_CUSTOMER_SHOP_ID,
+} from "../../lib/sellauth";
 import { runAccessChecks } from "../../lib/site-access";
 import { CloudflareTurnstileWidget } from "./CloudflareTurnstileWidget";
 
 const CHECKOUT_VERIFY_MS = 1800;
+
+const CHECKOUT_GATEWAYS = [
+  { id: "card", label: "Credit / Debit Card" },
+  { id: "paypal", label: "PayPal" },
+  { id: "crypto", label: "Cryptocurrencies" },
+];
+
+const CHECKOUT_SOURCES = [
+  { id: "youtube", label: "YouTube", src: "/images/referral/youtube.svg" },
+  { id: "discord", label: "Discord", src: "/images/referral/discord.svg" },
+  { id: "friends", label: "Friends" },
+  { id: "google", label: "Google", src: "/images/referral/google.svg" },
+  { id: "other", label: "Other" },
+];
+
+function CheckoutGatewayIcons({ id }) {
+  if (id === "card") {
+    return (
+      <span className="checkout-gateway-icons" aria-hidden="true">
+        <img className="checkout-gateway-mark" src="/images/payment-methods/visa.svg" alt="" />
+        <img className="checkout-gateway-mark" src="/images/payment-methods/mastercard.svg" alt="" />
+      </span>
+    );
+  }
+
+  if (id === "paypal") {
+    return (
+      <span className="checkout-gateway-icons" aria-hidden="true">
+        <img className="checkout-gateway-mark checkout-gateway-mark--paypal" src="/images/payment-methods/paypal.svg" alt="" />
+      </span>
+    );
+  }
+
+  return (
+    <span className="checkout-gateway-icons" aria-hidden="true">
+      <img className="checkout-gateway-mark checkout-gateway-mark--btc" src="/images/payment-methods/bitcoin.svg" alt="" />
+    </span>
+  );
+}
 
 export function ProductCheckoutModal({
   open,
@@ -28,6 +72,7 @@ export function ProductCheckoutModal({
   showEmail = true,
   showCoupon = true,
   showPaymentMethod = false,
+  showGatewayPicker = false,
   theme = "dark",
   balance = null,
   balanceLabel = "",
@@ -38,6 +83,8 @@ export function ProductCheckoutModal({
   const [paymentMethod, setPaymentMethod] = useState(
     initialPaymentMethod === "balance" ? "balance" : "crypto"
   );
+  const [gateway, setGateway] = useState("card");
+  const [referralSource, setReferralSource] = useState("");
   const [cfStatus, setCfStatus] = useState("idle");
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [message, setMessage] = useState({ text: "", tone: "" });
@@ -74,6 +121,8 @@ export function ProductCheckoutModal({
       setIsCheckingOut(false);
       setTermsAccepted(false);
       setPaymentMethod("crypto");
+      setGateway("card");
+      setReferralSource("");
       setDeliveryCode("");
       setCopiedDelivery(false);
       setCfStatus("idle");
@@ -94,6 +143,8 @@ export function ProductCheckoutModal({
     setCouponCode(readCheckoutCoupon());
     setTermsAccepted(false);
     setPaymentMethod("crypto");
+    setGateway("card");
+    setReferralSource("");
     setDeliveryCode("");
     setCopiedDelivery(false);
     setCfStatus("idle");
@@ -153,6 +204,17 @@ export function ProductCheckoutModal({
     try {
       const normalizedEmail = showEmail ? email.trim() : "";
       const normalizedCoupon = showCoupon ? couponCode.trim() : "";
+      const resolvedGateway = showGatewayPicker ? gateway : null;
+      const resolvedPaymentMethod = showPaymentMethod ? paymentMethod : "crypto";
+      const resolvedDiscount = {
+        value: discountValue,
+        subtotal: subtotalValue,
+        total: totalValue,
+        isPayPal: isPayPalDiscount,
+        payPalPercent: isPayPalDiscount ? 10 : 0,
+        gateway: resolvedGateway,
+        coupon: normalizedCoupon || null,
+      };
 
       if (showEmail || showCoupon) {
         try {
@@ -177,7 +239,9 @@ export function ProductCheckoutModal({
           couponCode: normalizedCoupon,
           product,
           variant,
-          paymentMethod: showPaymentMethod ? paymentMethod : "crypto",
+          paymentMethod: resolvedPaymentMethod,
+          gateway: resolvedGateway,
+          discount: resolvedDiscount,
         });
 
         if (result?.deliveryCode) {
@@ -207,6 +271,18 @@ export function ProductCheckoutModal({
         return;
       }
 
+      if (showGatewayPicker && gateway === "crypto") {
+        const sellAuthVariant = getSellAuthCustomerVariant(product.slug, variant.label);
+        if (!sellAuthVariant) {
+          throw new Error("Crypto checkout is not available for this product yet.");
+        }
+        await openSellAuthEmbedCheckout(sellAuthVariant, null, {
+          shopId: SELLAUTH_CUSTOMER_SHOP_ID,
+          redirect: true,
+        });
+        return;
+      }
+
       await startKomerzaCheckout({
         items: [
           {
@@ -218,6 +294,8 @@ export function ProductCheckoutModal({
         ],
         email: normalizedEmail,
         couponCode: normalizedCoupon,
+        gateway: resolvedGateway,
+        discount: resolvedDiscount,
       });
     } catch (error) {
       setMessage({
@@ -273,6 +351,79 @@ export function ProductCheckoutModal({
         ? "Processing..."
         : "Continue to payment";
   const canCheckout = termsAccepted && cfStatus === "success" && !isCheckingOut && !deliveryCode;
+  const productImage = String(product.image || "").trim();
+
+  function parsePriceParts(price = "") {
+    const parts = String(price).trim().split(/\s+/);
+    const numeric = Number((parts[0] || "0").replace(",", "."));
+    return {
+      value: Number.isFinite(numeric) ? numeric : 0,
+      currency: parts.slice(1).join(" ") || "",
+    };
+  }
+
+  function formatPriceValue(value) {
+    return `${(Number(value) || 0).toFixed(2)}`;
+  }
+
+  const parsedPrice = parsePriceParts(variant.price);
+  const subtotalValue = parsedPrice.value;
+
+  const isPayPalDiscount = showGatewayPicker && gateway === "paypal";
+  const payPalDiscountValue = isPayPalDiscount
+    ? Math.round(subtotalValue * 0.1 * 100) / 100
+    : 0;
+  const couponDiscountValue = 0;
+  const discountValue = Math.max(payPalDiscountValue, couponDiscountValue);
+  const totalValue = Math.max(0, subtotalValue - discountValue);
+
+  function buildDiscountLabel(value, currency) {
+    return currency
+      ? `${formatPriceValue(value)} ${currency}`
+      : formatPriceValue(value);
+  }
+
+  const subtotalLabel = parsedPrice.currency
+    ? `${formatPriceValue(subtotalValue)} ${parsedPrice.currency}`
+    : formatPriceValue(subtotalValue);
+  const discountLabel = buildDiscountLabel(discountValue, parsedPrice.currency);
+  const totalLabel = parsedPrice.currency
+    ? `${formatPriceValue(totalValue)} ${parsedPrice.currency}`
+    : formatPriceValue(totalValue);
+  const discountBadge = isPayPalDiscount && payPalDiscountValue > 0 ? "PayPal -10%" : "";
+
+  const paymentBreakdown = (
+    <div className="checkout-payment-breakdown">
+      <div className="checkout-breakdown-row">
+        <span className="checkout-breakdown-label">Subtotal</span>
+        <span className="checkout-breakdown-value">{subtotalLabel}</span>
+      </div>
+      <div className="checkout-breakdown-row">
+        <span className="checkout-breakdown-label">Discount</span>
+        <span className="checkout-breakdown-value checkout-breakdown-value--discount">-{discountLabel}</span>
+      </div>
+      <div className="checkout-breakdown-row checkout-breakdown-row--total">
+        <span className="checkout-breakdown-label">Total</span>
+        <span className="checkout-breakdown-value checkout-breakdown-value--total">{totalLabel}</span>
+      </div>
+    </div>
+  );
+
+  const orderSummary = (
+    <div className="checkout-order-summary">
+      <div className="checkout-order-details">
+        <div>
+          <span className="checkout-order-label">Product</span>
+          <strong>{product.name}</strong>
+        </div>
+        <div>
+          <span className="checkout-order-label">Duration</span>
+          <strong>{variant.label}</strong>
+        </div>
+      </div>
+      {productImage ? <img className="checkout-order-image" src={productImage} alt="" /> : null}
+    </div>
+  );
 
   return (
     <div
@@ -286,7 +437,7 @@ export function ProductCheckoutModal({
         }
       }}
     >
-      <div className="redeem-panel">
+      <div className={`redeem-panel${showGatewayPicker ? " redeem-panel--checkout-wide" : ""}`}>
         <div className="redeem-panel-header">
           <div>
             <div className="redeem-panel-kicker">Secure Checkout</div>
@@ -303,21 +454,44 @@ export function ProductCheckoutModal({
           </button>
         </div>
 
-        <div className="redeem-panel-body">
-          <div className="checkout-order-summary">
-            <div>
-              <span className="checkout-order-label">Product</span>
-              <strong>{product.name}</strong>
+        <div className={`redeem-panel-body${showGatewayPicker ? " checkout-split" : ""}`}>
+          <div className="checkout-main">
+          {showGatewayPicker ? (
+            <div className="checkout-source">
+              <p className="checkout-source-title">
+                Where did you hear about us?
+                <span className="checkout-source-optional">(optional)</span>
+              </p>
+              <div className="checkout-source-list" role="radiogroup" aria-label="Where did you hear about us?">
+                {CHECKOUT_SOURCES.map((option) => {
+                  const selected = referralSource === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      aria-label={option.label}
+                      title={option.label}
+                      className={`checkout-source-option${selected ? " is-selected" : ""}`}
+                      disabled={isCheckingOut || Boolean(deliveryCode)}
+                      onClick={() => setReferralSource(option.id)}
+                    >
+                      {option.src ? (
+                        <img src={option.src} alt="" />
+                      ) : option.id === "friends" ? (
+                        <Users size={22} strokeWidth={2.2} />
+                      ) : (
+                        <Ellipsis size={22} strokeWidth={2.2} />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <div>
-              <span className="checkout-order-label">Duration</span>
-              <strong>{variant.label}</strong>
-            </div>
-            <div className="checkout-order-total">
-              <span className="checkout-order-label">Total</span>
-              <strong>{variant.price}</strong>
-            </div>
-          </div>
+          ) : (
+            orderSummary
+          )}
 
           {showEmail ? (
             <div className="redeem-field checkout-order-field">
@@ -492,6 +666,45 @@ export function ProductCheckoutModal({
           />
 
           <div className={`redeem-message${message.tone ? ` is-${message.tone}` : ""}`}>{message.text}</div>
+          </div>
+
+          {showGatewayPicker ? (
+            <aside className="checkout-gateway-panel">
+              {orderSummary}
+              <div className="checkout-gateway-block">
+              <span className="checkout-order-label">Payment method</span>
+              <div className="checkout-gateway-list" role="radiogroup" aria-label="Payment method">
+                {CHECKOUT_GATEWAYS.map((option) => {
+                  const selected = gateway === option.id;
+                  const isPayPalOption = option.id === "paypal";
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      className={`checkout-gateway-option${selected ? " is-selected" : ""}${isPayPalOption ? " has-gateway-badge" : ""}`}
+                      disabled={
+                        isCheckingOut ||
+                        Boolean(deliveryCode) ||
+                        (option.id === "crypto" && !getSellAuthCustomerVariant(product.slug, variant.label))
+                      }
+                      onClick={() => setGateway(option.id)}
+                    >
+                      <span className="checkout-gateway-radio" aria-hidden="true" />
+                      <span className="checkout-gateway-label">
+                        {option.label}
+                        {isPayPalOption ? <span className="checkout-gateway-badge">-10%</span> : null}
+                      </span>
+                      <CheckoutGatewayIcons id={option.id} />
+                    </button>
+                  );
+                })}
+              </div>
+              </div>
+              {paymentBreakdown}
+            </aside>
+          ) : null}
         </div>
       </div>
     </div>
