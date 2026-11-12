@@ -120,6 +120,7 @@ export async function POST(request) {
       discord_user_id: profile.discordUserId,
       discord_username: profile.username,
       discord_avatar_url: profile.avatarUrl || null,
+      ...(profile.email ? { discord_email: profile.email } : {}),
     };
 
     const { data, error } = await admin
