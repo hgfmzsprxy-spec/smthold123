@@ -229,8 +229,7 @@ export function ConnectLoaderClient({ licenseKey, appId }) {
   }, [appId, licenseKey, linkUser]);
 
   const isDone = status === "done";
-  const showConnect = !isDone && (status === "error" || status === "boot");
-  const showWait = status === "redirecting" || status === "linking";
+  const showConnect = !isDone;
 
   return (
     <>
@@ -245,7 +244,7 @@ export function ConnectLoaderClient({ licenseKey, appId }) {
               <h1 className={styles.title}>Discord OAuth</h1>
             </div>
           </div>
-          <p className={styles.message}>{CONNECT_COPY}</p>
+          {!isDone && <p className={styles.message}>{CONNECT_COPY}</p>}
 
           <div className={styles.profile}>
             {avatarUrl ? (
@@ -268,12 +267,9 @@ export function ConnectLoaderClient({ licenseKey, appId }) {
 
           {isDone && (
             <p className={styles.doneNote}>
-              <strong>You’re connected.</strong> You can close this page and return to the spoofer —
-              CONTINUE unlocks automatically.
+              You’re connected. You can close this page and return to the program, Thank You!
             </p>
           )}
-
-          {showWait && <div className={styles.wait}>Please wait…</div>}
 
           {showConnect && (
             <button type="button" className={styles.btn} onClick={() => void startDiscordOAuth()}>
