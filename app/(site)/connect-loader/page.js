@@ -10,5 +10,15 @@ export default async function Page({ searchParams }) {
   const resolved = await searchParams;
   const key = String(resolved?.key || resolved?.license || "").trim();
   const app = String(resolved?.app || resolved?.app_id || "").trim();
-  return <ConnectLoaderClient licenseKey={key} appId={app} />;
+  return (
+    <>
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      <link
+        href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&display=swap"
+        rel="stylesheet"
+      />
+      <ConnectLoaderClient licenseKey={key} appId={app} />
+    </>
+  );
 }
