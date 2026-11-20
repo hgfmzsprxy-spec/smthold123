@@ -1899,6 +1899,25 @@ const loaderProducts = [
     ],
     modules: ["Hypervisor", "TPM 2.0", "DISKS", "Disk spoofing", "MAC address", "Cleaner support", "GPU serials", "RAM serials"],
   },
+  {
+    slug: "rob-run",
+    name: "Rob Run",
+    image: "/images/rob-run.jpg",
+    featurePreviewCount: 3,
+    version: "v1.0.0",
+    updated: "20.11.2026",
+    compatibility: "Windows 10/11",
+    description: "External cheat for Rob Run with aimbot, full ESP, warnings, and config system in one panel.",
+    note: "Launch Rob Run before starting the loader and stay in the lobby before injecting.",
+    subscription: "Redeem your Rob Run key to unlock loader access and sync the latest build.",
+    steps: [
+      "Open the phantom-cheats.com loader and select Rob Run.",
+      "Let the loader verify your license and sync the current build.",
+      "Start Rob Run, stay in the lobby, then return to the loader.",
+      "Press Launch and wait for the in-game ready confirmation.",
+    ],
+    modules: ["Aimbot", "ESP", "Warnings", "Crosshair", "Configs", "World ESP", "Vehicle State", "V-Sync"],
+  },
 ];
 
 const loaderChangelogBySlug = {
