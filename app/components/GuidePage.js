@@ -110,6 +110,7 @@ const GUIDE_NAV = [
       buildProductNavItem("fortnite-private", "Fortnite Private", "/images/guide-icons/fortnite.png"),
       buildProductNavItem("call-of-duty", "Call of Duty", "/images/guide-icons/call-of-duty.png"),
       buildProductNavItem("apex-legends", "Apex Legends", "/images/guide-icons/apex-legends.png"),
+      buildProductNavItem("rob-run", "Rob Run External", "/images/guide-icons/rob-run.png"),
       {
         id: CONTROLLER_EMULATOR_VIEW,
         label: "Controller Emulator",

@@ -24,6 +24,7 @@ import {
   FileText,
   Fingerprint,
   Gamepad2,
+  Hash,
   HardDrive,
   Headphones,
   HelpCircle,
@@ -70,6 +71,7 @@ import {
 } from "lucide-react";
 import { computeAverageRating } from "../../lib/myvouches";
 import { bioGalleryHeroVideo } from "../../lib/bio-data";
+import resellStyles from "./ResellProgramPage.module.css";
 import {
   apexLegendsFeatures,
   callOfDutyFeatures,
@@ -77,6 +79,7 @@ import {
   hwidSpooferFeatures,
   kbmAimAssistFeatures,
   productFeatures,
+  robRunFeatures,
   temporarySpooferFeatures,
 } from "../../lib/product-features";
 import siteData from "../data/site-data.json";
@@ -462,11 +465,53 @@ function buildBrandColorVars(color) {
   };
 }
 
+function DismissableAnnounceBar({ storageKey, className, href, children, onDismiss }) {
+  const [dismissed, setDismissed] = useState(false);
+
+  useLayoutEffect(() => {
+    try { if (localStorage.getItem(storageKey) === "1") setDismissed(true); } catch {}
+  }, [storageKey]);
+
+  if (dismissed) return null;
+
+  function dismiss(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    try { localStorage.setItem(storageKey, "1"); } catch {}
+    setDismissed(true);
+    onDismiss?.();
+  }
+
+  const Tag = href ? "a" : "div";
+  const tagProps = href ? { href, className: `site-announce-bar ${className || ""}`.trim() } : { className: `site-announce-bar ${className || ""}`.trim() };
+
+  return (
+    <Tag {...tagProps} role="status">
+      {children}
+      <button className="site-announce-close" onClick={dismiss} aria-label="Dismiss">
+        <X size={12} />
+      </button>
+    </Tag>
+  );
+}
+
 export function PageChrome({ active, children, brand }) {
   useScrollReveal();
 
+  const [visibleCount, setVisibleCount] = useState(2);
+  useLayoutEffect(() => {
+    let count = 0;
+    try { if (localStorage.getItem("ann-compat") !== "1") count++; } catch {}
+    try { if (localStorage.getItem("ann-robrun") !== "1") count++; } catch {}
+    setVisibleCount(count);
+  }, []);
+
   const brandVars = brand
     ? { ...buildBrandColorVars(brand.color), "--site-announce-height": "0px" }
+    : visibleCount === 0
+    ? { "--site-announce-height": "0px" }
+    : visibleCount === 1
+    ? { "--site-announce-height": "26px" }
     : null;
 
   return (
@@ -475,8 +520,19 @@ export function PageChrome({ active, children, brand }) {
       style={brandVars || undefined}
     >
       {brand ? null : (
-        <div className="site-announce-bar" role="status">
-          WE ARE STARTING SOON...
+        <div suppressHydrationWarning>
+          <DismissableAnnounceBar storageKey="ann-compat" className="site-announce-bar--compat" onDismiss={() => setVisibleCount((c) => Math.max(0, c - 1))}>
+            <img src="/images/guide-icons/fortnite.png" alt="Fortnite" className="site-announce-icon" />
+            <img src="/images/guide-icons/apex-legends.png" alt="Apex Legends" className="site-announce-icon" />
+            <img src="/images/guide-icons/call-of-duty.png" alt="Call of Duty" className="site-announce-icon" />
+            <img src="/images/guide-icons/rob-run.png" alt="Rob Run" className="site-announce-icon" />
+            <span>ALL CHEATS ARE COMPATIBLE WITH THE LATEST VERSION OF WINDOWS 11 26H2</span>
+          </DismissableAnnounceBar>
+          <DismissableAnnounceBar storageKey="ann-robrun" className="site-announce-bar--link" href="/product/rob-run" onDismiss={() => setVisibleCount((c) => Math.max(0, c - 1))}>
+            <img src="/images/guide-icons/rob-run.png" alt="Rob Run" className="site-announce-icon" />
+            <span>ROB RUN <strong>2.99$</strong> EXTERNAL CHEAT JUST RELEASED!</span>
+            <strong className="site-announce-cta">PURCHASE NOW!</strong>
+          </DismissableAnnounceBar>
         </div>
       )}
       <HeroBackdrop />
@@ -1081,7 +1137,15 @@ const bestSellerProducts = [
     price: "5.99 USD",
     oldPrice: "7.99 USD",
     image: "/images/fortnite.png",
-    tags: ["# UNDETECTED "],
+    tags: ["UNDETECTED"],
+  },
+  {
+    slug: "rob-run",
+    name: "Rob Run External",
+    price: "2.99 USD",
+    oldPrice: "5.99 USD",
+    image: "/images/rob-run.png",
+    tags: ["ONLY 2.99$", "NEW"],
   },
   {
     slug: "call-of-duty",
@@ -1089,7 +1153,7 @@ const bestSellerProducts = [
     price: "4.99 USD",
     oldPrice: "9.99 USD",
     image: "/images/cod.png",
-    tags: ["# UNDETECTED"],
+    tags: ["UNDETECTED"],
   },
   {
     slug: "apex-legends",
@@ -1097,7 +1161,7 @@ const bestSellerProducts = [
     price: "4.99 USD",
     oldPrice: "9.99 USD",
     image: "/images/apex-legends.png",
-    tags: ["# UNDETECTED"],
+    tags: ["UNDETECTED"],
   },
   {
     slug: "kbm-aim-assist",
@@ -1105,7 +1169,7 @@ const bestSellerProducts = [
     price: "19.99 USD",
     oldPrice: "29.99 USD",
     image: "/images/aim-assist.png",
-    tags: ["# NEW"],
+    tags: ["NEW"],
   },
   {
     slug: "permanent-spoofer",
@@ -1113,7 +1177,7 @@ const bestSellerProducts = [
     price: "14.99 USD",
     oldPrice: "24.99 USD",
     image: "/images/perm-spoofer.png",
-    tags: ["# BEST SELLER"],
+    tags: ["BEST SELLER"],
   },
   {
     slug: "temporary-spoofer",
@@ -1121,7 +1185,7 @@ const bestSellerProducts = [
     price: "4.99 USD",
     oldPrice: "9.99 USD",
     image: "/images/temp-spoofer.png",
-    tags: ["# NEW"],
+    tags: ["NEW"],
   },
 ];
 
@@ -1392,7 +1456,7 @@ const kbmAimAssistRequirements = [
 const apexLegendsRequirements = [
   { label: "Operating System", value: "Windows 10 & 11", icon: Monitor },
   { label: "Processors", value: "AMD & Intel", icon: Cpu },
-  { label: "Anti-Cheat", value: "Easy Anti-Cheat", icon: ShieldCheck },
+  { label: "Anti-Cheat", value: "EA Javelin Anticheat", icon: ShieldCheck },
   { label: "Game Mode", value: "Borderless & Windowed", icon: Gamepad2 },
   { label: "Spoofer Included", value: "No", icon: ShieldCheck },
   { label: "Platform", value: "Steam & EA App", icon: Layers },
@@ -1405,6 +1469,15 @@ const callOfDutyRequirements = [
   { label: "Game Mode", value: "Borderless & Windowed", icon: Gamepad2 },
   { label: "Spoofer Included", value: "No", icon: ShieldCheck },
   { label: "Platform", value: "Steam & Battle.net", icon: Layers },
+];
+
+const robRunRequirements = [
+  { label: "Operating System", value: "Windows 10 & 11", icon: Monitor },
+  { label: "Processors", value: "AMD & Intel", icon: Cpu },
+  { label: "Anti-Cheat", value: "Easy Anti-Cheat", icon: ShieldCheck },
+  { label: "Game Mode", value: "Borderless & Windowed", icon: Gamepad2 },
+  { label: "Spoofer Included", value: "No", icon: ShieldCheck },
+  { label: "Platform", value: "Steam", icon: Layers },
 ];
 
 const hwidSpooferPlanComparisonRows = [
@@ -1768,10 +1841,28 @@ const checkoutProducts = [
     requirements: fortniteRequirements,
     features: fortniteFeatures,
     secondaryImages: [
-      { src: "/images/secondary-images/fortnite_menu.png", alt: "Fortnite Menu" },
-      { src: "/images/secondary-images/fortnite_aimbot.png", alt: "Fortnite Aimbot" },
-      { src: "/images/secondary-images/fortnite_esp.png", alt: "Fortnite ESP" },
+      { src: "/images/secondary-images/fortnite1.png", alt: "Fortnite Menu" },
+      { src: "/images/secondary-images/fortnite2.png", alt: "Fortnite Aimbot" },
+      { src: "/images/secondary-images/fortnite3.png", alt: "Fortnite ESP" },
+      { src: "/images/secondary-images/fortnite4.png", alt: "Fortnite Visuals", lightboxOnly: true },
     ],
+  },
+  {
+    slug: "rob-run",
+    name: "Rob Run External",
+    shortName: "Rob Run",
+    price: "2.99 USD",
+    image: "/images/rob-run.png",
+    description:
+      "External cheat for Rob Run with aimbot, full ESP, warnings, and config system in one panel.",
+    variants: [
+      { label: "1 Day License", price: "2.99 USD" },
+      { label: "7 Days License", price: "7.99 USD" },
+      { label: "30 Days License", price: "19.99 USD" },
+      { label: "Lifetime License", price: "49.99 USD" },
+    ],
+    requirements: robRunRequirements,
+    features: robRunFeatures,
   },
 ];
 
@@ -1805,23 +1896,23 @@ const loaderProducts = [
     modules: ["Aimbot", "Visuals", "Radar", "Streamproof", "Config Sync", "FOV Control", "Quick Launch", "Hotkeys"],
   },
   {
-    slug: "call-of-duty",
-    name: "Call of Duty",
-    image: "/images/cod.png",
+    slug: "rob-run",
+    name: "Rob Run External",
+    image: "/images/rob-run.png",
     featurePreviewCount: 3,
     version: "v1.0.0",
-    updated: "20.07.2026",
+    updated: "20.11.2026",
     compatibility: "Windows 10/11",
-    description: "Stable Call of Duty build with humanized aimbot, full visuals, radar, and lobby data in one panel.",
-    note: "Launch Call of Duty in borderless or windowed mode and stay in the lobby before injecting.",
-    subscription: "Redeem your Call of Duty key to unlock the loader subscription and sync the latest package.",
+    description: "External cheat for Rob Run with aimbot, full ESP, warnings, and config system in one panel.",
+    note: "Launch Rob Run before starting the loader and stay in the lobby before injecting.",
+    subscription: "Redeem your Rob Run key to unlock loader access and sync the latest build.",
     steps: [
-      "Open the phantom-cheats.com panel and select the Call of Duty license.",
-      "Let the loader verify and sync the current build.",
-      "Start Call of Duty, stay in the lobby, then return to the loader.",
+      "Open the phantom-cheats.com loader and select Rob Run.",
+      "Let the loader verify your license and sync the current build.",
+      "Start Rob Run, stay in the lobby, then return to the loader.",
       "Press Launch and wait for the in-game ready confirmation.",
     ],
-    modules: ["Aimbot", "Visuals", "Radar", "Lobby Data", "Crosshair", "Configs", "Prediction", "V-Sync"],
+    modules: ["Aimbot", "ESP", "Warnings", "Crosshair", "Configs", "World ESP", "Vehicle State", "V-Sync"],
   },
   {
     slug: "apex-legends",
@@ -1900,23 +1991,23 @@ const loaderProducts = [
     modules: ["Hypervisor", "TPM 2.0", "DISKS", "Disk spoofing", "MAC address", "Cleaner support", "GPU serials", "RAM serials"],
   },
   {
-    slug: "rob-run",
-    name: "Rob Run",
-    image: "/images/rob-run.jpg",
+    slug: "call-of-duty",
+    name: "Call of Duty",
+    image: "/images/cod.png",
     featurePreviewCount: 3,
     version: "v1.0.0",
-    updated: "20.11.2026",
+    updated: "20.07.2026",
     compatibility: "Windows 10/11",
-    description: "External cheat for Rob Run with aimbot, full ESP, warnings, and config system in one panel.",
-    note: "Launch Rob Run before starting the loader and stay in the lobby before injecting.",
-    subscription: "Redeem your Rob Run key to unlock loader access and sync the latest build.",
+    description: "Stable Call of Duty build with humanized aimbot, full visuals, radar, and lobby data in one panel.",
+    note: "Launch Call of Duty in borderless or windowed mode and stay in the lobby before injecting.",
+    subscription: "Redeem your Call of Duty key to unlock the loader subscription and sync the latest package.",
     steps: [
-      "Open the phantom-cheats.com loader and select Rob Run.",
-      "Let the loader verify your license and sync the current build.",
-      "Start Rob Run, stay in the lobby, then return to the loader.",
+      "Open the phantom-cheats.com panel and select the Call of Duty license.",
+      "Let the loader verify and sync the current build.",
+      "Start Call of Duty, stay in the lobby, then return to the loader.",
       "Press Launch and wait for the in-game ready confirmation.",
     ],
-    modules: ["Aimbot", "ESP", "Warnings", "Crosshair", "Configs", "World ESP", "Vehicle State", "V-Sync"],
+    modules: ["Aimbot", "Visuals", "Radar", "Lobby Data", "Crosshair", "Configs", "Prediction", "V-Sync"],
   },
 ];
 
@@ -2294,6 +2385,7 @@ function checkoutHrefForItem(item = {}) {
 }
 
 function splitPriceLabel(price = "") {
+  if (!price) return ["", ""];
   const parts = price.trim().split(/\s+/);
   if (parts.length <= 1) return [price, ""];
   return [parts.slice(0, -1).join(" "), parts[parts.length - 1]];
@@ -2312,7 +2404,7 @@ function BestSellerCard({ product }) {
         <div className="best-product-tags">
           {product.tags.map((tag) => (
             <span key={`${product.name}-${tag}`}>
-              <BadgePercent size={14} />
+              {tag.startsWith("ONLY") ? <TicketPercent size={14} /> : <Hash size={14} />}
               {tag}
             </span>
           ))}
@@ -4023,6 +4115,15 @@ function CartContent() {
   );
 }
 
+function LoaderDottedBackdrop({ wide = false, className = "" }) {
+  return (
+    <div
+      className={`${resellStyles.dotField}${wide ? ` ${resellStyles.dotFieldWide}` : ""}${className ? ` ${className}` : ""}`}
+      aria-hidden="true"
+    />
+  );
+}
+
 function SimpleHeader({
   title,
   subtitle,
@@ -4031,10 +4132,12 @@ function SimpleHeader({
   brandLogo,
   brandAutoLogo = true,
   brandLogoPlaceholder = false,
+  backdrop = false,
 }) {
   const showBrandMark = Boolean(brandLogo) || brandLogoPlaceholder;
   return (
     <header className={`simple-header ${showBrandMark ? "simple-header--branded" : ""} ${className}`}>
+      {backdrop ? <LoaderDottedBackdrop className="loader-header-dots" /> : null}
       <div className="container">
         <div className="simple-header-inner fade-up">
           {brandLogo ? (
@@ -4498,8 +4601,17 @@ function LoaderCard({ item, displayMeta, subscriptionBadge = null, brandSlug = "
             ))}
           </span>
           <span className="checkout-pay-inner">
-            <ArrowRight className="checkout-pay-icon" size={18} strokeWidth={2.5} aria-hidden="true" />
-            View Details
+            {subscriptionBadge === "active" ? (
+              <>
+                <Rocket className="checkout-pay-icon" size={18} strokeWidth={2.5} aria-hidden="true" />
+                LAUNCH
+              </>
+            ) : (
+              <>
+                <ArrowRight className="checkout-pay-icon" size={18} strokeWidth={2.5} aria-hidden="true" />
+                DETAILS
+              </>
+            )}
           </span>
         </div>
       </div>
@@ -4660,6 +4772,7 @@ function LoaderContent({ brandSlug = "", brandName = "", brandProductSlugs = nul
 
   return (
     <section className={`section loader-section fade-up${brandSlug ? " loader-section--branded" : ""}`} data-scroll-target>
+      {brandSlug ? null : <LoaderDottedBackdrop wide />}
       <div className="container">
         {brandSlug ? null : (
           <div className="loader-intro">
@@ -6734,7 +6847,7 @@ export function LoaderPage({ brandSlug }) {
   return (
     <PageChrome active="loader" brand={brand}>
       {showSplash ? <LoaderSplash brand={brand} ready={splashReady} /> : null}
-      <SimpleHeader title="Remote Loader" subtitle="Choose product, redeem the license and start dominating lobbies!" linkText="select product" brandLogo={brand?.logo || ""} brandAutoLogo={brand?.autoLogoSize !== false} />
+      <SimpleHeader title="Remote Loader" subtitle="Choose product, redeem the license and start dominating lobbies!" linkText="select product" backdrop={!hasSlug} brandLogo={brand?.logo || ""} brandAutoLogo={brand?.autoLogoSize !== false} />
       {hasSlug ? <BrandedToolbar brand={brand} /> : null}
       <LoaderContent brandSlug={brandSlug} brandName={brand?.brandName || ""} brandProductSlugs={brand?.productSlugs || null} onReady={onReady} />
     </PageChrome>

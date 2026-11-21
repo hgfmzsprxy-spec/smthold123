@@ -24,6 +24,9 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="pl" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var c=localStorage.getItem('ann-compat')==='1',r=localStorage.getItem('ann-robrun')==='1';if(c)document.documentElement.setAttribute('data-ann-compat','1');if(r)document.documentElement.setAttribute('data-ann-robrun','1');var n=(!c?1:0)+(!r?1:0);document.documentElement.style.setProperty('--site-announce-height',n===0?'0px':n===1?'26px':'52px');}catch(e){}})();` }} />
+      </head>
       <body suppressHydrationWarning>
         <SiteProtection />
         <KomerzaScript />

@@ -6,7 +6,7 @@ const heroStatsBase = [
   { value: "1542", label: "Purchases", icon: SolidCartIcon },
   { key: "reviews", label: "Reviews", icon: SolidReviewIcon },
   { key: "rating", label: "Our Rating", icon: SolidStarIcon, iconSize: 40 },
-  { value: "72", label: "Online Users", icon: SolidUsersIcon },
+  { value: "384", label: "Online Users", icon: SolidUsersIcon },
 ];
 
 function SolidCartIcon({ size = 34 }) {
@@ -97,102 +97,11 @@ function HeroStatItem({ stat, value, animateTrigger = true }) {
     const parsed = Number.parseFloat(String(value).replace(",", "."));
     return Number.isFinite(parsed) ? parsed : 0;
   }, [value]);
-  const [display, setDisplay] = useState(() => (decimals > 0 ? "0.00" : "0"));
+  const display = decimals > 0 ? target.toFixed(decimals) : String(Math.round(target));
   const Icon = stat.icon;
 
-  useEffect(() => {
-    if (!animateTrigger) {
-      setDisplay(decimals > 0 ? "0.00" : "0");
-      return undefined;
-    }
-
-    const node = itemRef.current;
-    if (!node) return undefined;
-
-    let frame = 0;
-    let revealTimer = 0;
-    let started = false;
-
-    function runCountUp() {
-      if (started) return;
-      started = true;
-
-      const prefersReducedMotion =
-        typeof window.matchMedia === "function" &&
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-      if (prefersReducedMotion) {
-        setDisplay(decimals > 0 ? target.toFixed(decimals) : String(Math.round(target)));
-        return;
-      }
-
-      const durationMs = 2000;
-      let startTime = 0;
-
-      setDisplay(decimals > 0 ? "0.00" : "0");
-
-      function tick(timestamp) {
-        if (!startTime) startTime = timestamp;
-        const progress = Math.min((timestamp - startTime) / durationMs, 1);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        const currentValue = target * eased;
-
-        setDisplay(decimals > 0 ? currentValue.toFixed(decimals) : String(Math.round(currentValue)));
-
-        if (progress < 1) {
-          frame = requestAnimationFrame(tick);
-        } else {
-          setDisplay(decimals > 0 ? target.toFixed(decimals) : String(Math.round(target)));
-        }
-      }
-
-      frame = requestAnimationFrame(tick);
-    }
-
-    function scheduleCountUp() {
-      window.clearTimeout(revealTimer);
-      revealTimer = window.setTimeout(runCountUp, getRevealDelayMs(node));
-    }
-
-    if (node.classList.contains("is-visible")) {
-      scheduleCountUp();
-    } else {
-      const mutation = new MutationObserver(() => {
-        if (!node.classList.contains("is-visible")) return;
-        mutation.disconnect();
-        scheduleCountUp();
-      });
-
-      mutation.observe(node, { attributes: true, attributeFilter: ["class"] });
-
-      const fallback = new IntersectionObserver(
-        ([entry]) => {
-          if (!entry.isIntersecting) return;
-          fallback.disconnect();
-          mutation.disconnect();
-          scheduleCountUp();
-        },
-        { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }
-      );
-
-      fallback.observe(node);
-
-      return () => {
-        mutation.disconnect();
-        fallback.disconnect();
-        window.clearTimeout(revealTimer);
-        cancelAnimationFrame(frame);
-      };
-    }
-
-    return () => {
-      window.clearTimeout(revealTimer);
-      cancelAnimationFrame(frame);
-    };
-  }, [animateTrigger, decimals, target]);
-
-  return (
-    <div className="hero-stat-item" ref={itemRef}>
+  const inner = (
+    <>
       <div className="hero-stat-icon">
         <Icon size={stat.iconSize || 34} />
       </div>
@@ -200,6 +109,23 @@ function HeroStatItem({ stat, value, animateTrigger = true }) {
         <strong className="hero-stat-value">{display}</strong>
         <span>{stat.label}</span>
       </div>
+      {stat.key === "reviews" && (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="hero-stat-external-icon"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      )}
+    </>
+  );
+
+  if (stat.key === "reviews") {
+    return (
+      <a className="hero-stat-item hero-stat-item--link" href="/reviews" target="_blank" rel="noopener noreferrer" ref={itemRef}>
+        {inner}
+      </a>
+    );
+  }
+
+  return (
+    <div className="hero-stat-item" ref={itemRef}>
+      {inner}
     </div>
   );
 }

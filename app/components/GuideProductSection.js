@@ -37,6 +37,11 @@ const PRODUCT_META = {
     image: "/images/guide-icons/apex-legends.png",
     lead: "Launch guide for Apex Legends.",
   },
+  "rob-run": {
+    label: "Rob Run External",
+    image: "/images/guide-icons/rob-run.png",
+    lead: "Launch guide for Rob Run External.",
+  },
 };
 
 const SECTION_LABELS = {
@@ -68,6 +73,16 @@ const INJECTION_GUIDES = {
     icon: "/images/guide-icons/apex-legends.png",
     initImage: "/images/guides-data/apex-init.png",
     menuMode: "auto",
+  },
+  "rob-run": {
+    productLabel: "Rob Run External",
+    gameName: "Rob Run",
+    icon: "/images/guide-icons/rob-run.png",
+    initImage: "/images/guides-data/robrun1.png",
+    menuMode: "notification-ok",
+    lobbyConfirmImage: "/images/guides-data/robrun2.png",
+    successImage: "/images/guides-data/robrun3.png",
+    lobbyNote: "could be in a match",
   },
 };
 
@@ -193,6 +208,45 @@ const TIPS_GUIDES = {
         icon: Search,
         title: "Lobby Data",
         body: "In this tab you can search for a player by nickname or level and target them — for example with custom smooth or a color ESP.",
+      },
+    ],
+  },
+  "rob-run": {
+    productLabel: "Rob Run External",
+    gameName: "Rob Run",
+    icon: "/images/guide-icons/rob-run.png",
+    lead: "Overlays, VSync, aimbot, ESP, and Warnings tips for Rob Run External.",
+    tips: [
+      {
+        icon: Layers,
+        title: "Disable overlays",
+        body: "For better fluidity and overlay performance, turn off every other overlay — Discord, NVIDIA, and similar.",
+      },
+      {
+        icon: Monitor,
+        title: "Test VSync on and off",
+        body: "Try both VSync enabled and disabled. VSync locks your framerate to your monitor refresh rate. If you have a strong CPU, you can try without VSync.",
+        note: "VSYNC OFF ALWAYS INCREASES CPU USAGE.",
+      },
+      {
+        icon: EyeOff,
+        title: "Performance mode",
+        body: "You can enable performance mode — it stops rendering players who are behind your camera.",
+      },
+      {
+        icon: SlidersHorizontal,
+        title: "Use higher smooth",
+        body: "We recommend a higher smooth value so your aim looks more natural and you are less likely to get reported.",
+      },
+      {
+        icon: Eye,
+        title: "World ESP",
+        body: "You can configure loot ESP in detail — categories, distances, and rarity filters. Remember to save your config.",
+      },
+      {
+        icon: Search,
+        title: "Warnings system",
+        body: "The Warnings tab lets you set proximity alerts per role (Police, Robber, Civilian). Configure the range and color for each — works with or without the menu open.",
       },
     ],
   },
@@ -462,16 +516,16 @@ function ProductInjectionGuide({
           ) : (
             <div className={styles.guideStepBody}>
               <div className={styles.guideStepCopy}>
-                <h2 className={styles.guideStepTitle}>Start Call of Duty</h2>
+                <h2 className={styles.guideStepTitle}>Start {config.gameName}</h2>
                 <p className={styles.guideStepText}>
-                  Launch Call of Duty and enter the <strong>lobby</strong>. Wait for the loader
+                  Launch {config.gameName} and enter the <strong>lobby</strong>. Wait for the loader
                   confirm popup, then click <strong>OK</strong> to load the menu.
                 </p>
 
                 <ol className={styles.guideStepList}>
                   <li>
                     <strong>Start the game</strong>
-                    <span>Open Call of Duty and stay in the lobby (not in a match).</span>
+                    <span>Open {config.gameName} and stay in the lobby ({config.lobbyNote || "not in a match"}).</span>
                   </li>
                   <li>
                     <strong>Confirm OK in lobby</strong>
@@ -488,7 +542,7 @@ function ProductInjectionGuide({
                   <img
                     className={styles.guideProductShot}
                     src={config.lobbyConfirmImage}
-                    alt="Call of Duty loader confirm OK popup in lobby"
+                    alt={`${config.gameName} loader confirm OK popup in lobby`}
                   />
                 </div>
                 <p className={styles.guideVideoCaption}>
@@ -555,7 +609,7 @@ function ProductInjectionGuide({
                   <img
                     className={styles.guideProductShot}
                     src={config.successImage}
-                    alt="Call of Duty menu loaded successfully"
+                    alt={`${config.gameName} menu loaded successfully`}
                   />
                 </div>
                 <p className={styles.guideVideoCaption}>

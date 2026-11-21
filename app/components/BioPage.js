@@ -647,16 +647,13 @@ export default function BioPage({
           />
           <div className={styles.galleryHero} style={{ aspectRatio: galleryHeroAspectRatio }}>
             <div className={styles.galleryHeroCaption}>
-              <span>{bioGalleryHeroVideo.title}</span>
+              <span>Rob Run External</span>
             </div>
-            <video
-              ref={galleryHeroVideoRef}
+            <img
               className={styles.galleryHeroVideo}
-              src={bioGalleryHeroVideo.src}
-              controls
-              playsInline
-              preload="metadata"
-              aria-label={bioGalleryHeroVideo.title}
+              src="/images/guides-data/robrun3.png"
+              alt="Rob Run External"
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />
           </div>
         </section>
