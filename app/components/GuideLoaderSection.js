@@ -13,7 +13,7 @@ const NEXT_PRODUCTS = [
   { id: "apex-legends", label: "Apex Legends", image: "/images/guide-icons/apex-legends.png" },
   { id: "controller-emulator", label: "Controller Emulator", icon: Gamepad2 },
   { id: "permanent-spoofer", label: "Permanent Spoofer", icon: Shield },
-  { id: "temporary-spoofer", label: "Temporary Spoofer", icon: Timer },
+  { id: "temporary-spoofer", label: "Temporary Spoofer [UEFI]", icon: Timer },
 ];
 
 function GuideContinueFooter({ label, children, continueRef }) {

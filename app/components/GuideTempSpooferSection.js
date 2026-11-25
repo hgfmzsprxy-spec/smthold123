@@ -62,7 +62,7 @@ export default function GuideTempSpooferSection({
           <span className={styles.guideTitleLucideIcon} aria-hidden="true">
             <Timer size={22} />
           </span>
-          <h1 className={styles.guideArticleTitle}>Temporary Spoofer</h1>
+          <h1 className={styles.guideArticleTitle}>Temporary Spoofer [UEFI]</h1>
         </div>
         <p className={styles.guideArticleLead}>
           Step-by-step guide for the Temporary (EAC / BattlEye) HWID Spoofer and Cleaner.

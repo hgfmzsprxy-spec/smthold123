@@ -2,7 +2,7 @@
 
 import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Images } from "lucide-react";
+import { ChevronLeft, ChevronRight, Images, Play } from "lucide-react";
 
 function getRenderedImageBounds(img) {
   const rect = img.getBoundingClientRect();
@@ -161,7 +161,20 @@ export default function ProductImageLightbox({ images, index, onIndexChange, onC
 
         <figure className="product-image-lightbox-figure">
           <div className="product-image-lightbox-stage">
-            <ProductImageMagnifier src={image.src} alt={image.alt} />
+            {image.video ? (
+              <video
+                key={image.video}
+                className="product-image-lightbox-video"
+                src={image.video}
+                poster={image.src}
+                controls
+                autoPlay
+                playsInline
+                preload="metadata"
+              />
+            ) : (
+              <ProductImageMagnifier src={image.src} alt={image.alt} />
+            )}
             <div className="product-secondary-more product-image-lightbox-counter" aria-live="polite">
               <Images size={12} strokeWidth={2.4} />
               <span>
@@ -188,11 +201,16 @@ export default function ProductImageLightbox({ images, index, onIndexChange, onC
               key={thumb.src}
               role="tab"
               aria-selected={thumbIndex === index}
-              className={`product-image-lightbox-thumb${thumbIndex === index ? " is-active" : ""}`}
+              className={`product-image-lightbox-thumb${thumbIndex === index ? " is-active" : ""}${thumb.video ? " product-image-lightbox-thumb--video" : ""}`}
               onClick={() => onIndexChange(thumbIndex)}
               aria-label={thumb.alt || `Image ${thumbIndex + 1}`}
             >
               <img src={thumb.src} alt="" />
+              {thumb.video ? (
+                <span className="product-image-lightbox-thumb-play" aria-hidden="true">
+                  <Play size={12} strokeWidth={2.6} fill="currentColor" />
+                </span>
+              ) : null}
             </button>
           ))}
         </div>

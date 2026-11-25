@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import ProductImageLightbox from "./ProductImageLightbox";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   BadgePercent,
@@ -85,7 +86,7 @@ import {
 import siteData from "../data/site-data.json";
 import { ProductPaymentMethods } from "./ProductPaymentMethods";
 import { PurchaseCountryFlag } from "./PurchaseCountryFlag";
-import { SkeletonBlock } from "./Skeleton";
+import { SkeletonBlock, LoaderCardSkeleton } from "./Skeleton";
 import { LoaderDownloadModal } from "./LoaderDownloadModal";
 import { LoaderRedeemModal } from "./LoaderRedeemModal";
 import HeroStats from "./HeroStats";
@@ -1181,7 +1182,7 @@ const bestSellerProducts = [
   },
   {
     slug: "temporary-spoofer",
-    name: "Temporary Spoofer",
+    name: "Temporary Spoofer [UEFI]",
     price: "4.99 USD",
     oldPrice: "9.99 USD",
     image: "/images/temp-spoofer.png",
@@ -1233,7 +1234,7 @@ const recentPurchaseProducts = [
   { slug: "apex-legends", name: "Apex Legends", image: "/images/apex-legends.png" },
   { slug: "kbm-aim-assist", name: "KBM Aim Assist", image: "/images/aim-assist.png" },
   { slug: "permanent-spoofer", name: "Permanent Spoofer", image: "/images/perm-spoofer.png" },
-  { slug: "temporary-spoofer", name: "Temporary Spoofer", image: "/images/temp-spoofer.png" },
+  { slug: "temporary-spoofer", name: "Temporary Spoofer [UEFI]", image: "/images/temp-spoofer.png" },
 ];
 
 const recentPurchaseCountries = [
@@ -1751,7 +1752,7 @@ const checkoutProducts = [
   },
   {
     slug: "temporary-spoofer",
-    name: "Temporary Spoofer",
+    name: "Temporary Spoofer [UEFI]",
     shortName: "Temporary",
     price: "4.99 USD",
     image: "/images/temp-spoofer.png",
@@ -1764,9 +1765,13 @@ const checkoutProducts = [
       { label: "90 Days License", price: "99.99 USD" },
     ],
     secondaryImages: [
-      { src: "/images/secondary-images/temp1.png", alt: "Temporary Spoofer | Spoofer" },
-      { src: "/images/secondary-images/temp2.png", alt: "Temporary Spoofer | Cleaner" },
-      { src: "/images/secondary-images/temp3.png", alt: "Temporary Spoofer | Spoofing Completed" },
+      { src: "/images/secondary-images/temp1.png", alt: "Temporary Spoofer | 1" },
+      { src: "/images/secondary-images/temp2.png", alt: "Temporary Spoofer | 2" },
+      {
+        src: "/images/secondary-images/temp3.png",
+        alt: "Temporary Spoofer | Full Spoofing Process",
+        video: "https://cdn.discordapp.com/attachments/1538380252676489368/1570556306761453689/1112_1.mp4?ex=6b07580b&is=6b06068b&hm=26f4be9dbbda25b43376ba399d2b0f25b049f3502412a3da396cea1beb6be83d&",
+      },
     ],
     requirements: temporarySpooferRequirements,
     features: temporarySpooferFeatures,
@@ -1860,6 +1865,11 @@ const checkoutProducts = [
       { label: "7 Days License", price: "7.99 USD" },
       { label: "30 Days License", price: "19.99 USD" },
       { label: "Lifetime License", price: "49.99 USD" },
+    ],
+    secondaryImages: [
+      { src: "/images/secondary-images/robrun1.png", alt: "Rob Run | 1" },
+      { src: "/images/secondary-images/robrun2.png", alt: "Rob Run | 2" },
+      { src: "/images/secondary-images/robrun3.png", alt: "Rob Run | 3" },
     ],
     requirements: robRunRequirements,
     features: robRunFeatures,
@@ -1973,7 +1983,7 @@ const loaderProducts = [
   },
   {
     slug: "temporary-spoofer",
-    name: "Temporary Spoofer",
+    name: "Temporary Spoofer [UEFI]",
     image: "/images/temp-spoofer.png",
     featurePreviewCount: 2,
     version: "v1.4.2",
@@ -3676,7 +3686,7 @@ function ProductCheckout({ slug }) {
                       <button
                         type="button"
                         key={image.src}
-                        className={activeImageIndex === index ? "active" : ""}
+                        className={`${activeImageIndex === index ? "active" : ""}${image.video ? " product-secondary-video-thumb" : ""}`.trim()}
                         onClick={() => {
                           setActiveImageIndex(index);
                           setPreviewIndex(getLightboxIndexFromThumbnail(index));
@@ -3685,7 +3695,29 @@ function ProductCheckout({ slug }) {
                           isLastVisible ? `${image.alt}. ${morePreviewCount} more images` : image.alt
                         }
                       >
-                        <img src={image.src} alt={image.alt} />
+                        {image.video ? (
+                          <video
+                            src={`${image.video}#t=115`}
+                            muted
+                            playsInline
+                            preload="metadata"
+                            disablePictureInPicture
+                            tabIndex={-1}
+                            aria-hidden="true"
+                            onLoadedMetadata={(event) => {
+                              try {
+                                event.currentTarget.currentTime = 115;
+                              } catch {}
+                            }}
+                          />
+                        ) : (
+                          <img src={image.src} alt={image.alt} />
+                        )}
+                        {image.video ? (
+                          <span className="product-secondary-play" aria-hidden="true">
+                            <Play size={16} strokeWidth={2.6} fill="currentColor" />
+                          </span>
+                        ) : null}
                         {isLastVisible ? (
                           <span className="product-secondary-more" aria-hidden="true">
                             <Images size={12} strokeWidth={2.4} />
@@ -4451,19 +4483,57 @@ function ReviewsContent({ reviews: initialReviews = [], onReviewsMetaChange }) {
       return;
     }
 
-    section.querySelectorAll(".review-card-reveal").forEach((card, index) => {
-      card.classList.remove("is-visible");
-      card.style.setProperty("--reveal-delay", `${Math.min(70 + index * 45, 720)}ms`);
-      requestAnimationFrame(() => card.classList.add("is-visible"));
-    });
+    const cards = Array.from(section.querySelectorAll(".review-card-reveal"));
+    const paginationItems = Array.from(
+      section.querySelectorAll(".reviews-pagination-arrow, .reviews-pagination-page, .reviews-pagination-ellipsis"),
+    );
 
-    section.querySelectorAll(".reviews-pagination").forEach((nav) => {
-      nav.querySelectorAll(".reviews-pagination-arrow, .reviews-pagination-page, .reviews-pagination-ellipsis").forEach((item, index) => {
-        item.classList.remove("is-visible");
-        item.style.setProperty("--reveal-delay", `${Math.min(40 + index * 30, 720)}ms`);
-        requestAnimationFrame(() => item.classList.add("is-visible"));
+    const hiddenTransform = "translate3d(0, 34px, 0)";
+    const transitionValue = "opacity 0.74s ease, transform 0.74s cubic-bezier(0.22, 0.95, 0.3, 1)";
+
+    const forceHidden = (node) => {
+      node.classList.remove("is-visible");
+      node.style.opacity = "0";
+      node.style.transform = hiddenTransform;
+      node.style.transition = transitionValue;
+    };
+
+    const reveal = (node, delayMs) => {
+      node.style.transitionDelay = `${delayMs}ms`;
+      node.style.opacity = "1";
+      node.style.transform = "translate3d(0, 0, 0)";
+      node.classList.add("is-visible");
+    };
+
+    cards.forEach(forceHidden);
+    paginationItems.forEach(forceHidden);
+
+    const timers = [];
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        cards.forEach((card, index) => {
+          reveal(card, Math.min(70 + index * 45, 720));
+        });
+        paginationItems.forEach((item, index) => {
+          reveal(item, Math.min(40 + index * 30, 720));
+        });
+
+        const cleanup = window.setTimeout(() => {
+          [...cards, ...paginationItems].forEach((node) => {
+            node.style.opacity = "";
+            node.style.transform = "";
+            node.style.transition = "";
+            node.style.transitionDelay = "";
+          });
+        }, 2000);
+        timers.push(cleanup);
       });
     });
+
+    return () => {
+      timers.forEach((id) => window.clearTimeout(id));
+    };
   }, [loading, page, paginatedReviews]);
 
   return (
@@ -4537,7 +4607,7 @@ function RulesContent() {
   );
 }
 
-function LoaderCard({ item, displayMeta, subscriptionBadge = null, brandSlug = "", brandName = "", locked = false, onNavigate }) {
+function LoaderCard({ item, displayMeta, subscriptionBadge = null, brandSlug = "", brandName = "", locked = false, onNavigate, loading = false }) {
   const previewCount = item.featurePreviewCount || 3;
   const visibleModules = item.modules.slice(0, previewCount);
   const hiddenModulesCount = Math.max(0, item.modules.length - visibleModules.length);
@@ -4584,35 +4654,74 @@ function LoaderCard({ item, displayMeta, subscriptionBadge = null, brandSlug = "
           </div>
           <div className="loader-card-update">
             <CalendarDays size={14} />
-            <span>Last Update: {lastUpdate}</span>
+            <span>
+              Last Update:{" "}
+              {loading ? (
+                <span className="skeleton-block skeleton-loader-inline skeleton-loader-update-value" aria-hidden="true" />
+              ) : (
+                lastUpdate
+              )}
+            </span>
           </div>
           <div className="loader-card-status">
             <ShieldCheck size={14} />
             <span>
               Current Status:{" "}
-              <strong className={`loader-product-status ${getLoaderProductStatusClass(status)}`}>{status}</strong>
+              {loading ? (
+                <span className="skeleton-block skeleton-loader-inline skeleton-loader-status-value" aria-hidden="true" />
+              ) : (
+                <strong className={`loader-product-status ${getLoaderProductStatusClass(status)}`}>{status}</strong>
+              )}
             </span>
           </div>
         </div>
-        <div className="checkout-pay-button loader-card-action">
-          <span className="checkout-pay-points" aria-hidden="true">
-            {Array.from({ length: 10 }, (_, index) => (
-              <i className="checkout-pay-point" key={index} />
-            ))}
-          </span>
-          <span className="checkout-pay-inner">
-            {subscriptionBadge === "active" ? (
-              <>
-                <Rocket className="checkout-pay-icon" size={18} strokeWidth={2.5} aria-hidden="true" />
-                LAUNCH
-              </>
-            ) : (
-              <>
-                <ArrowRight className="checkout-pay-icon" size={18} strokeWidth={2.5} aria-hidden="true" />
-                DETAILS
-              </>
-            )}
-          </span>
+        <div className="loader-card-action-row">
+          <div className={`checkout-pay-button loader-card-action${loading ? " loader-card-action--loading" : ""}`}>
+            <span className="checkout-pay-points" aria-hidden="true">
+              {Array.from({ length: 10 }, (_, index) => (
+                <i className="checkout-pay-point" key={index} />
+              ))}
+            </span>
+            <span className="checkout-pay-inner">
+              {loading ? (
+                <span className="skeleton-block skeleton-loader-action-inline" aria-hidden="true" />
+              ) : subscriptionBadge === "active" ? (
+                <>
+                  <Rocket className="checkout-pay-icon" size={18} strokeWidth={2.5} aria-hidden="true" />
+                  LAUNCH
+                </>
+              ) : (
+                <>
+                  <Search className="checkout-pay-icon" size={18} strokeWidth={2.5} aria-hidden="true" />
+                  DETAILS
+                </>
+              )}
+            </span>
+          </div>
+          {subscriptionBadge !== "active" ? (
+            <span
+              className="loader-card-product-link"
+              role="button"
+              tabIndex={locked ? -1 : 0}
+              aria-label={`Open ${item.name} product page`}
+              aria-disabled={locked ? "true" : undefined}
+              onClick={(event) => {
+                event.stopPropagation();
+                event.preventDefault();
+                if (locked) return;
+                window.location.href = productHref(item);
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.stopPropagation();
+                event.preventDefault();
+                if (locked) return;
+                window.location.href = productHref(item);
+              }}
+            >
+              <ShoppingCart size={18} strokeWidth={2.4} aria-hidden="true" />
+            </span>
+          ) : null}
         </div>
       </div>
     </>
@@ -4653,6 +4762,7 @@ function LoaderContent({ brandSlug = "", brandName = "", brandProductSlugs = nul
   const [productBadges, setProductBadges] = useState(() =>
     Object.fromEntries(loaderProducts.map((item) => [item.slug, "inactive"])),
   );
+  const [badgesReady, setBadgesReady] = useState(false);
 
   useEffect(() => {
     displayMetaRef.current = displayMetaBySlug;
@@ -4661,6 +4771,7 @@ function LoaderContent({ brandSlug = "", brandName = "", brandProductSlugs = nul
   const refreshProductBadges = useCallback(async () => {
     if (!user) {
       setProductBadges(Object.fromEntries(loaderProducts.map((item) => [item.slug, "inactive"])));
+      setBadgesReady(true);
       return;
     }
 
@@ -4700,6 +4811,7 @@ function LoaderContent({ brandSlug = "", brandName = "", brandProductSlugs = nul
     );
 
     setProductBadges(Object.fromEntries(nextBadges));
+    setBadgesReady(true);
   }, [user]);
 
   useEffect(() => {
@@ -4797,6 +4909,15 @@ function LoaderContent({ brandSlug = "", brandName = "", brandProductSlugs = nul
             const locked = brandSlug && Array.isArray(brandProductSlugs)
               ? !brandProductSlugs.includes(item.slug)
               : false;
+            const isLoading = !metaReady || !authReady || !badgesReady;
+            if (isLoading) {
+              return (
+                <LoaderCardSkeleton
+                  featurePreviewCount={item.featurePreviewCount || 3}
+                  key={item.slug}
+                />
+              );
+            }
             return (
               <LoaderCard
                 item={item}
@@ -5511,6 +5632,18 @@ function LoaderDetailContent({
             Back to Remote Loader
           </button>
         ) : null}
+        {slug === "permanent-spoofer" ? (
+          <div className="loader-detail-announce loader-detail-announce--warning" role="status">
+            <span className="loader-detail-announce-icon" aria-hidden="true">
+              <AlertTriangle size={18} strokeWidth={2.4} />
+            </span>
+            <p>
+              <strong>Scheduled downtime incoming.</strong> Permanent Spoofer will temporarily go
+              <strong> DOWN </strong> while we deploy a major update rolling out an advanced
+              performance layer. Stay tuned — the new build lands shortly.
+            </p>
+          </div>
+        ) : null}
         <div className="loader-detail-layout">
           <div className="loader-detail-left-column">
             <article className="loader-detail-hero">
@@ -5953,22 +6086,44 @@ function LoaderDetailContent({
                   {(previewImages || []).map((img, idx) => (
                     <button
                       type="button"
-                      className="loader-preview-image-shell"
+                      className={`loader-preview-image-shell${img.video ? " loader-preview-image-shell--video" : ""}`}
                       key={`preview-${img.src}`}
                       disabled={!loaderMetaReady}
                       onClick={() => openPreviewLightbox(idx)}
                       aria-label={img.alt}
                     >
-                      <img
-                        src={img.src}
-                        alt={loaderMetaReady ? img.alt : ""}
-                        className={`loader-preview-image${loaderMetaReady ? "" : " loader-preview-image--ghost"}`}
-                        loading="lazy"
-                        aria-hidden={!loaderMetaReady}
-                      />
+                      {img.video ? (
+                        <video
+                          src={`${img.video}#t=115`}
+                          muted
+                          playsInline
+                          preload="metadata"
+                          disablePictureInPicture
+                          tabIndex={-1}
+                          aria-hidden="true"
+                          className={`loader-preview-image${loaderMetaReady ? "" : " loader-preview-image--ghost"}`}
+                          onLoadedMetadata={(event) => {
+                            try {
+                              event.currentTarget.currentTime = 115;
+                            } catch {}
+                          }}
+                        />
+                      ) : (
+                        <img
+                          src={img.src}
+                          alt={loaderMetaReady ? img.alt : ""}
+                          className={`loader-preview-image${loaderMetaReady ? "" : " loader-preview-image--ghost"}`}
+                          loading="lazy"
+                          aria-hidden={!loaderMetaReady}
+                        />
+                      )}
                       {!loaderMetaReady ? <SkeletonBlock className="loader-preview-image-overlay" /> : null}
                       <span className="loader-preview-zoom" aria-hidden="true">
-                        <Search size={22} strokeWidth={2.2} />
+                        {img.video ? (
+                          <Play size={22} strokeWidth={2.4} fill="currentColor" />
+                        ) : (
+                          <Search size={22} strokeWidth={2.2} />
+                        )}
                       </span>
                     </button>
                   ))}

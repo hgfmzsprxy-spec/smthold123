@@ -131,7 +131,7 @@ const GUIDE_NAV = [
           { id: PERMANENT_SPOOFER_CLEANUP_VIEW, label: "Clean-up", icon: Eraser },
         ],
       },
-      { id: "temporary-spoofer", label: "Temporary Spoofer", icon: Timer },
+      { id: "temporary-spoofer", label: "Temporary Spoofer [UEFI]", icon: Timer },
     ],
   },
   {
